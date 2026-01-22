@@ -127,17 +127,69 @@ class SettingController extends Controller
         return response()->json(['success' => true, 'message' => 'Default SMTP updated.']);
     }
 
-    public function sendTestEmail(Request $request)
+    public function sendTestEmail(Request $request, \App\Services\MailService $mailService)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate([
+            'email' => 'required|email',
+            'smtp_id' => 'nullable|exists:smtp_configurations,id',
+            'config' => 'nullable|array'
+        ]);
         
         try {
-            if (!SmtpConfiguration::where('is_default', true)->exists()) {
-                return response()->json(['success' => true, 'message' => 'Simulation: Test email sent via Resend API (Fallback).']);
+            $smtp = null;
+
+            // 1. Try to use unsaved config from modal
+            if ($request->has('config')) {
+                $smtp = new SmtpConfiguration($request->config);
+                // Ensure port is an integer
+                $smtp->port = (int)$smtp->port;
+            } 
+            // 2. Use existing config record
+            elseif ($request->has('smtp_id')) {
+                $smtp = SmtpConfiguration::find($request->smtp_id);
+            } 
+            // 3. Fallback to default
+            else {
+                $smtp = SmtpConfiguration::where('is_default', true)->first();
             }
-            return response()->json(['success' => true, 'message' => 'Test email sent successfully.']);
+
+            if (!$smtp) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'No SMTP configuration found to test. Please add one first.'
+                ], 400);
+            }
+
+            $mailService->sendTestEmail($request->email, $smtp);
+
+            // Log Success
+            \App\Models\ActivityLog::create([
+                'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                'description' => "Sent SMTP test email to {$request->email} using '{$smtp->name}'",
+                'type' => 'success',
+                'subject_id' => $smtp->id,
+                'subject_type' => get_class($smtp),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            return response()->json(['success' => true, 'message' => "Test email sent successfully to {$request->email} using '{$smtp->name}'."]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Failed to send email: ' . $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error('SMTP Test Failed: ' . $e->getMessage());
+            
+            // Log Failure
+            \App\Models\ActivityLog::create([
+                'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                'description' => "Failed to send SMTP test email: " . $e->getMessage(),
+                'type' => 'error',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            return response()->json([
+                'success' => false, 
+                'message' => 'Failed to send email: ' . $e->getMessage() . '. Please check your SMTP settings and server logs.'
+            ], 500);
         }
     }
 

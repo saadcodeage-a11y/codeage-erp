@@ -52,5 +52,18 @@ class AppServiceProvider extends ServiceProvider
                 'user_agent' => request()->userAgent(),
             ]);
         });
+        
+        // Dynamic Mail Configuration
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('smtp_configurations')) {
+                $defaultSmtp = \App\Models\SmtpConfiguration::where('is_default', true)->first();
+                if ($defaultSmtp) {
+                    $mailService = new \App\Services\MailService();
+                    $mailService->setDynamicConfig($defaultSmtp);
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail during migrations or if DB is not ready
+        }
     }
 }
