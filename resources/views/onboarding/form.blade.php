@@ -453,6 +453,10 @@
             document.getElementById('nextBtn').style.display = step === totalSteps ? 'none' : 'inline-flex';
             document.getElementById('submitBtn').style.display = step === totalSteps ? 'inline-flex' : 'none';
             
+            if (step === 4) {
+                setTimeout(resizeCanvas, 100); // Wait for transition/display animation
+            }
+
             lucide.createIcons();
         }
         
@@ -571,14 +575,22 @@
         
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = 150;
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
+            if (rect.width > 0) {
+                canvas.width = rect.width;
+                canvas.height = 150;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+            }
         }
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('resize', () => {
+            const oldData = canvas.toDataURL();
+            resizeCanvas();
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            img.src = oldData;
+        });
         
         const getPos = (e) => {
             const rect = canvas.getBoundingClientRect();
