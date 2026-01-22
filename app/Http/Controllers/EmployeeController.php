@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Employee;
+use App\Models\EmailTemplate;
+use App\Models\Setting;
+use App\Models\Department;
+use App\Services\MailService;
 
 class EmployeeController extends Controller
 {
@@ -239,16 +243,40 @@ class EmployeeController extends Controller
         return response()->json(['success' => true, 'message' => 'Invitation sent successfully.']);
     }
 
-    public function approve(Employee $employee)
+    public function approve(Request $request, Employee $employee, MailService $mailService)
     {
-        $employee->update(['status' => 'active']);
+        $employee->update([
+            'status' => 'active',
+            'hiring_date' => $request->start_date // Storing start date in hiring_date field
+        ]);
         
-        // Optional: Send "Welcome" email here
+        // Send "Welcome" email
+        try {
+            $template = EmailTemplate::where('name', 'Employee Welcome')->first();
+            
+            if ($template) {
+                $officeLocation = Setting::where('key', 'office_location')->value('value') ?? 'Our Office';
+                $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? 'HR Department';
+                
+                $variables = [
+                    'employeeName' => $employee->full_name,
+                    'position' => $employee->designation ?? 'Team Member',
+                    'startDate' => date('F j, Y', strtotime($request->start_date)),
+                    'startTime' => date('g:i A', strtotime($request->start_time)),
+                    'officeLocation' => $officeLocation,
+                    'hrContact' => $hrContact
+                ];
+                
+                $mailService->sendEmailTemplate($employee->email, $template, $variables);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send welcome email: ' . $e->getMessage());
+        }
         
         if (request()->ajax()) {
-            return response()->json(['success' => true, 'message' => 'Employee approved and activated.']);
+            return response()->json(['success' => true, 'message' => 'Employee approved and welcome email sent.']);
         }
-        return back()->with('success', 'Employee approved and activated.');
+        return back()->with('success', 'Employee approved and welcome email sent.');
     }
 
     public function disapprove(Employee $employee)

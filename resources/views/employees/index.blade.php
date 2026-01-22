@@ -426,6 +426,37 @@
     </div>
 </div>
 
+<!-- Approve Employee Modal -->
+<div id="approveEmployeeModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header">
+            <div>
+                <h2>Approve Application</h2>
+                <p class="modal-desc">Set the start details for this employee.</p>
+            </div>
+            <button onclick="closeApproveModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <form id="approveEmployeeForm">
+                @csrf
+                <input type="hidden" id="approve_employee_id">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Start Date *</label>
+                    <input type="date" id="approve_start_date" required style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Start Time *</label>
+                    <input type="time" id="approve_start_time" required value="09:00" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </div>
+                <div class="modal-footer" style="margin-top: 20px; padding: 0; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeApproveModal()" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer;">Cancel</button>
+                    <button type="button" onclick="submitApproval()" class="btn btn-primary" id="confirmApproveBtn" style="padding: 10px 20px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">Approve & Send Welcome Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Employee Modal -->
 <div id="editEmployeeModal" class="modal-overlay" style="display: none;">
     <div class="modal-container">
@@ -858,6 +889,12 @@
         if (event.target == document.getElementById('editEmployeeModal')) {
             closeEditModal();
         }
+        if (event.target == document.getElementById('inviteEmployeeModal')) {
+            closeInviteModal();
+        }
+        if (event.target == document.getElementById('approveEmployeeModal')) {
+            closeApproveModal();
+        }
         // Close dropdowns if clicking outside
         if (!event.target.closest('.dropdown')) {
             document.querySelectorAll('.dropdown-menu').forEach(menu => {
@@ -910,14 +947,59 @@
     });
 
     function approveEmployee(id) {
-        if (!confirm('Are you sure you want to approve this employee?')) return;
+        document.getElementById('approve_employee_id').value = id;
+        document.getElementById('approveEmployeeModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeApproveModal() {
+        document.getElementById('approveEmployeeModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function submitApproval() {
+        const id = document.getElementById('approve_employee_id').value;
+        const startDate = document.getElementById('approve_start_date').value;
+        const startTime = document.getElementById('approve_start_time').value;
+
+        if (!startDate || !startTime) {
+            alert('Please fill in both start date and time.');
+            return;
+        }
+
+        const btn = document.getElementById('confirmApproveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
         fetch(`/employees/${id}/approve`, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                start_date: startDate,
+                start_time: startTime
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Employee approved and welcome email sent!');
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to approve employee.');
             }
-        }).then(() => location.reload());
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please check console.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'Approve & Send Welcome Email';
+        });
     }
 
     function disapproveEmployee(id) {
