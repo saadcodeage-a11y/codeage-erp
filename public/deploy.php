@@ -19,8 +19,21 @@ chdir($rootDir);
 // Fix for Composer & Git
 putenv('HOME=' . $rootDir);
 putenv('COMPOSER_HOME=' . $rootDir . '/.composer');
-// Bypass SSH Host Key checking for first-time connection
-putenv('GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no'); 
+
+// --- SSH KEY DETECTION ---
+// We try to find the private key file. On SiteGround, it's usually in ~/.ssh/
+$sshKeyPath = '';
+if (file_exists('/home/customer/.ssh/DEPLOY_TOKEN')) {
+    $sshKeyPath = '/home/customer/.ssh/DEPLOY_TOKEN';
+} elseif (isset($_SERVER['HOME']) && file_exists($_SERVER['HOME'] . '/.ssh/DEPLOY_TOKEN')) {
+    $sshKeyPath = $_SERVER['HOME'] . '/.ssh/DEPLOY_TOKEN';
+}
+
+if ($sshKeyPath) {
+    putenv("GIT_SSH_COMMAND=ssh -i $sshKeyPath -o StrictHostKeyChecking=no");
+} else {
+    putenv('GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no'); 
+}
 
 // 2. Security Check
 $envFile = '.env';
