@@ -36,24 +36,46 @@ putenv('HOME=' . $rootDir);
 putenv('COMPOSER_HOME=' . $rootDir . '/.composer');
 
 // --- SSH KEY DETECTION ---
-// We try to find any .priv key file in ~/.ssh/
 $sshKeyPath = '';
-$sshDir = (getenv('HOME') ?: '/home/customer') . '/.ssh';
-if (is_dir($sshDir)) {
-    $files = scandir($sshDir);
-    foreach ($files as $file) {
-        if (str_ends_with($file, '.priv')) {
-            $sshKeyPath = $sshDir . '/' . $file;
-            break;
+// Use shell to resolve the real home path (more reliable than PHP)
+$homeDir = trim(shell_exec('echo $HOME'));
+if (empty($homeDir) || $homeDir == '$HOME') {
+    $homeDir = '/home/customer'; // Common SiteGround default
+}
+
+// Search for the key in multiple possible locations
+$searchDirs = [
+    $rootDir, // Search project root first for easier user upload
+    $homeDir . '/.ssh', 
+    '/home/' . trim(shell_exec('whoami')) . '/.ssh', 
+    '/home/customer/.ssh'
+];
+foreach (array_unique($searchDirs) as $sshDir) {
+    if (is_dir($sshDir)) {
+        $files = @scandir($sshDir);
+        if ($files === false) continue;
+        foreach ($files as $file) {
+            // Priority 1: User uploaded "deploy_key"
+            // Priority 2: SiteGround style .priv files
+            if ($file === 'deploy_key' || str_ends_with($file, '.priv') || $file === 'id_rsa' || $file === 'id_ed25519') {
+                $sshKeyPath = $sshDir . '/' . $file;
+                // Important: Key files in project root MUST have 600 permissions
+                if ($sshDir === $rootDir) @chmod($sshKeyPath, 0600);
+                break 2;
+            }
         }
     }
 }
 
-if ($sshKeyPath) {
-    putenv("GIT_SSH_COMMAND=ssh -i $sshKeyPath -o StrictHostKeyChecking=no");
-} else {
-    putenv('GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no'); 
+// Allow manual override via URL for debugging
+if (isset($_GET['ssh_key'])) {
+    $sshKeyPath = $_GET['ssh_key'];
 }
+
+// Global SSH Command
+$sshCommand = $sshKeyPath 
+    ? "ssh -v -i $sshKeyPath -o StrictHostKeyChecking=no -o BatchMode=yes" 
+    : "ssh -v -o StrictHostKeyChecking=no";
 
 // 2. Security Check
 $envFile = '.env';
@@ -82,18 +104,35 @@ function die_error($title, $msg) {
     die("<h1>❌ $title</h1><p>$msg</p>");
 }
 
-function run_command($label, $command) {
+function run_command($label, $command, $envPrefix = '', $stopOnFail = true) {
+    if (is_bool($envPrefix)) {
+        $stopOnFail = $envPrefix;
+        $envPrefix = '';
+    }
+    
+    $fullCommand = ($envPrefix ? $envPrefix . ' ' : '') . $command;
+    
     echo "<div class='step'>";
-    echo "<div class='step-header'><span>$label</span> <span style='opacity: 0.7; font-size: 0.9em;'>$ $command</span></div>";
+    echo "<div class='step-header'><span>$label</span> <span style='opacity: 0.7; font-size: 0.8em;'>$ $fullCommand</span></div>";
     echo "<div class='step-output'>";
-    $handle = popen("$command 2>&1", 'r');
+    
+    $handle = popen("$fullCommand 2>&1", 'r');
+    $output = '';
     while (!feof($handle)) {
-        echo htmlspecialchars(fgets($handle));
+        $line = fgets($handle);
+        $output .= $line;
+        echo htmlspecialchars($line);
         echo "<script>window.scrollTo(0, document.body.scrollHeight);</script>";
         flush();
     }
     $status = pclose($handle);
     echo "</div></div>";
+    
+    if ($status !== 0 && $stopOnFail) {
+        echo "<h2 style='color: #f87171'>❌ Command Failed</h2>";
+        echo "<p>Deployment halted. Please review the output above.</p>";
+        die();
+    }
     return $status === 0;
 }
 ?>
@@ -107,50 +146,46 @@ function run_command($label, $command) {
         h1 { color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
         .step { margin-bottom: 15px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; overflow: hidden; }
         .step-header { background: #334155; padding: 8px 12px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; }
-        .step-output { padding: 12px; white-space: pre-wrap; font-size: 13px; }
+        .step-output { padding: 12px; white-space: pre-wrap; font-size: 11px; color: #94a3b8; }
     </style>
 </head>
 <body>
-    <h1>🚀 Deployment Started</h1>
-    
+    <div style="background: #1e293b; padding: 15px; border-radius: 6px; border: 1px solid #334155; margin-bottom: 20px; font-size: 13px;">
+        <div style="color: #94a3b8; margin-bottom: 5px;">🔧 Automated Setup Status:</div>
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 5px;">
+            <span>Detected Key:</span> <span style="color: <?php echo $sshKeyPath ? '#4ade80' : '#f87171'; ?>"><?php echo $sshKeyPath ?: 'None Found (Check ~/.ssh/)'; ?></span>
+            <span>Home Dir:</span> <span style="color: #38bdf8"><?php echo $homeDir; ?></span>
+        </div>
+        
+        <?php if ($sshKeyPath): ?>
+        <div style="margin-top: 10px; padding: 10px; background: #334155; border-radius: 4px; color: #fbbf24; font-size: 12px;">
+            ⚠️ <b>Important:</b> If your SSH key has a <b>passphrase</b>, this automation will fail. 
+            Automated scripts require an SSH key with <b>no password</b>. 
+            If you see 'Permission Denied', please create a new SSH key in SiteGround and leave the password field empty.
+        </div>
+        <?php endif; ?>
+    </div>
+
     <?php
     // --- LOGIC ---
+    $gitEnv = "GIT_SSH_COMMAND='$sshCommand'";
     
-    // Check if .git exists
+    // 1. Git Logic
     if (!is_dir('.git')) {
         echo "<h3 style='color: #fbbf24'>⚠️ Initializing Git Repository...</h3>";
-        
         run_command('Init Git', 'git init');
         run_command('Add Remote', "git remote add origin $repoUrl");
-        
-        echo "<h3 style='color: #fbbf24'>⚠️ Performing First Pull (This may take a moment)...</h3>";
-        // Force pull main
-        if (!run_command('Fetch & Pull', 'git pull origin main')) {
-            echo "<div style='background: #450a0a; border: 1px solid #f87171; padding: 20px; border-radius: 8px; margin-top: 20px;'>";
-            echo "<h2 style='color: #f87171; margin-top: 0;'>❌ Permission Denied (SSH Key Error)</h2>";
-            echo "<p>GitHub rejected the connection because it doesn't recognize your server's SSH key.</p>";
-            echo "<h3>How to fix:</h3>";
-            echo "<ol>";
-            echo "<li>Go to <b>SiteGround Site Tools</b> > <b>Devs</b> > <b>SSH Keys Manager</b>.</li>";
-            echo "<li>Find your <b>DEPLOY_TOKEN</b> key, click the 3 dots, and select <b>SSH Key</b> (or View Public Key).</li>";
-            echo "<li>Copy the <b>Public Key</b> (the long text starting with 'ssh-rsa' or 'ssh-ed25519').</li>";
-            echo "<li>Go to your <b>GitHub Repository</b> > <b>Settings</b> > <b>Deploy keys</b>.</li>";
-            echo "<li>Click <b>Add deploy key</b>, paste your key, and give it any title.</li>";
-            echo "<li>Save and refresh this page.</li>";
-            echo "</ol>";
-            echo "</div>";
-            die();
-        }
-        
-        // Reset tracking information just in case
-        run_command('Track Branch', 'git branch --set-upstream-to=origin/main main');
+        run_command('Fetch from GitHub', 'git fetch origin main', $gitEnv);
+        echo "<h3 style='color: #fbbf24'>⚠️ Syncing files (Overwriting local conflicts)...</h3>";
+        run_command('Force Reset', 'git reset --hard origin/main');
     } else {
-        // Normal Pull
-        run_command('Git Pull', 'git pull origin main');
+        run_command('Git Pull', 'git pull origin main', $gitEnv);
     }
 
-    // Standard Build Steps
-    run_command('Composer Install', 'composer install --no-dev --optimize-autoloader');
+    // 2. Composer with override
+    run_command('Composer Install', 'composer install --no-dev --optimize-autoloader --ignore-platform-reqs');
+
+    // 3. Database & Optimization
     run_command('Run Migrations', 'php artisan migrate --force');
     run_command('Clear Cache', 'php artisan optimize:clear');
     run_command('Cache All', 'php artisan config:cache && php artisan route:cache && php artisan view:cache');
