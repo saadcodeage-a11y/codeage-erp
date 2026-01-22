@@ -37,7 +37,7 @@
             <i data-lucide="check-circle" style="width: 40px; height: 40px;"></i>
         </div>
         
-        <h1>Application Submitted!</h1>
+        <h1>Details Submitted Successfully</h1>
         <p>Thank you for completing your onboarding profile. Your information has been successfully received and is now pending review by our HR department.</p>
         
         <div class="divider"></div>
