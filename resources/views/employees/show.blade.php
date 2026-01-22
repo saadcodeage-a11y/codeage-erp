@@ -16,14 +16,23 @@
         <button type="button" onclick="deleteEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #dc2626; text-decoration: none;">
             <i data-lucide="trash-2"></i> Delete Employee
         </button>
-        @if($employee->status == 'active')
-            <button type="button" onclick="updateStatus({{ $employee->id }}, 'inactive')" class="btn btn-outline" style="text-decoration: none;">
-                <i data-lucide="user-minus"></i> Mark as Inactive
+        @if($employee->status == 'pending_approval')
+            <button type="button" onclick="approveEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #10B981; text-decoration: none;">
+                <i data-lucide="check"></i> Approve Application
+            </button>
+            <button type="button" onclick="disapproveEmployee({{ $employee->id }})" class="btn btn-outline" style="color: #dc2626; border-color: #dc2626; text-decoration: none;">
+                <i data-lucide="x"></i> Disapprove
             </button>
         @else
-            <button type="button" onclick="updateStatus({{ $employee->id }}, 'active')" class="btn btn-outline" style="text-decoration: none;">
-                <i data-lucide="user-check"></i> Mark as Active
-            </button>
+            @if($employee->status == 'active')
+                <button type="button" onclick="updateStatus({{ $employee->id }}, 'inactive')" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="user-minus"></i> Mark as Inactive
+                </button>
+            @else
+                <button type="button" onclick="updateStatus({{ $employee->id }}, 'active')" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="user-check"></i> Mark as Active
+                </button>
+            @endif
         @endif
     </div>
 </div>
@@ -568,6 +577,28 @@
                 alert('Failed to delete employee.');
             }
         });
+    }
+
+    function approveEmployee(id) {
+        if (!confirm('Are you sure you want to approve this employee?')) return;
+        fetch(`/employees/${id}/approve`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(() => location.reload());
+    }
+
+    function disapproveEmployee(id) {
+        if (!confirm('Are you sure you want to disapprove this application?')) return;
+        fetch(`/employees/${id}/disapprove`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(() => location.reload());
     }
 
     // Close on click outside

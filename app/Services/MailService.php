@@ -54,4 +54,41 @@ class MailService
                     ->subject('SMTP Test Email - ' . config('app.name'));
         });
     }
+
+    /**
+     * Send an email using a template and custom SMTP.
+     * 
+     * @param string $to
+     * @param \App\Models\EmailTemplate $template
+     * @param array $variables
+     * @return void
+     */
+    public function sendEmailTemplate($to, $template, array $variables = [])
+    {
+        // 1. Get SMTP config (if template has custom, use it, else default)
+        $smtp = $template->smtp_config_id 
+            ? SmtpConfiguration::find($template->smtp_config_id) 
+            : SmtpConfiguration::where('is_default', true)->first();
+
+        if ($smtp) {
+            $this->setDynamicConfig($smtp);
+        }
+
+        // 2. Variable replacement
+        $body = $template->body;
+        foreach ($variables as $key => $value) {
+            $body = str_replace('{{' . $key . '}}', $value, $body);
+        }
+
+        $subject = $template->subject;
+        foreach ($variables as $key => $value) {
+            $subject = str_replace('{{' . $key . '}}', $value, $subject);
+        }
+
+        // 3. Send HTML email
+        Mail::html($body, function ($message) use ($to, $subject) {
+            $message->to($to)
+                    ->subject($subject);
+        });
+    }
 }

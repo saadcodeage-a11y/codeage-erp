@@ -9,7 +9,7 @@
         <p>Manage your team members and their information</p>
     </div>
     <div class="header-right">
-        <button class="btn btn-outline" onclick="alert('Invite Feature Coming Soon')">
+        <button class="btn btn-outline" onclick="openInviteModal()">
             <i data-lucide="send"></i> Invite Employee
         </button>
         <a href="#" onclick="openModal(); return false;" class="btn btn-primary" style="text-decoration: none;">
@@ -84,9 +84,15 @@
                             <button class="btn-action outline-blue"><i data-lucide="send"></i> Resend</button>
                         @endif
                         
-                        @if($employee->status != 'invited')
+                        @if($employee->status == 'pending_approval')
+                           <button type="button" onclick="approveEmployee({{ $employee->id }})" class="btn-action outline-green"><i data-lucide="check"></i> Approve</button>
+                           <button type="button" onclick="disapproveEmployee({{ $employee->id }})" class="btn-action outline-red"><i data-lucide="x"></i> Disapprove</button>
+                           <a href="{{ route('employees.show', $employee) }}" class="btn-action outline"><i data-lucide="eye"></i> Review</a>
+                        @else
                            <a href="{{ route('employees.show', $employee) }}" class="btn-action outline"><i data-lucide="eye"></i> View</a>
-                           <button type="button" onclick="editEmployee({{ $employee->id }})" class="btn-action outline"><i data-lucide="edit-2"></i> Edit</button>
+                           @if($employee->status != 'invited')
+                               <button type="button" onclick="editEmployee({{ $employee->id }})" class="btn-action outline"><i data-lucide="edit-2"></i> Edit</button>
+                           @endif
                         @endif
 
                         <div class="dropdown">
@@ -369,6 +375,51 @@
                 <div class="modal-footer">
                     <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="background-color: #FF4A00; color: white;">+ Add Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Invite Employee Modal -->
+<div id="inviteEmployeeModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header">
+            <div>
+                <h2>Invite Employee</h2>
+                <p class="modal-desc">Send an invitation email to a new team member.</p>
+            </div>
+            <button onclick="closeInviteModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <form id="inviteEmployeeForm">
+                @csrf
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Full Name *</label>
+                    <input type="text" name="full_name" required placeholder="Enter full name" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Email Address *</label>
+                    <input type="email" name="email" required placeholder="email@example.com" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </div>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label>Department *</label>
+                        <select name="department_id" required style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                            <option value="">Select Department</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Position *</label>
+                        <input type="text" name="designation" required placeholder="e.g. Developer" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="modal-footer" style="margin-top: 20px; padding: 0; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeInviteModal()" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="sendInviteBtn" style="padding: 10px 20px; background: #FF4A00; color: white; border: none; border-radius: 6px; cursor: pointer;">Send Invitation</button>
                 </div>
             </form>
         </div>
@@ -814,6 +865,71 @@
             });
         }
     });
+    function openInviteModal() {
+        document.getElementById('inviteEmployeeModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeInviteModal() {
+        document.getElementById('inviteEmployeeModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('inviteEmployeeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('sendInviteBtn');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+
+        fetch('{{ route("employees.invite") }}', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(Object.fromEntries(new FormData(this)))
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Invitation sent successfully!');
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to send invitation.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please check console.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'Send Invitation';
+        });
+    });
+
+    function approveEmployee(id) {
+        if (!confirm('Are you sure you want to approve this employee?')) return;
+        fetch(`/employees/${id}/approve`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(() => location.reload());
+    }
+
+    function disapproveEmployee(id) {
+        if (!confirm('Are you sure you want to disapprove this application?')) return;
+        fetch(`/employees/${id}/disapprove`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(() => location.reload());
+    }
 </script>
 
 <style>

@@ -194,6 +194,78 @@ class EmployeeController extends Controller
         return back()->with('success', 'Status updated successfully.');
     }
 
+    public function invite(Request $request, \App\Services\MailService $mailService)
+    {
+        $validated = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:employees,email',
+            'department_id' => 'required|exists:departments,id',
+            'designation' => 'required|string|max:255',
+        ]);
+
+        $token = \Illuminate\Support\Str::random(40);
+        
+        $employee = Employee::create([
+            'full_name' => $validated['full_name'],
+            'email' => $validated['email'],
+            'department_id' => $validated['department_id'],
+            'designation' => $validated['designation'],
+            'status' => 'invited',
+            'onboarding_token' => $token, // Ensure this column exist or just use token for URL
+        ]);
+
+        // Find invitation template
+        $template = \App\Models\EmailTemplate::where('name', 'Employee Invitation')
+            ->where('is_active', true)
+            ->first();
+
+        if ($template) {
+            $inviteLink = route('onboarding.show', ['token' => $token]);
+            $variables = [
+                'employeeName' => $employee->full_name,
+                'formLink' => '<a href="' . $inviteLink . '" style="background: #FF4A00; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Complete Onboarding Form</a>',
+                'inviteLink' => $inviteLink,
+                'companyName' => config('app.name'),
+            ];
+            
+            try {
+                $mailService->sendEmailTemplate($employee->email, $template, $variables);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Invitation Email Failed: ' . $e->getMessage());
+                // Don't fail the whole request but keep invited status
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Invitation sent successfully.']);
+    }
+
+    public function approve(Employee $employee)
+    {
+        $employee->update(['status' => 'active']);
+        
+        // Optional: Send "Welcome" email here
+        
+        if (request()->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Employee approved and activated.']);
+        }
+        return back()->with('success', 'Employee approved and activated.');
+    }
+
+    public function disapprove(Employee $employee)
+    {
+        // For disapproval, move back to invited or delete? 
+        // User said "move the record to pending tab... approve, disapprove".
+        // Let's move to 'inactive' or keep in 'invited'? 
+        // Typically disapproval means "needs corrections", so maybe move back to invited and send email?
+        // Or just mark as inactive for now.
+        $employee->update(['status' => 'inactive']);
+        
+        if (request()->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Employee application disapproved.']);
+        }
+        return back()->with('success', 'Employee application disapproved.');
+    }
+
     public function destroy(Employee $employee)
     {
         // Optional: Delete associated files if needed

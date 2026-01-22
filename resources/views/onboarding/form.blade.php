@@ -183,7 +183,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Full Name <span class="required">*</span></label>
-                                <input type="text" name="full_name" value="{{ $employee->full_name ?? '' }}" placeholder="Enter your full name" required>
+                                <input type="text" name="full_name" value="{{ $employee->full_name ?? '' }}" placeholder="Enter your full name" required {{ !empty($employee->full_name) ? 'readonly class=locked' : '' }}>
                             </div>
                             <div class="form-group">
                                 <label>Email Address <span class="required">*</span></label>

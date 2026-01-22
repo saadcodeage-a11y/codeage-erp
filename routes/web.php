@@ -63,8 +63,12 @@ use App\Http\Controllers\TemplateController;
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    // Employees
     Route::resource('employees', EmployeeController::class);
     Route::patch('employees/{employee}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
+    Route::post('employees/invite', [EmployeeController::class, 'invite'])->name('employees.invite');
+    Route::post('employees/{employee}/approve', [EmployeeController::class, 'approve'])->name('employees.approve');
+    Route::post('employees/{employee}/disapprove', [EmployeeController::class, 'disapprove'])->name('employees.disapprove');
 
     // Settings
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
