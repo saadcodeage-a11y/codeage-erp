@@ -22,6 +22,8 @@ class SettingController extends Controller
         // General Settings
         $employeeIdPrefix = Setting::where('key', 'employee_id_prefix')->value('value') ?? 'EMP';
         $hrEmails = Setting::where('key', 'hr_notification_emails')->value('value') ?? '';
+        $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
+        $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
         
         return view('settings.index', compact(
             'banks', 
@@ -29,7 +31,9 @@ class SettingController extends Controller
             'defaultSmtp', 
             'policies',
             'employeeIdPrefix',
-            'hrEmails'
+            'hrEmails',
+            'officeLocation',
+            'hrContact'
         ));
     }
 
@@ -264,6 +268,14 @@ class SettingController extends Controller
 
         if ($request->has('hr_notification_emails')) {
             Setting::updateOrCreate(['key' => 'hr_notification_emails'], ['value' => $request->hr_notification_emails]);
+        }
+
+        if ($request->has('office_location')) {
+            Setting::updateOrCreate(['key' => 'office_location'], ['value' => $request->office_location]);
+        }
+
+        if ($request->has('hr_contact')) {
+            Setting::updateOrCreate(['key' => 'hr_contact'], ['value' => $request->hr_contact]);
         }
 
         return response()->json(['success' => true, 'message' => 'Settings updated successfully.']);

@@ -21,6 +21,11 @@ class TemplateVariableService
     {
         return [
             'employeeName' => 'Full name of the employee',
+            'position' => 'Job title/position of the employee',
+            'startDate' => 'First day of work',
+            'startTime' => 'Reporting time on first day',
+            'officeLocation' => 'Office address/location',
+            'hrContact' => 'HR contact person name',
             'formLink' => 'URL to the related form',
         ];
     }

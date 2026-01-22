@@ -31,6 +31,9 @@
     <button class="tab-item" onclick="switchTab('policies', this)">
         Company Policies
     </button>
+    <button class="tab-item" onclick="switchTab('system-values', this)">
+        System Values
+    </button>
     <button class="tab-item" onclick="switchTab('other', this)">
         Other Settings
     </button>
@@ -1022,3 +1025,77 @@
     });
 </script>
 @endsection
+<!-- System Values Tab -->
+<div id="system-values" class="settings-tab-content" style="display: none;">
+    <div class="card" style="max-width: 800px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <div style="background: #eff6ff; padding: 10px; border-radius: 10px; color: #3b82f6;">
+                <i data-lucide="component" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div>
+                <h2 style="font-size: 18px; font-weight: 600; margin: 0;">System Values</h2>
+                <p style="color: #6b7280; font-size: 13px; margin: 2px 0 0 0;">Configure dynamic values for email templates</p>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="form-group">
+                <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Office Location</label>
+                <input type="text" id="office_location" class="form-control" value="{{ $officeLocation }}" placeholder="e.g. Office 101, Business Center, City" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
+                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace {{@src_placeholder_0}} in email templates.</small>
+            </div>
+
+            <div class="form-group">
+                <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">HR Contact Person</label>
+                <input type="text" id="hr_contact" class="form-control" value="{{ $hrContact }}" placeholder="e.g. John Doe (HR Manager)" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
+                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace {{@src_placeholder_1}} in email templates.</small>
+            </div>
+
+            <div style="margin-top: 8px; padding-top: 24px; border-top: 1px solid #f3f4f6;">
+                <button onclick="updateSystemValues()" class="btn btn-primary" style="background: #111827; border: none; height: 44px; padding: 0 24px;">
+                    <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save System Values
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateSystemValues() {
+        const officeLocation = document.getElementById('office_location').value;
+        const hrContact = document.getElementById('hr_contact').value;
+        
+        fetch('{{ route("settings.general.update") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                office_location: officeLocation,
+                hr_contact: hrContact
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Success', data.message, 'success');
+            } else {
+                showToast('Error', data.message || 'Failed to update system values', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'An unexpected error occurred', 'error');
+        });
+    }
+
+    // Reuse existing toast functionality or implement a simple one if needed
+    function showToast(title, message, type) {
+        if (window.toast) {
+            window.toast(title, message, type);
+        } else {
+            alert(title + ': ' + message);
+        }
+    }
+</script>
