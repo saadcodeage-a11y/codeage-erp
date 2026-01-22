@@ -36,12 +36,17 @@ putenv('HOME=' . $rootDir);
 putenv('COMPOSER_HOME=' . $rootDir . '/.composer');
 
 // --- SSH KEY DETECTION ---
-// We try to find the private key file. On SiteGround, it's usually in ~/.ssh/
+// We try to find any .priv key file in ~/.ssh/
 $sshKeyPath = '';
-if (file_exists('/home/customer/.ssh/DEPLOY_TOKEN')) {
-    $sshKeyPath = '/home/customer/.ssh/DEPLOY_TOKEN';
-} elseif (isset($_SERVER['HOME']) && file_exists($_SERVER['HOME'] . '/.ssh/DEPLOY_TOKEN')) {
-    $sshKeyPath = $_SERVER['HOME'] . '/.ssh/DEPLOY_TOKEN';
+$sshDir = (getenv('HOME') ?: '/home/customer') . '/.ssh';
+if (is_dir($sshDir)) {
+    $files = scandir($sshDir);
+    foreach ($files as $file) {
+        if (str_ends_with($file, '.priv')) {
+            $sshKeyPath = $sshDir . '/' . $file;
+            break;
+        }
+    }
 }
 
 if ($sshKeyPath) {
