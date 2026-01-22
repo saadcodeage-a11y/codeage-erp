@@ -223,7 +223,7 @@ class EmployeeController extends Controller
             $inviteLink = route('onboarding.show', ['token' => $token]);
             $variables = [
                 'employeeName' => $employee->full_name,
-                'formLink' => '<a href="' . $inviteLink . '" style="background: #FF4A00; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Complete Onboarding Form</a>',
+                'formLink' => $inviteLink,
                 'inviteLink' => $inviteLink,
                 'companyName' => config('app.name'),
             ];
