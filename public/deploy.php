@@ -16,6 +16,21 @@ ob_implicit_flush(true);
 $rootDir = realpath(__DIR__ . '/../');
 chdir($rootDir);
 
+// --- DEBUG UTILITY ---
+if (isset($_GET['debug'])) {
+    echo "<h2>🛠️ Debug Information</h2>";
+    echo "<pre>";
+    echo "Current User: " . shell_exec('whoami') . "\n";
+    echo "Current Directory: " . getcwd() . "\n";
+    echo "PHP Version: " . PHP_VERSION . "\n";
+    echo "\nListing SSH Directory (~/.ssh):\n";
+    echo shell_exec('ls -la ~/.ssh 2>&1');
+    echo "\nListing Project Root:\n";
+    echo shell_exec('ls -la . 2>&1');
+    echo "</pre>";
+    if (!isset($_GET['run'])) die("<hr><p>Debug finished. Add <b>&run=1</b> to the URL to proceed with deployment.</p>");
+}
+
 // Fix for Composer & Git
 putenv('HOME=' . $rootDir);
 putenv('COMPOSER_HOME=' . $rootDir . '/.composer');
