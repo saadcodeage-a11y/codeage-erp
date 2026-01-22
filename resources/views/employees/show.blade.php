@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', $employee->first_name . ' ' . $employee->last_name . ' - Employee Details')
+
 @section('content')
 <div class="page-header" style="margin-bottom: 24px;">
     <div style="display: flex; align-items: center; gap: 12px;">

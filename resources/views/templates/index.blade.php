@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Templates & Forms')
+
 @section('content')
 <div class="page-header">
     <div class="header-left">

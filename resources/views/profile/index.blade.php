@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'My Profile')
+
 @section('content')
 <div class="dashboard-header">
     <div class="header-title">

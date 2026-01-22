@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Settings')
+
 @section('content')
 <!-- Quill Rich Text Editor -->
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">

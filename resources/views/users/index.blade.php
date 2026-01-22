@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'User Management')
+
 @section('content')
 <div class="page-header">
     <div class="header-left">
