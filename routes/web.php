@@ -108,4 +108,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/templates/{id}/update', [TemplateController::class, 'updateEmailTemplate'])->name('templates.email.update');
     Route::put('/templates/forms/{id}/update', [TemplateController::class, 'updateFormTemplate'])->name('templates.forms.update');
     Route::post('/templates/toggle-status', [TemplateController::class, 'toggleStatus'])->name('templates.toggle-status');
+
+    // Activity Logs
+    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs.index');
 });

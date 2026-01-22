@@ -44,6 +44,10 @@
                     <i data-lucide="user-cog"></i>
                     <span>User Management</span>
                 </a>
+                <a href="{{ route('activity-logs.index') }}" class="nav-item {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
+                    <i data-lucide="activity"></i>
+                    <span>Activity Logs</span>
+                </a>
                 <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
                     <i data-lucide="settings"></i>
                     <span>Settings</span>

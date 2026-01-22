@@ -9,10 +9,28 @@ class ActivityLog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'description', 'type'];
+    protected $fillable = [
+        'user_id', 
+        'description', 
+        'type', 
+        'subject_id', 
+        'subject_type', 
+        'properties', 
+        'ip_address', 
+        'user_agent'
+    ];
+
+    protected $casts = [
+        'properties' => 'array',
+    ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function subject()
+    {
+        return $this->morphTo();
     }
 }
