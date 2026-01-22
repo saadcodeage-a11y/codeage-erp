@@ -1042,13 +1042,13 @@
             <div class="form-group">
                 <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Office Location</label>
                 <input type="text" id="office_location" class="form-control" value="{{ $officeLocation }}" placeholder="e.g. Office 101, Business Center, City" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
-                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace {{@src_placeholder_0}} in email templates.</small>
+                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace &#123;&#123;officeLocation&#125;&#125; in email templates.</small>
             </div>
 
             <div class="form-group">
                 <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">HR Contact Person</label>
                 <input type="text" id="hr_contact" class="form-control" value="{{ $hrContact }}" placeholder="e.g. John Doe (HR Manager)" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
-                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace {{@src_placeholder_1}} in email templates.</small>
+                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace &#123;&#123;hrContact&#125;&#125; in email templates.</small>
             </div>
 
             <div style="margin-top: 8px; padding-top: 24px; border-top: 1px solid #f3f4f6;">
