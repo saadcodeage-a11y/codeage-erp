@@ -1051,6 +1051,11 @@
         });
     }
 
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            if (typeof closeBankModal === 'function') closeBankModal();
+            if (typeof closeSmtpModal === 'function') closeSmtpModal();
+            if (typeof closePolicyModal === 'function') closePolicyModal();
         }
     });
 
