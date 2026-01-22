@@ -21,6 +21,7 @@ Route::get('/', function () {
 // Public Onboarding Routes
 Route::get('/onboarding/{token}', [OnboardingController::class, 'show'])->name('onboarding.show');
 Route::post('/onboarding/{token}', [OnboardingController::class, 'submit'])->name('onboarding.submit');
+Route::get('/onboarding-completed', [OnboardingController::class, 'completed'])->name('onboarding.completed');
 
 
 Route::get('/login', function () {

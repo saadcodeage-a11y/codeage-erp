@@ -689,6 +689,11 @@
                 
                 if (data.success) {
                     document.getElementById('successModal').classList.add('show');
+                    if (data.redirect_url) {
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 2000);
+                    }
                 } else {
                     throw new Error(data.message || 'Submission failed');
                 }

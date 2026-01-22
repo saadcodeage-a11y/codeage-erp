@@ -23,9 +23,12 @@ class OnboardingController extends Controller
                 'onboarding_token' => 'preview'
             ]);
         } else {
-            $employee = Employee::where('onboarding_token', $token)
-                ->whereNull('onboarding_completed_at')
-                ->firstOrFail();
+            $employee = Employee::where('onboarding_token', $token)->firstOrFail();
+            
+            // Re-access prevention: if already completed, show the submitted view
+            if ($employee->onboarding_completed_at) {
+                return view('onboarding.submitted');
+            }
         }
 
         $banks = Bank::where('is_active', true)->orderBy('name')->get();
@@ -134,8 +137,17 @@ class OnboardingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Onboarding completed successfully! HR will review your submission.'
+            'message' => 'Onboarding completed successfully! Redirecting...',
+            'redirect_url' => route('onboarding.completed')
         ]);
+    }
+
+    /**
+     * Show the completion page
+     */
+    public function completed()
+    {
+        return view('onboarding.submitted');
     }
 
     /**
