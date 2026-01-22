@@ -113,63 +113,50 @@ Route::middleware('auth')->group(function () {
     Route::put('/templates/forms/{id}/update', [TemplateController::class, 'updateFormTemplate'])->name('templates.forms.update');
     Route::post('/templates/toggle-status', [TemplateController::class, 'toggleStatus'])->name('templates.toggle-status');
 // Maintenance Routes
-Route::get('/fix-storage', function() {
+Route::get('/migrate-storage', function() {
     $results = [];
-    $publicStorage = public_path('storage');
-    $appStorage = storage_path('app/public');
+    $oldDir = storage_path('app/public');
+    $newDir = public_path('storage');
     
-    $results[] = "--- Environment ---";
-    $results[] = "Public Path: " . public_path();
-    $results[] = "Storage Path: " . storage_path();
-    $results[] = "PHP User: " . get_current_user();
-    $results[] = "Symlink function exists: " . (function_exists('symlink') ? 'Yes' : 'No');
-    
-    $results[] = "\n--- Public Storage Link ---";
-    $results[] = "Link Path: " . $publicStorage;
-    $results[] = "Exists: " . (file_exists($publicStorage) ? 'Yes' : 'No');
-    $results[] = "Is Link: " . (is_link($publicStorage) ? 'Yes' : 'No');
-    if (is_link($publicStorage)) {
-        $results[] = "Points to: " . readlink($publicStorage);
-    }
-    $results[] = "Permissions: " . substr(sprintf('%o', fileperms(file_exists($publicStorage) ? $publicStorage : public_path())), -4);
-    
-    $results[] = "\n--- Target Storage Directory ---";
-    $results[] = "Target Path: " . $appStorage;
-    $results[] = "Exists: " . (is_dir($appStorage) ? 'Yes' : 'No');
-    if (is_dir($appStorage)) {
-        $results[] = "Permissions: " . substr(sprintf('%o', fileperms($appStorage)), -4);
-        $files = scandir($appStorage);
-        $results[] = "Contents (first 5): " . implode(', ', array_slice($files, 0, 7));
+    if (!file_exists($newDir)) {
+        mkdir($newDir, 0755, true);
+        $results[] = "Created direct public storage directory.";
+    } elseif (is_link($newDir)) {
+        unlink($newDir);
+        mkdir($newDir, 0755, true);
+        $results[] = "Deleted old broken symlink and created real directory.";
     }
 
-    if (request()->has('force')) {
-        $results[] = "\n--- Force Action ---";
-        if (file_exists($publicStorage)) {
-            if (is_link($publicStorage)) {
-                unlink($publicStorage);
-                $results[] = "Deleted old symlink.";
-            } elseif (is_dir($publicStorage)) {
-                $newName = $publicStorage . '_old_' . time();
-                if (rename($publicStorage, $newName)) {
-                    $results[] = "Renamed existing directory to $newName";
+    $results[] = "Moving files from $oldDir to $newDir...";
+    
+    // Recursive copy/move
+    $moveFiles = function($src, $dst) use (&$moveFiles, &$results) {
+        $dir = opendir($src);
+        @mkdir($dst);
+        while (false !== ($file = readdir($dir))) {
+            if (($file != '.') && ($file != '..')) {
+                if (is_dir($src . '/' . $file)) {
+                    $moveFiles($src . '/' . $file, $dst . '/' . $file);
                 } else {
-                    $results[] = "FAILED to rename existing directory.";
+                    if (copy($src . '/' . $file, $dst . '/' . $file)) {
+                        $results[] = "Copied: $file";
+                    } else {
+                        $results[] = "FAILED: $file";
+                    }
                 }
             }
         }
-        
-        try {
-            \Illuminate\Support\Facades\Artisan::call('storage:link');
-            $results[] = "Artisan storage:link output: " . \Illuminate\Support\Facades\Artisan::output();
-        } catch (\Exception $e) {
-            $results[] = "Error during re-link: " . $e->getMessage();
-        }
+        closedir($dir);
+    };
+
+    if (is_dir($oldDir)) {
+        $moveFiles($oldDir, $newDir);
+        $results[] = "\nMigration complete!";
+    } else {
+        $results[] = "Old storage directory not found.";
     }
     
-    $results[] = "\n--- Final Status ---";
-    $results[] = "Is Link: " . (is_link($publicStorage) ? 'Yes' : 'No');
-    
-    return "<pre>" . implode("\n", $results) . "\n\n<a href='/fix-storage?force=1' style='padding:10px; background:#FF4A00; color:white; text-decoration:none; border-radius:5px;'>Force Re-link</a></pre>";
+    return "<pre>" . implode("\n", $results) . "\n\n<a href='/'>Go Home</a></pre>";
 });
 
     // Activity Logs
