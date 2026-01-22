@@ -1,0 +1,123 @@
+body {
+    background-color: #FFF5F2; /* Light creamy/pinkish background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 450px;
+    padding: 20px;
+}
+
+.login-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    text-align: center;
+}
+
+.logo-container {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.logo {
+    height: 80px; /* Adjust based on actual logo aspect ratio */
+    width: auto;
+}
+
+/* Hide fallback text if we rely on image, or style it if image is just icon. 
+   Plan: Use image only as per typical logo files. */
+.logo-text {
+    display: none; 
+}
+
+.welcome-title {
+    font-size: 24px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.welcome-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 32px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #F3F4F6;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1f2937;
+    transition: all 0.2s;
+    box-sizing: border-box; /* Important for padding */
+}
+
+.form-group input:focus {
+    background-color: white;
+    border-color: #fb5b20; /* Orange-ish focus */
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(251, 91, 32, 0.1);
+}
+
+.forgot-password {
+    text-align: left;
+    margin-bottom: 24px;
+}
+
+.forgot-password a {
+    color: #fb5b20; /* Brand Orange */
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(90deg, #FF6B00 0%, #FF3D3D 100%); /* Orange to Red gradient */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.login-btn:hover {
+    opacity: 0.9;
+}
+
+.footer {
+    margin-top: 32px;
+    font-size: 12px;
+    color: #9ca3af;
+}

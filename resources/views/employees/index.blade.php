@@ -1,0 +1,829 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="page-header">
+    <div class="header-left">
+        <h1>Employee Management</h1>
+        <p>Manage your team members and their information</p>
+    </div>
+    <div class="header-right">
+        <button class="btn btn-outline" onclick="alert('Invite Feature Coming Soon')">
+            <i data-lucide="send"></i> Invite Employee
+        </button>
+        <a href="#" onclick="openModal(); return false;" class="btn btn-primary" style="text-decoration: none;">
+            <i data-lucide="plus"></i> Add Employee
+        </a>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs-container">
+    <a href="{{ route('employees.index', ['status' => 'active']) }}" class="tab-item {{ $status == 'active' ? 'active' : '' }}">
+        Active <span class="badge">{{ $counts['active'] }}</span>
+    </a>
+    <a href="{{ route('employees.index', ['status' => 'invited']) }}" class="tab-item {{ $status == 'invited' ? 'active' : '' }}">
+        Invited <span class="badge">{{ $counts['invited'] }}</span>
+    </a>
+    <a href="{{ route('employees.index', ['status' => 'pending_approval']) }}" class="tab-item {{ $status == 'pending_approval' ? 'active' : '' }}">
+        Pending Approval <span class="badge">{{ $counts['pending_approval'] }}</span>
+    </a>
+    <a href="{{ route('employees.index', ['status' => 'inactive']) }}" class="tab-item {{ $status == 'inactive' ? 'active' : '' }}">
+        Inactive <span class="badge">{{ $counts['inactive'] }}</span>
+    </a>
+</div>
+
+<!-- Search -->
+<div class="search-container">
+    <form method="GET" action="{{ route('employees.index') }}" class="search-form">
+        <input type="hidden" name="status" value="{{ $status }}">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" name="search" placeholder="Search by name, ID, or position..." value="{{ request('search') }}" class="search-input">
+    </form>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                <th>Employee ID</th>
+                <th>Position</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($employees as $employee)
+            <tr>
+                <td>
+                    <div class="employee-cell">
+                        <div class="avatar-sm {{ $employee->status == 'invited' ? 'orange' : 'red' }}" style="{{ !empty($employee->profile_picture) ? 'background-image: url(' . asset('storage/' . ltrim($employee->profile_picture, '/')) . ');' : '' }}">
+                            @if(empty($employee->profile_picture))
+                                {{ substr($employee->full_name, 0, 2) }}
+                            @endif
+                        </div>
+                        <div class="employee-info">
+                            <span class="emp-name">{{ $employee->full_name }}</span>
+                            <span class="emp-email">{{ $employee->email }}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ $employee->employee_id ?: 'Not assigned' }}</td>
+                <td>{{ $employee->designation ?: 'Not assigned' }}</td>
+                <td>
+                    <span class="status-badge {{ $employee->status }}">
+                        {{ ucfirst($employee->status) }}
+                    </span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        @if($employee->status == 'invited')
+                            <button class="btn-action outline-blue"><i data-lucide="send"></i> Resend</button>
+                        @endif
+                        
+                        @if($employee->status != 'invited')
+                           <a href="{{ route('employees.show', $employee) }}" class="btn-action outline"><i data-lucide="eye"></i> View</a>
+                           <button type="button" onclick="editEmployee({{ $employee->id }})" class="btn-action outline"><i data-lucide="edit-2"></i> Edit</button>
+                        @endif
+
+                        <div class="dropdown">
+                            <button class="btn-action icon-only dropdown-toggle" onclick="toggleDropdown(this)">
+                                <i data-lucide="more-vertical"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                @if($employee->status == 'active')
+                                    <button type="button" class="dropdown-item" onclick="updateStatus({{ $employee->id }}, 'inactive')">
+                                        <i data-lucide="user-minus" style="color: #6b7280;"></i> Mark as Inactive
+                                    </button>
+                                @else
+                                    <button type="button" class="dropdown-item" onclick="updateStatus({{ $employee->id }}, 'active')">
+                                        <i data-lucide="user-check" style="color: #10B981;"></i> Mark as Active
+                                    </button>
+                                @endif
+                                <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 4px 0;">
+                                <button type="button" class="dropdown-item text-red" onclick="deleteEmployee({{ $employee->id }})">
+                                    <i data-lucide="trash-2"></i> Delete Employee
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="5" class="text-center">No employees found in this category.</td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+    
+    <div class="pagination-wrapper">
+        {{ $employees->links() }}
+    </div>
+</div>
+@if($errors->any())
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        openModal();
+    });
+</script>
+@endif
+
+<!-- Add Employee Modal -->
+<div id="addEmployeeModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div>
+                <h2>Add New Employee</h2>
+                <p class="modal-desc" style="margin-bottom: 0;">Enter the employee's information to add them to the system. All fields are optional.</p>
+            </div>
+            <button onclick="closeModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            
+            <!-- Global Error Summary -->
+            @if ($errors->any())
+                <div class="alert alert-danger" style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                    <strong style="display: block; margin-bottom: 4px;">Please check the following errors:</strong>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form action="{{ route('employees.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                
+                <!-- Profile Picture -->
+                <div class="form-section profile-section" style="border-bottom: none; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px; border: none;">Employee Profile Picture</h3>
+                    <div class="profile-upload">
+                        <div id="profilePreview" class="profile-placeholder" style="width: 80px; height: 80px; font-size: 32px; overflow: hidden; background-position: center; background-size: cover;">
+                            <i data-lucide="user"></i>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <div class="upload-btn-wrapper">
+                                <button type="button" class="btn btn-outline">
+                                    <i data-lucide="upload"></i> Upload Photo
+                                </button>
+                                <input type="file" name="profile_picture" accept="image/*" id="profilePhotoInput" onchange="previewProfilePhoto(this)">
+                            </div>
+                            <span class="hint">Recommended: Square image, max 2MB</span>
+                            @error('profile_picture') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personal Information -->
+                <div class="form-section">
+                    <h3>Personal Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Full Name *</label>
+                            <input type="text" name="full_name" required placeholder="Enter full name" value="{{ old('full_name') }}" class="@error('full_name') border-red-500 @enderror">
+                            @error('full_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>CNIC</label>
+                            <input type="text" name="cnic" placeholder="XXXXX-XXXXXXX-X" value="{{ old('cnic') }}" class="@error('cnic') border-red-500 @enderror">
+                            @error('cnic') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" name="email" required placeholder="email@example.com" value="{{ old('email') }}" class="@error('email') border-red-500 @enderror">
+                            @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="text" name="phone" placeholder="+92 xxx xxxxxxx" value="{{ old('phone') }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender">
+                                <option value="">Select gender</option>
+                                <option value="Male" {{ old('gender') == 'Male' ? 'selected' : '' }}>Male</option>
+                                <option value="Female" {{ old('gender') == 'Female' ? 'selected' : '' }}>Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" name="dob" value="{{ old('dob') }}">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Current Address</label>
+                            <input type="text" name="current_address" placeholder="Enter current address" value="{{ old('current_address') }}">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Permanent Address</label>
+                            <input type="text" name="permanent_address" placeholder="Enter permanent address" value="{{ old('permanent_address') }}">
+                        </div>
+                         <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" name="father_name" placeholder="Enter father's name" value="{{ old('father_name') }}">
+                        </div>
+                         <div class="form-group">
+                            <label>Father/Guardian Contact</label>
+                            <input type="text" name="guardian_contact" placeholder="+92 xxx xxxxxxx" value="{{ old('guardian_contact') }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Education Level</label>
+                            <select name="education_level">
+                                <option value="">Select education level</option>
+                                <option value="Bachelors" {{ old('education_level') == 'Bachelors' ? 'selected' : '' }}>Bachelors</option>
+                                <option value="Masters" {{ old('education_level') == 'Masters' ? 'selected' : '' }}>Masters</option>
+                                <option value="PhD" {{ old('education_level') == 'PhD' ? 'selected' : '' }}>PhD</option>
+                                <option value="Intermediate" {{ old('education_level') == 'Intermediate' ? 'selected' : '' }}>Intermediate</option>
+                            </select>
+                        </div>
+                         <div class="form-group">
+                            <label>Field of Study / Major</label>
+                            <input type="text" name="field_of_study" placeholder="e.g., Computer Science, Business" value="{{ old('field_of_study') }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Job Information -->
+                <div class="form-section">
+                    <h3>Job Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Hiring Date</label>
+                            <input type="date" name="hiring_date" value="{{ old('hiring_date') }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Hiring Position</label>
+                            <input type="text" name="designation" required placeholder="e.g. Software Developer" value="{{ old('designation') }}" class="@error('designation') border-red-500 @enderror">
+                            @error('designation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>Job Location</label>
+                            <select name="job_location">
+                                <option value="">Select location</option>
+                                <option value="On-site" {{ old('job_location') == 'On-site' ? 'selected' : '' }}>On-site</option>
+                                <option value="Remote" {{ old('job_location') == 'Remote' ? 'selected' : '' }}>Remote</option>
+                                <option value="Hybrid" {{ old('job_location') == 'Hybrid' ? 'selected' : '' }}>Hybrid</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                             <label>Department *</label>
+                            <select name="department_id" required class="@error('department_id') border-red-500 @enderror">
+                                <option value="">Select Department</option>
+                                @foreach($departments as $dept)
+                                    <option value="{{ $dept->id }}" {{ old('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('department_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                         <div class="form-group full-width">
+                            <label>Payroll Status</label>
+                            <select name="payroll_status">
+                                <option value="">Select payroll status</option>
+                                <option value="Paid" {{ old('payroll_status') == 'Paid' ? 'selected' : '' }}>Paid</option>
+                                <option value="Unpaid" {{ old('payroll_status') == 'Unpaid' ? 'selected' : '' }}>Unpaid</option>
+                                <option value="Internship" {{ old('payroll_status') == 'Internship' ? 'selected' : '' }}>Internship</option>
+                            </select>
+                        </div>
+                         <div class="form-group full-width">
+                            <label>Employee Status</label>
+                            <select name="status">
+                                <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                <option value="invited" {{ old('status') == 'invited' ? 'selected' : '' }}>Invited</option>
+                                <option value="pending_approval" {{ old('status') == 'pending_approval' ? 'selected' : '' }}>Pending Approval</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>HR Manager Comments</h3>
+                     <div class="form-group">
+                        <textarea name="hr_comments" rows="3" placeholder="Any additional notes or comments..." style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;">{{ old('hr_comments') }}</textarea>
+                    </div>
+                </div>
+
+                 <!-- Document Uploads -->
+                <div class="form-section">
+                    <h3>Document Uploads</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>CNIC Front</label>
+                            <input type="file" name="cnic_front" class="file-input">
+                        </div>
+                         <div class="form-group">
+                            <label>CNIC Back</label>
+                            <input type="file" name="cnic_back" class="file-input">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>CV/Resume Upload</label>
+                            <input type="file" name="cv" class="file-input">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Educational Documents / Transcript</label>
+                            <input type="file" name="transcript" class="file-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Banking Information -->
+                <div class="form-section">
+                    <h3>Banking Information</h3>
+                     <div class="form-group">
+                        <label>Do they have a Bank Account?</label>
+                        <select id="bankToggle" onchange="toggleBankFields()">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+
+                    <div id="bankFields" class="form-grid" style="display: none; margin-top: 15px;">
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" name="bank_name" placeholder="e.g. HBL" value="{{ old('bank_name') }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Title</label>
+                            <input type="text" name="bank_account_title" placeholder="Account Title" value="{{ old('bank_account_title') }}">
+                        </div>
+                         <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" name="bank_account_number" placeholder="Account Number" value="{{ old('bank_account_number') }}">
+                        </div>
+                         <div class="form-group">
+                            <label>IBAN</label>
+                            <input type="text" name="iban" placeholder="IBAN" value="{{ old('iban') }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>HR Manager Comments (Optional)</label>
+                        <textarea name="banking_comments" rows="3" placeholder="Any additional notes or comments..." style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;">{{ old('banking_comments') }}</textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: #FF4A00; color: white;">+ Add Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div id="editEmployeeModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div>
+                <h2>Edit Employee</h2>
+                <p class="modal-desc" style="margin-bottom: 0;">Update the employee's information. Fields marked with * are required.</p>
+            </div>
+            <button onclick="closeEditModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="editErrorSummary" class="alert alert-danger" style="display: none; background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                <strong style="display: block; margin-bottom: 4px;">Please check the following errors:</strong>
+                <ul id="editErrorList" style="margin: 0; padding-left: 20px;"></ul>
+            </div>
+
+            <form id="editEmployeeForm" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                
+                <!-- Profile Picture -->
+                <div class="form-section profile-section" style="border-bottom: none; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px; border: none;">Employee Profile Picture</h3>
+                    <div class="profile-upload">
+                        <div id="edit_profilePreview" class="profile-placeholder" style="width: 80px; height: 80px; font-size: 32px; overflow: hidden; background-position: center; background-size: cover;">
+                            <i data-lucide="user"></i>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <div class="upload-btn-wrapper">
+                                <button type="button" class="btn btn-outline">
+                                    <i data-lucide="upload"></i> Change Photo
+                                </button>
+                                <input type="file" name="profile_picture" accept="image/*" id="edit_profilePhotoInput" onchange="previewEditProfilePhoto(this)">
+                            </div>
+                            <span class="hint">Recommended: Square image, max 2MB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Personal Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Full Name *</label>
+                            <input type="text" name="full_name" id="edit_full_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>CNIC</label>
+                            <input type="text" name="cnic" id="edit_cnic">
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" name="email" id="edit_email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="text" name="phone" id="edit_phone">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender" id="edit_gender">
+                                <option value="">Select gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" name="dob" id="edit_dob">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Current Address</label>
+                            <input type="text" name="current_address" id="edit_current_address">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Permanent Address</label>
+                            <input type="text" name="permanent_address" id="edit_permanent_address">
+                        </div>
+                        <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" name="father_name" id="edit_father_name">
+                        </div>
+                        <div class="form-group">
+                            <label>Father/Guardian Contact</label>
+                            <input type="text" name="guardian_contact" id="edit_guardian_contact">
+                        </div>
+                        <div class="form-group">
+                            <label>Education Level</label>
+                            <select name="education_level" id="edit_education_level">
+                                <option value="">Select education level</option>
+                                <option value="Bachelors">Bachelors</option>
+                                <option value="Masters">Masters</option>
+                                <option value="PhD">PhD</option>
+                                <option value="Intermediate">Intermediate</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Field of Study / Major</label>
+                            <input type="text" name="field_of_study" id="edit_field_of_study">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Job Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Hiring Date</label>
+                            <input type="date" name="hiring_date" id="edit_hiring_date">
+                        </div>
+                        <div class="form-group">
+                            <label>Hiring Position</label>
+                            <input type="text" name="designation" id="edit_designation" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Job Location</label>
+                            <select name="job_location" id="edit_job_location">
+                                <option value="">Select location</option>
+                                <option value="On-site">On-site</option>
+                                <option value="Remote">Remote</option>
+                                <option value="Hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Department *</label>
+                            <select name="department_id" id="edit_department_id" required>
+                                <option value="">Select Department</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Payroll Status</label>
+                            <select name="payroll_status" id="edit_payroll_status">
+                                <option value="">Select payroll status</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Unpaid">Unpaid</option>
+                                <option value="Internship">Internship</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Employee Status</label>
+                            <select name="status" id="edit_status">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="invited">Invited</option>
+                                <option value="pending_approval">Pending Approval</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>HR Manager Comments</h3>
+                    <div class="form-group">
+                        <textarea name="hr_comments" id="edit_hr_comments" rows="3" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Document Uploads</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>CNIC Front</label>
+                            <input type="file" name="cnic_front" class="file-input">
+                            <div id="edit_cnic_front_status"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>CNIC Back</label>
+                            <input type="file" name="cnic_back" class="file-input">
+                            <div id="edit_cnic_back_status"></div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>CV/Resume Upload</label>
+                            <input type="file" name="cv" class="file-input">
+                            <div id="edit_cv_status"></div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Educational Documents / Transcript</label>
+                            <input type="file" name="transcript" class="file-input">
+                            <div id="edit_transcript_status"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Banking Information</h3>
+                    <div class="form-group">
+                        <label>Do they have a Bank Account?</label>
+                        <select id="edit_bankToggle" onchange="toggleEditBankFields()">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div id="edit_bankFields" class="form-grid" style="display: none; margin-top: 15px;">
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" name="bank_name" id="edit_bank_name">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Title</label>
+                            <input type="text" name="bank_account_title" id="edit_bank_account_title">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" name="bank_account_number" id="edit_bank_account_number">
+                        </div>
+                        <div class="form-group">
+                            <label>IBAN</label>
+                            <input type="text" name="iban" id="edit_iban">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Banking Comments</label>
+                        <textarea name="banking_comments" id="edit_banking_comments" rows="3" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" onclick="closeEditModal()" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: #FF4A00; color: white;">Update Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        document.getElementById('addEmployeeModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('addEmployeeModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function editEmployee(id) {
+        fetch(`/employees/${id}/edit`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const employee = data.employee;
+            const departments = data.departments;
+            
+            // Set Form Action
+            document.getElementById('editEmployeeForm').action = `/employees/${id}`;
+            
+            // Populate Departments
+            const deptSelect = document.getElementById('edit_department_id');
+            deptSelect.innerHTML = '<option value="">Select Department</option>';
+            departments.forEach(dept => {
+                const opt = document.createElement('option');
+                opt.value = dept.id;
+                opt.textContent = dept.name;
+                if (employee.department_id == dept.id) opt.selected = true;
+                deptSelect.appendChild(opt);
+            });
+
+            // Populate Fields
+            document.getElementById('edit_full_name').value = employee.full_name || '';
+            document.getElementById('edit_cnic').value = employee.cnic || '';
+            document.getElementById('edit_email').value = employee.email || '';
+            document.getElementById('edit_phone').value = employee.phone || '';
+            document.getElementById('edit_gender').value = employee.gender || '';
+            document.getElementById('edit_dob').value = employee.dob ? employee.dob.split('T')[0] : '';
+            document.getElementById('edit_current_address').value = employee.current_address || '';
+            document.getElementById('edit_permanent_address').value = employee.permanent_address || '';
+            document.getElementById('edit_father_name').value = employee.father_name || '';
+            document.getElementById('edit_guardian_contact').value = employee.guardian_contact || '';
+            document.getElementById('edit_education_level').value = employee.education_level || '';
+            document.getElementById('edit_field_of_study').value = employee.field_of_study || '';
+            document.getElementById('edit_hiring_date').value = employee.hiring_date ? employee.hiring_date.split('T')[0] : '';
+            document.getElementById('edit_designation').value = employee.designation || '';
+            document.getElementById('edit_job_location').value = employee.job_location || '';
+            document.getElementById('edit_payroll_status').value = employee.payroll_status || '';
+            document.getElementById('edit_status').value = employee.status || '';
+            document.getElementById('edit_hr_comments').value = employee.hr_comments || '';
+            
+            // Bank Toggle
+            if (employee.bank_name) {
+                document.getElementById('edit_bankToggle').value = 'Yes';
+                document.getElementById('edit_bankFields').style.display = 'grid';
+            } else {
+                document.getElementById('edit_bankToggle').value = 'No';
+                document.getElementById('edit_bankFields').style.display = 'none';
+            }
+            document.getElementById('edit_bank_name').value = employee.bank_name || '';
+            document.getElementById('edit_bank_account_title').value = employee.bank_account_title || '';
+            document.getElementById('edit_bank_account_number').value = employee.bank_account_number || '';
+            document.getElementById('edit_iban').value = employee.iban || '';
+            document.getElementById('edit_banking_comments').value = employee.banking_comments || '';
+
+            // Profile Preview
+            const preview = document.getElementById('edit_profilePreview');
+            if (employee.profile_picture) {
+                preview.innerHTML = '';
+                const storagePath = "{{ asset('storage') }}";
+                preview.style.backgroundImage = `url('${storagePath}/${employee.profile_picture.replace(/^\//, '')}')`;
+                preview.style.border = '1px solid #e5e7eb';
+            } else {
+                preview.style.backgroundImage = 'none';
+                preview.innerHTML = '<i data-lucide="user"></i>';
+                preview.style.border = 'none';
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            // Document Statuses
+            document.getElementById('edit_cnic_front_status').innerHTML = employee.cnic_front_path ? '<small style="color: green">Uploaded</small>' : '';
+            document.getElementById('edit_cnic_back_status').innerHTML = employee.cnic_back_path ? '<small style="color: green">Uploaded</small>' : '';
+            document.getElementById('edit_cv_status').innerHTML = employee.cv_path ? '<small style="color: green">Uploaded</small>' : '';
+            document.getElementById('edit_transcript_status').innerHTML = employee.transcript_path ? '<small style="color: green">Uploaded</small>' : '';
+
+            openEditModal();
+        });
+    }
+
+    function openEditModal() {
+        document.getElementById('editEmployeeModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeEditModal() {
+        document.getElementById('editEmployeeModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function toggleEditBankFields() {
+        var val = document.getElementById('edit_bankToggle').value;
+        var fields = document.getElementById('edit_bankFields');
+        fields.style.display = (val === 'Yes') ? 'grid' : 'none';
+    }
+
+    function previewEditProfilePhoto(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var preview = document.getElementById('edit_profilePreview');
+                preview.innerHTML = '';
+                preview.style.backgroundImage = 'url(' + e.target.result + ')';
+                preview.style.backgroundColor = 'transparent';
+                preview.style.border = '1px solid #e5e7eb';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function toggleBankFields() {
+        var val = document.getElementById('bankToggle').value;
+        var fields = document.getElementById('bankFields');
+        fields.style.display = (val === 'Yes') ? 'grid' : 'none';
+    }
+
+    function previewProfilePhoto(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var preview = document.getElementById('profilePreview');
+                preview.innerHTML = '';
+                preview.style.backgroundImage = 'url(' + e.target.result + ')';
+                preview.style.backgroundColor = 'transparent';
+                preview.style.border = '1px solid #e5e7eb';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function updateStatus(id, status) {
+        if (!confirm(`Are you sure you want to mark this employee as ${status}?`)) return;
+
+        fetch(`/employees/${id}/status`, {
+            method: 'PATCH',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to update status.');
+            }
+        });
+    }
+
+    function deleteEmployee(id) {
+        if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return;
+
+        fetch(`/employees/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to delete employee.');
+            }
+        });
+    }
+
+    function toggleDropdown(btn) {
+        event.stopPropagation(); // Prevent immediate closing by the listener above
+        const menu = btn.nextElementSibling;
+        // Close all other dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(m => {
+            if (m !== menu) {
+                m.classList.remove('show');
+            }
+        });
+        menu.classList.toggle('show');
+    }
+
+    // Close on click outside
+    window.addEventListener('click', function(event) {
+        if (event.target == document.getElementById('addEmployeeModal')) {
+            closeModal();
+        }
+        if (event.target == document.getElementById('editEmployeeModal')) {
+            closeEditModal();
+        }
+        // Close dropdowns if clicking outside
+        if (!event.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+</script>
+
+<style>
+    .border-red-500 {
+        border-color: #ef4444 !important;
+    }
+    .text-red-500 {
+        color: #ef4444;
+    }
+    .text-xs {
+        font-size: 12px;
+        margin-top: 4px;
+    }
+</style>
+@endsection

@@ -1,0 +1,189 @@
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    /* Center vertically */
+    overflow-y: auto;
+    /* Allow scroll if modal is tall */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.modal-container {
+    background: white;
+    width: 100%;
+    max-width: 800px;
+    /* Wider for forms */
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    position: relative;
+    margin: auto;
+    /* Center horizontally in flex container */
+    animation: modalSlideIn 0.3s ease-out;
+    max-height: 90vh;
+    /* Max height to fit screen */
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    /* Scrollable content */
+}
+
+.modal-footer {
+    padding: 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.modal-desc {
+    color: #6b7280;
+    font-size: 14px;
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+/* Form Styles needed for Modal (Copied/Adapted from dashboard.css if missing or for consistency) */
+.form-section {
+    margin-bottom: 32px;
+}
+
+.form-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group.full-width {
+    grid-column: span 2;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+    /* Inherit Public Sans */
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #FF4A00;
+    box-shadow: 0 0 0 2px rgba(255, 74, 0, 0.1);
+}
+
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.profile-upload {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.profile-placeholder {
+    width: 64px;
+    height: 64px;
+    background-color: #f3f4f6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+}
+
+.profile-placeholder i {
+    width: 32px;
+    height: 32px;
+}
+
+.upload-btn-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.upload-btn-wrapper input[type=file] {
+    font-size: 100px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.hint {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.file-input {
+    border: 1px dashed #e5e7eb !important;
+    background-color: #f9fafb;
+    padding: 8px !important;
+}
