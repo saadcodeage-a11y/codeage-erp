@@ -93,7 +93,20 @@ function run_command($label, $command) {
         echo "<h3 style='color: #fbbf24'>⚠️ Performing First Pull (This may take a moment)...</h3>";
         // Force pull main
         if (!run_command('Fetch & Pull', 'git pull origin main')) {
-            die("<h2 style='color: #f87171'>❌ Initial Pull Failed</h2><p>Please check that your <b>SSH Deploy Key</b> is added to GitHub Settings.</p>");
+            echo "<div style='background: #450a0a; border: 1px solid #f87171; padding: 20px; border-radius: 8px; margin-top: 20px;'>";
+            echo "<h2 style='color: #f87171; margin-top: 0;'>❌ Permission Denied (SSH Key Error)</h2>";
+            echo "<p>GitHub rejected the connection because it doesn't recognize your server's SSH key.</p>";
+            echo "<h3>How to fix:</h3>";
+            echo "<ol>";
+            echo "<li>Go to <b>SiteGround Site Tools</b> > <b>Devs</b> > <b>SSH Keys Manager</b>.</li>";
+            echo "<li>Find your <b>DEPLOY_TOKEN</b> key, click the 3 dots, and select <b>SSH Key</b> (or View Public Key).</li>";
+            echo "<li>Copy the <b>Public Key</b> (the long text starting with 'ssh-rsa' or 'ssh-ed25519').</li>";
+            echo "<li>Go to your <b>GitHub Repository</b> > <b>Settings</b> > <b>Deploy keys</b>.</li>";
+            echo "<li>Click <b>Add deploy key</b>, paste your key, and give it any title.</li>";
+            echo "<li>Save and refresh this page.</li>";
+            echo "</ol>";
+            echo "</div>";
+            die();
         }
         
         // Reset tracking information just in case
