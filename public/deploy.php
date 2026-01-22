@@ -1,112 +1,117 @@
 <?php
 /**
- * Simple Deployment Script
- * 
- * Usage: https://your-domain.com/deploy.php?token=YOUR_SECRET_TOKEN
+ * Smart Deployment Script
+ * Automatically handles Git Initialization and Pull
  */
 
-// Move context to project root
-chdir(__DIR__ . '/../');
-
-// 1. Security: Read DEPLOY_TOKEN from .env manually
-$envFile = '.env';
-$deployToken = '';
-
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (strpos($line, '#') === 0) continue;
-        
-        if (strpos($line, 'DEPLOY_TOKEN=') === 0) {
-            $parts = explode('=', $line, 2);
-            $deployToken = trim($parts[1] ?? '');
-            $deployToken = trim($deployToken, '"\'');
-            break;
-        }
-    }
-} else {
-    header('HTTP/1.1 500 Internal Server Error');
-    die('<h1>Error: .env file not found</h1><p>Expected path: ' . getcwd() . DIRECTORY_SEPARATOR . '.env</p>');
-}
-
-// Verify Token
-$requestToken = $_GET['token'] ?? '';
-
-if (empty($deployToken)) {
-    header('HTTP/1.1 500 Internal Server Error');
-    die('<h1>Error: DEPLOY_TOKEN missing</h1><p>Found .env but could not find DEPLOY_TOKEN variable inside it.</p>');
-}
-
-if ($requestToken !== $deployToken) {
-    header('HTTP/1.1 403 Forbidden');
-    die('<h1>403 Forbidden</h1><p>Access denied. Invalid deployment token.</p>');
-}
-
-// 2. UI Setup for Streaming Output
+// 1. Setup Environment
 header('Content-Type: text/html; charset=utf-8');
 header('X-Accel-Buffering: no');
 ini_set('output_buffering', 'off');
 ini_set('zlib.output_compression', false);
-if (function_exists('apache_setenv')) {
-    apache_setenv('no-gzip', 1);
-}
+if (function_exists('apache_setenv')) apache_setenv('no-gzip', 1);
 ob_implicit_flush(true);
 
+// Set directory to Project Root
+$rootDir = realpath(__DIR__ . '/../');
+chdir($rootDir);
+
+// Fix for Composer & Git
+putenv('HOME=' . $rootDir);
+putenv('COMPOSER_HOME=' . $rootDir . '/.composer');
+// Bypass SSH Host Key checking for first-time connection
+putenv('GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no'); 
+
+// 2. Security Check
+$envFile = '.env';
+$deployToken = '';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), 'DEPLOY_TOKEN=') === 0) {
+            $deployToken = trim(trim(explode('=', $line, 2)[1]), '"\'');
+            break;
+        }
+    }
+} else {
+    die_error('.env file not found', 'Expected path: ' . $rootDir . '/.env');
+}
+
+if (empty($deployToken)) die_error('DEPLOY_TOKEN missing', 'Add DEPLOY_TOKEN="codeage_deploy_secret_2026" to your .env file');
+if (($_GET['token'] ?? '') !== $deployToken) die_error('403 Forbidden', 'Invalid deployment token.');
+
+// 3. Configuration
+$repoUrl = 'git@github.com:saadcodeage-a11y/codeage-erp.git'; // SSH URL is required for Deploy Keys
+
+// 4. Helper Functions
+function die_error($title, $msg) {
+    header('HTTP/1.1 500 Internal Server Error');
+    die("<h1>❌ $title</h1><p>$msg</p>");
+}
+
+function run_command($label, $command) {
+    echo "<div class='step'>";
+    echo "<div class='step-header'><span>$label</span> <span style='opacity: 0.7; font-size: 0.9em;'>$ $command</span></div>";
+    echo "<div class='step-output'>";
+    $handle = popen("$command 2>&1", 'r');
+    while (!feof($handle)) {
+        echo htmlspecialchars(fgets($handle));
+        echo "<script>window.scrollTo(0, document.body.scrollHeight);</script>";
+        flush();
+    }
+    $status = pclose($handle);
+    echo "</div></div>";
+    return $status === 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deployment Output</title>
+    <title>Smart Deployment</title>
     <style>
-        body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #0f172a; color: #f8fafc; padding: 20px; line-height: 1.5; }
-        .container { max-width: 900px; margin: 0 auto; }
+        body { font-family: monospace; background: #0f172a; color: #cbd5e1; padding: 20px; max-width: 900px; margin: 0 auto; }
         h1 { color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
-        .step { margin-bottom: 20px; border: 1px solid #334155; border-radius: 6px; overflow: hidden; background: #1e293b; }
-        .step-header { background: #334155; padding: 8px 12px; font-weight: bold; color: #e2e8f0; display: flex; justify-content: space-between; }
-        .step-output { padding: 12px; overflow-x: auto; white-space: pre-wrap; font-size: 13px; color: #cbd5e1; }
+        .step { margin-bottom: 15px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; overflow: hidden; }
+        .step-header { background: #334155; padding: 8px 12px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; }
+        .step-output { padding: 12px; white-space: pre-wrap; font-size: 13px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 Deployment Started</h1>
-        <p style="color: #94a3b8; font-size: 12px;">Time: <?php echo date('Y-m-d H:i:s'); ?></p>
-
-        <?php
-        function run_command($label, $command) {
-            echo "<div class='step'>";
-            echo "<div class='step-header'><span>$label</span> <span style='opacity: 0.7; font-weight: normal; font-size: 0.9em;'>$ $command</span></div>";
-            echo "<div class='step-output'>";
-            
-            // Append 2>&1 to capture error output
-            $handle = popen("$command 2>&1", 'r');
-            while (!feof($handle)) {
-                $buffer = fgets($handle);
-                echo htmlspecialchars($buffer);
-                echo "<script>window.scrollTo(0, document.body.scrollHeight);</script>";
-                flush();
-            }
-            pclose($handle);
-            echo "</div></div>";
-            flush();
+    <h1>🚀 Deployment Started</h1>
+    
+    <?php
+    // --- LOGIC ---
+    
+    // Check if .git exists
+    if (!is_dir('.git')) {
+        echo "<h3 style='color: #fbbf24'>⚠️ Initializing Git Repository...</h3>";
+        
+        run_command('Init Git', 'git init');
+        run_command('Add Remote', "git remote add origin $repoUrl");
+        
+        echo "<h3 style='color: #fbbf24'>⚠️ Performing First Pull (This may take a moment)...</h3>";
+        // Force pull main
+        if (!run_command('Fetch & Pull', 'git pull origin main')) {
+            die("<h2 style='color: #f87171'>❌ Initial Pull Failed</h2><p>Please check that your <b>SSH Deploy Key</b> is added to GitHub Settings.</p>");
         }
-
-        // --- COMMANDS ---
+        
+        // Reset tracking information just in case
+        run_command('Track Branch', 'git branch --set-upstream-to=origin/main main');
+    } else {
+        // Normal Pull
         run_command('Git Pull', 'git pull origin main');
-        run_command('Composer Install', 'composer install --no-dev --optimize-autoloader');
-        run_command('Run Migrations', 'php artisan migrate --force');
-        run_command('Clear Cache', 'php artisan optimize:clear');
-        run_command('Cache Config', 'php artisan config:cache');
-        run_command('Cache Routes', 'php artisan route:cache');
-        run_command('Cache Views', 'php artisan view:cache');
-        ?>
+    }
 
-        <div style="margin-top: 40px; padding: 20px; background: #064e3b; border: 1px solid #059669; border-radius: 8px; text-align: center;">
-            <h2 style="margin: 0; color: #4ade80;">✅ Deployment Completed Successfully!</h2>
-            <p style="margin-top: 10px;"><a href="/" style="color: white; text-decoration: underline;">Return to Homepage</a></p>
-        </div>
+    // Standard Build Steps
+    run_command('Composer Install', 'composer install --no-dev --optimize-autoloader');
+    run_command('Run Migrations', 'php artisan migrate --force');
+    run_command('Clear Cache', 'php artisan optimize:clear');
+    run_command('Cache All', 'php artisan config:cache && php artisan route:cache && php artisan view:cache');
+    ?>
+
+    <div style="margin-top: 40px; padding: 20px; background: #064e3b; border: 1px solid #059669; border-radius: 8px; text-align: center;">
+        <h2 style="margin: 0; color: #4ade80;">✅ Deployment Completed Successfully!</h2>
     </div>
 </body>
 </html>
