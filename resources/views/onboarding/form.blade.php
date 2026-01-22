@@ -118,6 +118,9 @@
 <body>
     <div class="container">
         <div class="header">
+            <div style="margin-bottom: 24px;">
+                <img src="{{ asset('images/logo.png') }}" alt="CodeAge Logo" style="height: 50px; width: auto;">
+            </div>
             <h1>Employee Onboarding</h1>
             <p>Welcome to CodeAge! Please complete your profile information.</p>
         </div>

@@ -29,7 +29,9 @@
 </head>
 <body>
     <div class="card">
-        <div class="logo">Code<span>Age</span> ERP</div>
+        <div class="logo">
+            <img src="{{ asset('images/logo.png') }}" alt="CodeAge Logo" style="height: 45px; width: auto;">
+        </div>
         
         <div class="icon-circle">
             <i data-lucide="check-circle" style="width: 40px; height: 40px;"></i>
