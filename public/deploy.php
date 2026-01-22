@@ -25,13 +25,22 @@ if (file_exists($envFile)) {
             break;
         }
     }
+} else {
+    header('HTTP/1.1 500 Internal Server Error');
+    die('<h1>Error: .env file not found</h1><p>Expected path: ' . getcwd() . DIRECTORY_SEPARATOR . '.env</p>');
 }
 
 // Verify Token
 $requestToken = $_GET['token'] ?? '';
-if (empty($deployToken) || $requestToken !== $deployToken) {
+
+if (empty($deployToken)) {
+    header('HTTP/1.1 500 Internal Server Error');
+    die('<h1>Error: DEPLOY_TOKEN missing</h1><p>Found .env but could not find DEPLOY_TOKEN variable inside it.</p>');
+}
+
+if ($requestToken !== $deployToken) {
     header('HTTP/1.1 403 Forbidden');
-    die('<h1>403 Forbidden</h1><p>Access denied. Invalid or missing deployment token.</p>');
+    die('<h1>403 Forbidden</h1><p>Access denied. Invalid deployment token.</p>');
 }
 
 // 2. UI Setup for Streaming Output
