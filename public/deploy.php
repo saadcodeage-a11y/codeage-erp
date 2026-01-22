@@ -175,12 +175,11 @@ function run_command($label, $command, $envPrefix = '', $stopOnFail = true) {
         echo "<h3 style='color: #fbbf24'>⚠️ Initializing Git Repository...</h3>";
         run_command('Init Git', 'git init');
         run_command('Add Remote', "git remote add origin $repoUrl");
-        run_command('Fetch from GitHub', 'git fetch origin main', $gitEnv);
-        echo "<h3 style='color: #fbbf24'>⚠️ Syncing files (Overwriting local conflicts)...</h3>";
-        run_command('Force Reset', 'git reset --hard origin/main');
-    } else {
-        run_command('Git Pull', 'git pull origin main', $gitEnv);
     }
+
+    echo "<h3 style='color: #fbbf24'>⚠️ Syncing files with GitHub...</h3>";
+    run_command('Fetch from GitHub', 'git fetch origin main', $gitEnv);
+    run_command('Force Sync', 'git reset --hard origin/main');
 
     // 2. Composer with override
     run_command('Composer Install', 'composer install --no-dev --optimize-autoloader --ignore-platform-reqs');
