@@ -78,7 +78,7 @@ class OnboardingController extends Controller
             'has_bank_account' => 'nullable|boolean',
             'bank_id' => 'required_if:has_bank_account,1|nullable|exists:banks,id',
             'bank_account_title' => 'required_if:has_bank_account,1|nullable|string|max:255',
-            'iban' => 'required_if:has_bank_account,1|nullable|regex:/^PK\d{2}[A-Z0-9]{20}$/',
+            'iban' => 'required_if:has_bank_account,1|nullable|string|max:34',
 
             // Step 4: Policy & Signature
             'policy_accepted' => 'required|accepted',

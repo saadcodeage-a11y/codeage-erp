@@ -473,7 +473,8 @@
             // Special validations
             if (step === 3 && document.getElementById('hasBankAccount').checked) {
                 const iban = document.getElementById('ibanInput').value;
-                if (!/^PK\d{2}[A-Z0-9]{20}$/i.test(iban)) {
+                if (!iban || iban.length < 5) {
+                    document.getElementById('ibanError').textContent = 'Please enter a valid account number/IBAN';
                     document.getElementById('ibanError').style.display = 'block';
                     isValid = false;
                 } else {
@@ -535,18 +536,27 @@
         
         // Bank Account Toggle
         document.getElementById('hasBankAccount').addEventListener('change', function() {
-            document.getElementById('bankingFields').classList.toggle('show', this.checked);
-            document.getElementById('noBankMessage').style.display = this.checked ? 'none' : 'flex';
+            const bankingFields = document.getElementById('bankingFields');
+            const noBankMessage = document.getElementById('noBankMessage');
             
-            // Toggle required on banking fields
-            const bankFields = document.querySelectorAll('#bankingFields input, #bankingFields select');
-            bankFields.forEach(f => {
+            bankingFields.classList.toggle('show', this.checked);
+            noBankMessage.style.display = this.checked ? 'none' : 'flex';
+            
+            // Toggle required and reset values
+            const inputs = bankingFields.querySelectorAll('input, select');
+            inputs.forEach(f => {
                 if (this.checked) {
                     f.setAttribute('required', '');
                 } else {
                     f.removeAttribute('required');
+                    f.value = ''; // Clear value
+                    f.style.borderColor = '#e5e7eb'; // Reset error border
                 }
             });
+
+            if (!this.checked) {
+                document.getElementById('ibanError').style.display = 'none';
+            }
         });
         
         // IBAN Auto-uppercase
@@ -570,18 +580,66 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         
-        canvas.addEventListener('mousedown', e => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
-        canvas.addEventListener('mousemove', e => { if (drawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); }});
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        };
+
+        canvas.addEventListener('mousedown', e => { 
+            drawing = true; 
+            const pos = getPos(e);
+            ctx.beginPath(); 
+            ctx.moveTo(pos.x, pos.y); 
+        });
+        
+        canvas.addEventListener('mousemove', e => { 
+            if (drawing) { 
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y); 
+                ctx.stroke(); 
+            }
+        });
+        
         canvas.addEventListener('mouseup', () => { drawing = false; saveSignature(); });
         canvas.addEventListener('mouseleave', () => { drawing = false; });
         
         // Touch support
-        canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top); });
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); if (drawing) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top); ctx.stroke(); }});
+        canvas.addEventListener('touchstart', e => { 
+            e.preventDefault(); 
+            drawing = true; 
+            const pos = getPos(e);
+            ctx.beginPath(); 
+            ctx.moveTo(pos.x, pos.y); 
+        });
+        
+        canvas.addEventListener('touchmove', e => { 
+            e.preventDefault(); 
+            if (drawing) { 
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y); 
+                ctx.stroke(); 
+            }
+        });
+        
         canvas.addEventListener('touchend', () => { drawing = false; saveSignature(); });
         
         function saveSignature() {
-            document.getElementById('signatureData').value = canvas.toDataURL('image/png');
+            const data = canvas.toDataURL('image/png');
+            // Check if canvas is blank (all white/transparent)
+            // A simple way is to check if it's the same as a blank canvas
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width;
+            blank.height = canvas.height;
+            if (data === blank.toDataURL()) {
+                document.getElementById('signatureData').value = '';
+            } else {
+                document.getElementById('signatureData').value = data;
+            }
         }
         
         function clearSignature() {
