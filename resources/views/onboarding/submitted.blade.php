@@ -25,6 +25,15 @@
         
         .logo { margin-bottom: 40px; font-weight: 800; font-size: 24px; color: #111827; letter-spacing: -0.5px; }
         .logo span { color: #f97316; }
+
+        @media (max-width: 640px) {
+            .card { padding: 32px 24px; }
+            h1 { font-size: 20px; }
+            p { font-size: 14px; margin-bottom: 24px; }
+            .icon-circle { width: 60px; height: 60px; margin-bottom: 24px; }
+            .icon-circle i { width: 30px !important; height: 30px !important; }
+            .logo img { height: 35px !important; }
+        }
     </style>
 </head>
 <body>

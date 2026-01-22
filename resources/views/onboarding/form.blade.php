@@ -107,11 +107,25 @@
         .success-content h3 { font-size: 20px; margin-bottom: 12px; color: #111827; }
         .success-content p { color: #6b7280; font-size: 14px; }
         
-        @media (max-width: 640px) {
-            .form-row { grid-template-columns: 1fr; }
-            .progress-step { min-width: 80px; }
+        @media (max-width: 768px) {
+            .container { padding: 20px 12px; }
+            .header { margin-bottom: 24px; }
+            .header h1 { font-size: 24px; }
+            
+            .progress-step { min-width: auto; flex: 1; }
+            .progress-step .step-icon { width: 40px; height: 40px; }
             .progress-step .step-label { font-size: 10px; }
-            .progress-line { width: 30px; left: 55px; }
+            .progress-line { left: 50%; width: 100%; top: 20px; }
+            
+            .step-header { padding: 16px 20px; }
+            .step-content { padding: 20px; }
+            .form-row { grid-template-columns: 1fr; gap: 15px; }
+            .photo-preview { width: 120px; height: 120px; }
+            
+            .form-navigation { padding: 20px; flex-direction: column-reverse; gap: 12px; }
+            .btn { width: 100%; justify-content: center; }
+            
+            .signature-canvas { height: 120px; }
         }
     </style>
 </head>
