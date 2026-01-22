@@ -114,16 +114,62 @@ Route::middleware('auth')->group(function () {
     Route::post('/templates/toggle-status', [TemplateController::class, 'toggleStatus'])->name('templates.toggle-status');
 // Maintenance Routes
 Route::get('/fix-storage', function() {
-    try {
-        if (file_exists(public_path('storage'))) {
-            // If it's a directory (not a link), we might need to delete it
-            // but let's try to just link first
-        }
-        \Illuminate\Support\Facades\Artisan::call('storage:link');
-        return "Storage link fixed! <a href='/'>Go Back</a>";
-    } catch (\Exception $e) {
-        return "Error: " . $e->getMessage();
+    $results = [];
+    $publicStorage = public_path('storage');
+    $appStorage = storage_path('app/public');
+    
+    $results[] = "--- Environment ---";
+    $results[] = "Public Path: " . public_path();
+    $results[] = "Storage Path: " . storage_path();
+    $results[] = "PHP User: " . get_current_user();
+    $results[] = "Symlink function exists: " . (function_exists('symlink') ? 'Yes' : 'No');
+    
+    $results[] = "\n--- Public Storage Link ---";
+    $results[] = "Link Path: " . $publicStorage;
+    $results[] = "Exists: " . (file_exists($publicStorage) ? 'Yes' : 'No');
+    $results[] = "Is Link: " . (is_link($publicStorage) ? 'Yes' : 'No');
+    if (is_link($publicStorage)) {
+        $results[] = "Points to: " . readlink($publicStorage);
     }
+    $results[] = "Permissions: " . substr(sprintf('%o', fileperms(file_exists($publicStorage) ? $publicStorage : public_path())), -4);
+    
+    $results[] = "\n--- Target Storage Directory ---";
+    $results[] = "Target Path: " . $appStorage;
+    $results[] = "Exists: " . (is_dir($appStorage) ? 'Yes' : 'No');
+    if (is_dir($appStorage)) {
+        $results[] = "Permissions: " . substr(sprintf('%o', fileperms($appStorage)), -4);
+        $files = scandir($appStorage);
+        $results[] = "Contents (first 5): " . implode(', ', array_slice($files, 0, 7));
+    }
+
+    if (request()->has('force')) {
+        $results[] = "\n--- Force Action ---";
+        if (file_exists($publicStorage)) {
+            if (is_link($publicStorage)) {
+                unlink($publicStorage);
+                $results[] = "Deleted old symlink.";
+            } elseif (is_dir($publicStorage)) {
+                $newName = $publicStorage . '_old_' . time();
+                if (rename($publicStorage, $newName)) {
+                    $results[] = "Renamed existing directory to $newName";
+                } else {
+                    $results[] = "FAILED to rename existing directory.";
+                }
+            }
+        }
+        
+        try {
+            \Illuminate\Support\Facades\Artisan::call('storage:link');
+            $results[] = "Artisan storage:link output: " . \Illuminate\Support\Facades\Artisan::output();
+        } catch (\Exception $e) {
+            $results[] = "Error during re-link: " . $e->getMessage();
+        }
+    }
+    
+    $results[] = "\n--- Final Status ---";
+    $results[] = "Is Link: " . (is_link($publicStorage) ? 'Yes' : 'No');
+    
+    return "<pre>" . implode("\n", $results) . "\n\n<a href='/fix-storage?force=1' style='padding:10px; background:#FF4A00; color:white; text-decoration:none; border-radius:5px;'>Force Re-link</a></pre>";
 });
 
     // Activity Logs
