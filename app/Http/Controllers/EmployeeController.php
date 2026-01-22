@@ -72,11 +72,11 @@ class EmployeeController extends Controller
             'hr_comments' => 'nullable|string',
             'banking_comments' => 'nullable|string',
             // Files
-            'profile_picture' => 'nullable|image|max:2048',
-            'cnic_front' => 'nullable|file|mimes:jpg,png,pdf|max:2048',
-            'cnic_back' => 'nullable|file|mimes:jpg,png,pdf|max:2048',
-            'cv' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-            'transcript' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'profile_picture' => 'nullable|image|max:10240',
+            'cnic_front' => 'nullable|file|mimes:jpg,png,pdf|max:10240',
+            'cnic_back' => 'nullable|file|mimes:jpg,png,pdf|max:10240',
+            'cv' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            'transcript' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
         ]);
 
         $data = $request->except(['profile_picture', 'cnic_front', 'cnic_back', 'cv', 'transcript']);
@@ -148,11 +148,11 @@ class EmployeeController extends Controller
             'hr_comments' => 'nullable|string',
             'banking_comments' => 'nullable|string',
             // Files (nullable on update)
-            'profile_picture' => 'nullable|image|max:2048',
-            'cnic_front' => 'nullable|file|mimes:jpg,png,pdf|max:2048',
-            'cnic_back' => 'nullable|file|mimes:jpg,png,pdf|max:2048',
-            'cv' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-            'transcript' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'profile_picture' => 'nullable|image|max:10240',
+            'cnic_front' => 'nullable|file|mimes:jpg,png,pdf|max:10240',
+            'cnic_back' => 'nullable|file|mimes:jpg,png,pdf|max:10240',
+            'cv' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            'transcript' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
         ]);
 
         $data = $request->except(['profile_picture', 'cnic_front', 'cnic_back', 'cv', 'transcript']);

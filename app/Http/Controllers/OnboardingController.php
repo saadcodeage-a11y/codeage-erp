@@ -66,11 +66,11 @@ class OnboardingController extends Controller
             'permanent_address' => 'required|string',
             'education_level' => 'required|string',
             'field_of_study' => 'nullable|string|max:255',
-            'profile_picture' => 'required|image|max:5120',
+            'profile_picture' => 'required|image|max:10240',
 
             // Step 2: Documents
-            'cnic_front' => 'required|file|mimes:png,jpg,jpeg,pdf|max:5120',
-            'cnic_back' => 'required|file|mimes:png,jpg,jpeg,pdf|max:5120',
+            'cnic_front' => 'required|file|mimes:png,jpg,jpeg,pdf|max:10240',
+            'cnic_back' => 'required|file|mimes:png,jpg,jpeg,pdf|max:10240',
             'cv' => 'required|file|mimes:pdf,doc,docx|max:10240',
             'transcript' => 'nullable|file|mimes:png,jpg,jpeg,pdf|max:10240',
 

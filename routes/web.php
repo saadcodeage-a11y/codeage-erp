@@ -112,6 +112,19 @@ Route::middleware('auth')->group(function () {
     Route::put('/templates/{id}/update', [TemplateController::class, 'updateEmailTemplate'])->name('templates.email.update');
     Route::put('/templates/forms/{id}/update', [TemplateController::class, 'updateFormTemplate'])->name('templates.forms.update');
     Route::post('/templates/toggle-status', [TemplateController::class, 'toggleStatus'])->name('templates.toggle-status');
+// Maintenance Routes
+Route::get('/fix-storage', function() {
+    try {
+        if (file_exists(public_path('storage'))) {
+            // If it's a directory (not a link), we might need to delete it
+            // but let's try to just link first
+        }
+        \Illuminate\Support\Facades\Artisan::call('storage:link');
+        return "Storage link fixed! <a href='/'>Go Back</a>";
+    } catch (\Exception $e) {
+        return "Error: " . $e->getMessage();
+    }
+});
 
     // Activity Logs
     Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs.index');

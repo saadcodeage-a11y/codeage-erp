@@ -1,5 +1,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    Options +FollowSymLinks
+    
+    # Handle storage and other public files directly
+    RewriteRule ^(storage/.*|build/.*|robots\.txt|favicon\.ico)$ public/$1 [L]
+    
+    # Redirect everything else to public/index.php
     RewriteRule ^$ public/index.php [L]
     RewriteRule ^((?!public/).*)$ public/$1 [L,NC]
 </IfModule>
