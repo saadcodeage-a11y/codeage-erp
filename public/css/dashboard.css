@@ -849,25 +849,33 @@ a.btn-action:hover {
 
 .pagination-wrapper {
     padding: 16px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex !important;
+    justify-content: flex-end !important;
+    /* Move to the right */
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
-/* Pagination Styling - Robust Brute Force */
-.pagination-wrapper nav ul,
-.pagination-wrapper ul.pagination {
+/* Pagination Styling - Robust Fix */
+.pagination-wrapper nav,
+.pagination-wrapper div[role="navigation"] {
+    display: block !important;
+}
+
+.pagination-wrapper ul,
+.pagination-wrapper .pagination {
     display: flex !important;
+    flex-direction: row !important;
     list-style: none !important;
     list-style-type: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    gap: 8px !important;
-    flex-wrap: wrap !important;
+    gap: 4px !important;
 }
 
-.pagination-wrapper li.page-item,
-.pagination-wrapper nav ul li {
+.pagination-wrapper li,
+.pagination-wrapper .page-item {
     list-style: none !important;
     list-style-type: none !important;
     margin: 0 !important;
@@ -879,19 +887,19 @@ a.btn-action:hover {
 }
 
 .pagination-wrapper .page-link,
-.pagination-wrapper nav ul li a,
-.pagination-wrapper nav ul li span {
+.pagination-wrapper a,
+.pagination-wrapper span {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 36px !important;
-    height: 36px !important;
-    padding: 0 12px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    padding: 0 8px !important;
     border: 1px solid #e5e7eb !important;
     background: white !important;
     color: #4b5563 !important;
     text-decoration: none !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
     font-weight: 500 !important;
     border-radius: 6px !important;
     transition: all 0.2s !important;
@@ -899,35 +907,34 @@ a.btn-action:hover {
 }
 
 .pagination-wrapper .page-link:hover,
-.pagination-wrapper nav ul li a:hover {
-    background-color: #f9fafb !important;
-    border-color: #d1d5db !important;
-    color: #111827 !important;
+.pagination-wrapper a:hover {
+    background-color: #FFF5F2 !important;
+    border-color: #FF4A00 !important;
+    color: #FF4A00 !important;
 }
 
-.pagination-wrapper .page-item.active .page-link,
-.pagination-wrapper nav ul li.active span,
-.pagination-wrapper nav ul li.active a {
+.pagination-wrapper .active span,
+.pagination-wrapper .active a,
+.pagination-wrapper [aria-current="page"] span,
+.pagination-wrapper [aria-current="page"] a {
     background: #FF4A00 !important;
     border-color: #FF4A00 !important;
     color: white !important;
-    box-shadow: 0 4px 6px -1px rgba(255, 74, 0, 0.2) !important;
 }
 
-.pagination-wrapper .page-item.disabled .page-link,
-.pagination-wrapper nav ul li.disabled span,
-.pagination-wrapper nav ul li.disabled a {
-    background: #fdfdfd !important;
+.pagination-wrapper .disabled span,
+.pagination-wrapper .disabled a,
+.pagination-wrapper [aria-disabled="true"] span {
+    background: #f9fafb !important;
     color: #d1d5db !important;
     cursor: not-allowed !important;
     border-color: #f3f4f6 !important;
 }
 
-/* Correctly scale icons inside pagination */
-.pagination-wrapper svg,
-.pagination-wrapper nav ul li svg {
-    width: 20px !important;
-    height: 20px !important;
+/* Scale Pagination Icons */
+.pagination-wrapper svg {
+    width: 16px !important;
+    height: 16px !important;
     display: block !important;
 }
 

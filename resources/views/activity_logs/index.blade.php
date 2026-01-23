@@ -3,6 +3,34 @@
 @section('title', 'Activity Logs')
 
 @section('content')
+<style>
+    /* Brute force pagination fix */
+    .pagination-wrapper {
+        padding: 16px 24px;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+    }
+    .pagination-wrapper nav, .pagination-wrapper div[role="navigation"] {
+        display: block !important;
+    }
+    .pagination-wrapper ul, .pagination-wrapper .pagination {
+        display: flex !important;
+        flex-direction: row !important;
+        list-style: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        gap: 4px !important;
+    }
+    .pagination-wrapper li, .pagination-wrapper .page-item {
+        list-style: none !important;
+        margin: 0 !important;
+    }
+    .pagination-wrapper li::before {
+        content: none !important;
+    }
+</style>
+
 <div class="page-header">
     <div class="header-left">
         <h1>System Activity Logs</h1>
