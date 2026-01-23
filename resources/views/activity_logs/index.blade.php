@@ -29,6 +29,44 @@
     .pagination-wrapper li::before {
         content: none !important;
     }
+    .pagination-wrapper .page-link, .pagination-wrapper a, .pagination-wrapper span {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 32px !important;
+        height: 32px !important;
+        padding: 0 8px !important;
+        border: 1px solid #e5e7eb !important;
+        background: white !important;
+        color: #4b5563 !important;
+        text-decoration: none !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        border-radius: 6px !important;
+        transition: all 0.2s !important;
+        cursor: pointer !important;
+    }
+    .pagination-wrapper a:hover, .pagination-wrapper .page-link:hover {
+        background-color: #FFF5F2 !important;
+        border-color: #FF4A00 !important;
+        color: #FF4A00 !important;
+    }
+    .pagination-wrapper .active span, .pagination-wrapper .active a, .pagination-wrapper [aria-current="page"] span {
+        background: #FF4A00 !important;
+        border-color: #FF4A00 !important;
+        color: white !important;
+    }
+    .pagination-wrapper .disabled span, .pagination-wrapper .disabled a {
+        background: #f9fafb !important;
+        color: #d1d5db !important;
+        cursor: not-allowed !important;
+        border-color: #f3f4f6 !important;
+    }
+    .pagination-wrapper svg {
+        width: 16px !important;
+        height: 16px !important;
+        display: block !important;
+    }
 </style>
 
 <div class="page-header">
