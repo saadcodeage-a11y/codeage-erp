@@ -8,11 +8,20 @@
         <h1>Templates & Forms</h1>
         <p>Manage email templates and employee forms</p>
     </div>
-    <div class="header-right" style="display: flex; align-items: flex-end; flex-direction: column; gap: 4px;">
-        <div style="font-size: 11px; color: #6b7280; text-align: right;">
+    <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
+        <div style="font-size: 11px; color: #6b7280; text-align: right; line-height: 1.4;">
             Total Templates:<br>
             HR: {{ $counts['hr'] }} | Accounts: {{ $counts['accounts'] }} | General: {{ $counts['general'] }}
         </div>
+        @if($activeTab == 'forms')
+            <button class="btn btn-primary" onclick="alert('New Form Coming Soon')">
+                <i data-lucide="plus"></i> New Form
+            </button>
+        @else
+            <button class="btn btn-primary" onclick="openCreateEmailTemplateModal('{{ $activeTab }}')">
+                <i data-lucide="plus"></i> New {{ strtoupper($activeTab) }} Template
+            </button>
+        @endif
     </div>
 </div>
 
@@ -32,24 +41,13 @@
     </a>
 </div>
 
-<!-- Search and Action -->
-<div class="search-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; background: white; padding: 16px; border-radius: 12px; border: 1px solid #e5e7eb;">
-    <form method="GET" action="{{ route('templates.index') }}" style="flex: 1; position: relative;">
+<!-- Search -->
+<div class="search-container">
+    <form method="GET" action="{{ route('templates.index') }}" class="search-form">
         <input type="hidden" name="tab" value="{{ $activeTab }}">
-        <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #9ca3af;"></i>
-        <input type="text" name="search" placeholder="Search {{ $activeTab }} templates..." value="{{ request('search') }}" style="width: 100%; padding: 10px 10px 10px 40px; border: 1px solid #f3f4f6; border-radius: 8px; font-size: 14px; background: #f9fafb;">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" name="search" placeholder="Search {{ $activeTab }} templates..." value="{{ request('search') }}" class="search-input">
     </form>
-    <div style="margin-left: 16px;">
-        @if($activeTab == 'forms')
-            <button class="btn btn-primary" onclick="alert('New Form Coming Soon')">
-                <i data-lucide="plus"></i> New Form
-            </button>
-        @else
-            <button class="btn btn-primary" onclick="openCreateEmailTemplateModal('{{ $activeTab }}')">
-                <i data-lucide="plus"></i> New {{ strtoupper($activeTab) }} Template
-            </button>
-        @endif
-    </div>
 </div>
 
 @if($activeTab == 'forms')
