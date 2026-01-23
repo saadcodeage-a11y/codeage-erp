@@ -849,6 +849,68 @@ a.btn-action:hover {
 
 .pagination-wrapper {
     padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Pagination Styling */
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+}
+
+.page-item {
+    display: inline-block;
+}
+
+.page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #4b5563;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.page-link:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+    color: #111827;
+}
+
+.page-item.active .page-link {
+    background: #FF4A00;
+    border-color: #FF4A00;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(255, 74, 0, 0.2);
+}
+
+.page-item.disabled .page-link {
+    background: #fdfdfd;
+    color: #d1d5db;
+    cursor: not-allowed;
+    border-color: #f3f4f6;
+}
+
+/* Scale Pagination Icons */
+.page-link svg, 
+.page-link span[aria-hidden="true"],
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+    display: block;
 }
 
 .text-center {

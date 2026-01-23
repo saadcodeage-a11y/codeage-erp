@@ -101,7 +101,7 @@
         </tbody>
     </table>
     
-    <div style="padding: 16px; border-top: 1px solid #f3f4f6;">
+    <div class="pagination-wrapper" style="border-top: 1px solid #f3f4f6;">
         {{ $activities->links() }}
     </div>
 </div>
