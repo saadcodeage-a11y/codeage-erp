@@ -551,6 +551,9 @@ button,
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s;
+    border: none;
+    background: transparent;
+    cursor: pointer;
 }
 
 .tab-item.active {
