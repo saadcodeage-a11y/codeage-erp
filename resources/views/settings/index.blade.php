@@ -18,7 +18,7 @@
     </div>
 </div>
 
-<div class="tabs-container" style="margin-bottom: 24px; background: #f9fafb; padding: 6px; border-radius: 12px; border: 1px solid #e5e7eb; display: inline-flex; gap: 4px;">
+<div class="tabs-container">
     <button class="tab-item active" onclick="switchTab('email-service', this)">
         Email Service
     </button>
@@ -659,9 +659,6 @@
     .settings-tab-content { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    .tab-item { padding: 8px 16px; font-size: 14px; font-weight: 500; color: #6b7280; border-radius: 8px; border: none; background: transparent; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .tab-item:hover { color: #111827; background: #fff; }
-    .tab-item.active { background: #FF4A00; color: #fff; box-shadow: 0 4px 6px -1px rgba(255, 74, 0, 0.2); }
 
     .status-card { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; }
     .status-card.error { border-color: #fee2e2; background: #fff5f5; }

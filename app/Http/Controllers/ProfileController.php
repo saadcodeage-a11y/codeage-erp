@@ -59,4 +59,19 @@ class ProfileController extends Controller
 
         return response()->json(['success' => false, 'message' => 'No file uploaded.'], 400);
     }
+
+    public function toggleTwoFactor(Request $request)
+    {
+        $user = Auth::user();
+        $user->two_factor_enabled = !$user->two_factor_enabled;
+        $user->save();
+
+        $status = $user->two_factor_enabled ? 'enabled' : 'disabled';
+
+        return response()->json([
+            'success' => true,
+            'message' => "Two-Factor Authentication has been {$status}.",
+            'enabled' => $user->two_factor_enabled
+        ]);
+    }
 }

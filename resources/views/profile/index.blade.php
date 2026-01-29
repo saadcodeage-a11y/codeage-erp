@@ -88,15 +88,17 @@
                         <i data-lucide="shield-check" style="width: 20px; height: 20px; color: #db2777;"></i>
                     </div>
                     <div>
-                        <span style="display: block; font-size: 13px; color: #6b7280;">Two-Factor Authentication</span>
-                        @if($user->two_factor_enabled)
-                        <span style="font-weight: 600; color: #059669;">Enabled</span>
-                        @else
-                        <span style="font-weight: 600; color: #6b7280;">Disabled</span>
-                        @endif
-                    </div>
+                    <label class="switch-toggle" style="margin: 0;">
+                        <input type="checkbox" id="twoFactorToggle" {{ $user->two_factor_enabled ? 'checked' : '' }} onchange="toggleTwoFactor(this)">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <div style="display: flex; gap: 16px; align-items: flex-start;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                     <div style="background: #fffbeb; padding: 10px; border-radius: 10px;">
                         <i data-lucide="key" style="width: 20px; height: 20px; color: #d97706;"></i>
                     </div>
@@ -252,6 +254,30 @@
             container.innerHTML = originalContent;
             // Restore original background if was initials
             container.style.background = '{{ $user->avatar ? 'none' : 'linear-gradient(135deg, #ff4d00 0%, #ff8c00 100%)' }}';
+        });
+    function toggleTwoFactor(checkbox) {
+        const enabled = checkbox.checked;
+        
+        fetch('{{ route('profile.two-factor.toggle') }}', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Update failed');
+            return data;
+        })
+        .then(data => {
+            alert(data.message);
+        })
+        .catch(err => {
+            alert(err.message);
+            checkbox.checked = !enabled; // Revert
         });
     }
 

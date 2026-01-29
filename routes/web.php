@@ -38,6 +38,25 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
     ]);
 
     if (Auth::attempt($credentials)) {
+        $user = Auth::user();
+
+        if ($user->two_factor_enabled) {
+            Auth::logout(); // Log out immediately to prevent access without 2FA
+            
+            $user->generateTwoFactorCode();
+            
+            // Send Email (using Queue if possible, but for now synchronous or sync queue)
+            try {
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\TwoFactorCodeMail($user->two_factor_code));
+            } catch (\Exception $e) {
+                // Log error but proceed to show the form (user can click resend)
+                // Log::error($e->getMessage());
+            }
+
+            $request->session()->put('user_2fa_id', $user->id);
+            return redirect()->route('verify.index');
+        }
+
         $request->session()->regenerate();
         return redirect()->intended('dashboard');
     }
@@ -46,6 +65,9 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
         'email' => 'The provided credentials do not match our records.',
     ])->onlyInput('email');
 })->name('login.post');
+
+Route::post('verify/resend', [App\Http\Controllers\TwoFactorController::class, 'resend'])->name('verify.resend');
+Route::resource('verify', App\Http\Controllers\TwoFactorController::class)->only(['index', 'store']);
 
 Route::post('/logout', function (\Illuminate\Http\Request $request) {
     Auth::logout();
@@ -106,6 +128,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::post('/profile/two-factor', [ProfileController::class, 'toggleTwoFactor'])->name('profile.two-factor.toggle');
 
     // Templates & Forms
     Route::get('/templates', [TemplateController::class, 'index'])->name('templates.index');

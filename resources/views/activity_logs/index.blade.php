@@ -76,6 +76,14 @@
     </div>
 </div>
 
+<!-- Search -->
+<div class="search-container">
+    <form method="GET" action="{{ route('activity-logs.index') }}" class="search-form">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" name="search" placeholder="Search by activity, user, or IP..." value="{{ request('search') }}" class="search-input">
+    </form>
+</div>
+
 <div class="table-card">
     <table class="data-table">
         <thead>
