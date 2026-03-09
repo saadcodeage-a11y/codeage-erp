@@ -59,8 +59,8 @@ JOIN (
     ORDER BY `id`
   ) pending
   CROSS JOIN (SELECT @rownum := @starting_counter) seed
-) generated ON generated.`id` = e.`id`
-SET e.`employee_id` = CONCAT(@prefix, LPAD(generated.`next_counter`, 3, '0'));
+) generated_rows ON generated_rows.`id` = e.`id`
+SET e.`employee_id` = CONCAT(@prefix, LPAD(generated_rows.`next_counter`, 3, '0'));
 
 SET @assigned_max := (
   SELECT COALESCE(MAX(CAST(SUBSTRING(`employee_id`, CHAR_LENGTH(@prefix) + 1) AS UNSIGNED)), 0)
