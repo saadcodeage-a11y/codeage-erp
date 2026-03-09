@@ -176,6 +176,11 @@ class EmployeeManagementTest extends TestCase
             'subject_type' => Employee::class,
             'description' => 'Employee Inactive User status changed to inactive. Reason: Position is on hold.',
         ]);
+
+        $histories = $employee->fresh()->employmentHistories()->orderBy('effective_from')->get();
+
+        $this->assertCount(1, $histories);
+        $this->assertNotNull($histories->first()->effective_to);
     }
 
     public function test_employment_history_is_versioned_when_job_details_change()

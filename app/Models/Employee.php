@@ -102,13 +102,19 @@ class Employee extends Model
         }
 
         if ($activeHistory) {
-            $effectiveTo = $effectiveFrom->copy()->subSecond();
+            $effectiveTo = $this->status === 'inactive'
+                ? $effectiveFrom->copy()
+                : $effectiveFrom->copy()->subSecond();
 
             if ($effectiveTo->lt($activeHistory->effective_from)) {
                 $effectiveTo = $activeHistory->effective_from->copy();
             }
 
             $activeHistory->update(['effective_to' => $effectiveTo]);
+        }
+
+        if ($this->status === 'inactive') {
+            return;
         }
 
         $this->employmentHistories()->create(array_merge($snapshot, [
