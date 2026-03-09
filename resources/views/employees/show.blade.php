@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $employee->first_name . ' ' . $employee->last_name . ' - Employee Details')
+@section('title', $employee->full_name . ' - Employee Details')
 
 @section('content')
 <div class="page-header" style="margin-bottom: 24px;">
@@ -58,11 +58,11 @@
 
 <!-- Tabs Navigation -->
 <div class="tabs-container" style="width: 100%; margin-bottom: 24px; padding: 0; background: transparent; border: none; border-bottom: 1px solid #e5e7eb; border-radius: 0;">
-    <button class="tab-btn active" onclick="switchTab('personal')">Personal Information</button>
-    <button class="tab-btn" onclick="switchTab('employment')">Employment Summary</button>
-    <button class="tab-btn" onclick="switchTab('job')">Job Details</button>
-    <button class="tab-btn" onclick="switchTab('documents')">Documents</button>
-    <button class="tab-btn" onclick="switchTab('activity')">Activity Logs</button>
+    <button class="tab-btn active" onclick="switchTab('personal', this)">Personal Information</button>
+    <button class="tab-btn" onclick="switchTab('employment', this)">Employment Summary</button>
+    <button class="tab-btn" onclick="switchTab('job', this)">Job Details</button>
+    <button class="tab-btn" onclick="switchTab('documents', this)">Documents</button>
+    <button class="tab-btn" onclick="switchTab('activity', this)">Activity Logs</button>
 </div>
 
 <!-- Tab Contents -->
@@ -124,20 +124,71 @@
 
     <!-- Employment Summary Tab -->
     <div id="employment" class="tab-content" style="display: none;">
-        <h3 class="section-title">Employment Overview</h3>
+        <h3 class="section-title">Current Employment Snapshot</h3>
         <div class="info-grid two-col">
             <div class="info-item">
                 <label>Position</label>
                 <p>{{ $employee->designation }}</p>
             </div>
+            <div class="info-item">
+                <label>Department</label>
+                <p>{{ $employee->department?->name ?? 'Not assigned' }}</p>
+            </div>
              <div class="info-item">
                 <label>Payroll Status</label>
                 <p>{{ $employee->payroll_status ?? 'Not specified' }}</p>
             </div>
-             <div class="info-item">
+              <div class="info-item">
                 <label>Location</label>
                 <p>{{ $employee->job_location ?? 'Not specified' }}</p>
             </div>
+            <div class="info-item">
+                <label>Employee Status</label>
+                <p>{{ ucfirst(str_replace('_', ' ', $employee->status)) }}</p>
+            </div>
+            <div class="info-item">
+                <label>Hiring Date</label>
+                <p>{{ $employee->hiring_date ? $employee->hiring_date->format('d F, Y') : 'Not specified' }}</p>
+            </div>
+        </div>
+
+        <h3 class="section-title" style="margin-top: 32px;">Employment Timeline</h3>
+        <div class="timeline-list">
+            @forelse($employee->employmentHistories as $history)
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-card">
+                        <div class="timeline-header">
+                            <div>
+                                <h4>{{ $history->designation ?? 'Position not specified' }}</h4>
+                                <p>
+                                    {{ $history->department?->name ?? 'Department not assigned' }}
+                                    •
+                                    {{ $history->employment_status ? ucfirst(str_replace('_', ' ', $history->employment_status)) : 'Status not specified' }}
+                                </p>
+                            </div>
+                            <div class="timeline-date">
+                                <strong>{{ $history->effective_from->format('d M Y, h:i A') }}</strong>
+                                <span>
+                                    @if($history->effective_to)
+                                        to {{ $history->effective_to->format('d M Y, h:i A') }}
+                                    @else
+                                        Current
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                        <div class="timeline-meta">
+                            <span>Payroll: {{ $history->payroll_status ?? 'Not specified' }}</span>
+                            <span>Location: {{ $history->job_location ?? 'Not specified' }}</span>
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No employment history has been recorded yet.
+                </div>
+            @endforelse
         </div>
     </div>
 
@@ -193,9 +244,42 @@
         </div>
     </div>
     
-    <!-- Activity Logs (Placeholder) -->
+    <!-- Activity Logs -->
     <div id="activity" class="tab-content" style="display: none;">
-        <p style="color: #6b7280; font-style: italic;">No activity logs recorded yet.</p>
+        <h3 class="section-title">Employee Activity</h3>
+        <div class="activity-log-list">
+            @forelse($employeeActivityLogs as $log)
+                @php
+                    $changedFields = collect(array_keys($log->properties['old'] ?? []))
+                        ->map(fn ($field) => \Illuminate\Support\Str::headline($field))
+                        ->implode(', ');
+                @endphp
+                <div class="activity-log-card">
+                    <div class="activity-log-header">
+                        <div>
+                            <h4>{{ $log->description }}</h4>
+                            <p>
+                                {{ $log->created_at->format('d M Y, h:i A') }}
+                                @if($log->user)
+                                    • By {{ $log->user->name }}
+                                @endif
+                            </p>
+                        </div>
+                        <span class="log-type {{ $log->type }}">{{ ucfirst($log->type) }}</span>
+                    </div>
+                    <div class="activity-log-meta">
+                        <span>Subject: {{ \Illuminate\Support\Str::headline(class_basename($log->subject_type ?? 'Employee')) }}</span>
+                        @if($changedFields !== '')
+                            <span>Changed: {{ $changedFields }}</span>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No activity logs recorded for this employee yet.
+                </div>
+            @endforelse
+        </div>
     </div>
 
 </div>
@@ -426,11 +510,11 @@
 </div>
 
 <script>
-    function switchTab(tabId) {
+    function switchTab(tabId, button) {
         document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
         document.getElementById(tabId).style.display = 'block';
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        button.classList.add('active');
     }
 
     function editEmployee(id) {
@@ -697,5 +781,135 @@
         display: inline-block;
     }
     .doc-link:hover { text-decoration: underline; }
+
+    .timeline-list,
+    .activity-log-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .timeline-item {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    .timeline-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #FF4A00;
+        margin-top: 18px;
+        box-shadow: 0 0 0 4px #fff7ed;
+    }
+
+    .timeline-card,
+    .activity-log-card,
+    .empty-state-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px 18px;
+        background: #fff;
+    }
+
+    .timeline-header,
+    .activity-log-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .timeline-header h4,
+    .activity-log-header h4 {
+        margin: 0 0 4px 0;
+        font-size: 15px;
+        color: #111827;
+    }
+
+    .timeline-header p,
+    .activity-log-header p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+    }
+
+    .timeline-date {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        color: #6b7280;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .timeline-meta,
+    .activity-log-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+        color: #4b5563;
+        font-size: 13px;
+    }
+
+    .timeline-meta span,
+    .activity-log-meta span {
+        background: #f9fafb;
+        border: 1px solid #f3f4f6;
+        border-radius: 999px;
+        padding: 6px 10px;
+    }
+
+    .log-type {
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .log-type.success {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .log-type.info {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .log-type.warning {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    .log-type.error {
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+    .empty-state-panel {
+        color: #6b7280;
+        font-style: italic;
+    }
+
+    @media (max-width: 900px) {
+        .timeline-header,
+        .activity-log-header,
+        .info-grid.two-col,
+        .doc-grid {
+            grid-template-columns: 1fr;
+            display: grid;
+        }
+
+        .timeline-date {
+            align-items: flex-start;
+            white-space: normal;
+        }
+    }
 </style>
 @endsection

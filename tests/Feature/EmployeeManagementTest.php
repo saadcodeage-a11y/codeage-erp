@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Department;
+use App\Models\EmployeeEmploymentHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class EmployeeManagementTest extends TestCase
@@ -117,5 +119,91 @@ class EmployeeManagementTest extends TestCase
 
         $response->assertRedirect(route('employees.show', $employee));
         $this->assertDatabaseHas('employees', ['id' => $employee->id, 'full_name' => 'New Name', 'designation' => 'Lead Dev']);
+    }
+
+    public function test_employment_history_is_versioned_when_job_details_change()
+    {
+        $user = User::factory()->create();
+        $deptOne = Department::create(['name' => 'IT']);
+        $deptTwo = Department::create(['name' => 'Operations']);
+
+        $employee = Employee::create([
+            'full_name' => 'Timeline User',
+            'email' => 'timeline@example.com',
+            'status' => 'active',
+            'department_id' => $deptOne->id,
+            'designation' => 'Developer',
+            'payroll_status' => 'Paid',
+            'employee_id' => 'EMP120',
+            'hiring_date' => now()->subMonth()->toDateString(),
+        ]);
+
+        $this->assertCount(1, $employee->employmentHistories);
+
+        $response = $this->actingAs($user)->put(route('employees.update', $employee), [
+            'full_name' => 'Timeline User',
+            'email' => 'timeline@example.com',
+            'department_id' => $deptTwo->id,
+            'designation' => 'Senior Developer',
+            'payroll_status' => 'Internship',
+        ]);
+
+        $response->assertRedirect(route('employees.show', $employee));
+
+        $employee->refresh();
+        $histories = $employee->employmentHistories()->orderBy('effective_from')->get();
+        $closedHistory = $histories->firstWhere('effective_to', '!=', null);
+        $activeHistory = $histories->firstWhere('effective_to', null);
+
+        $this->assertCount(2, $histories);
+        $this->assertNotNull($closedHistory);
+        $this->assertNotNull($activeHistory);
+        $this->assertSame('Developer', $closedHistory->designation);
+        $this->assertNotNull($closedHistory->effective_to);
+        $this->assertSame('Senior Developer', $activeHistory->designation);
+        $this->assertSame('Internship', $activeHistory->payroll_status);
+        $this->assertSame($deptTwo->id, $activeHistory->department_id);
+        $this->assertNull($activeHistory->effective_to);
+    }
+
+    public function test_employee_detail_page_shows_employment_history_and_related_activity_logs()
+    {
+        $user = User::factory()->create();
+        $dept = Department::create(['name' => 'IT']);
+
+        $employee = Employee::create([
+            'full_name' => 'Logs User',
+            'email' => 'logs@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Analyst',
+            'payroll_status' => 'Paid',
+            'employee_id' => 'EMP130',
+        ]);
+
+        $history = $employee->employmentHistories()->firstOrFail();
+
+        ActivityLog::create([
+            'description' => 'Employee profile reviewed',
+            'type' => 'info',
+            'subject_id' => $employee->id,
+            'subject_type' => Employee::class,
+        ]);
+
+        ActivityLog::create([
+            'description' => 'Payroll changed to Paid',
+            'type' => 'success',
+            'subject_id' => $history->id,
+            'subject_type' => EmployeeEmploymentHistory::class,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('employees.show', $employee));
+
+        $response->assertStatus(200);
+        $response->assertSee('Employment Timeline');
+        $response->assertSee('Analyst');
+        $response->assertSee('Paid');
+        $response->assertSee('Employee profile reviewed');
+        $response->assertSee('Payroll changed to Paid');
     }
 }

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\EmailTemplate;
 use App\Models\Setting;
-use App\Models\Department;
+use App\Models\EmployeeEmploymentHistory;
 use App\Services\MailService;
+use Illuminate\Support\Carbon;
 
 class EmployeeController extends Controller
 {
@@ -113,7 +115,34 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee)
     {
-        return view('employees.show', compact('employee'));
+        $employee->load([
+            'department',
+            'bank',
+            'employmentHistories.department',
+        ]);
+
+        $historyIds = $employee->employmentHistories->modelKeys();
+
+        $employeeActivityLogs = ActivityLog::with('user', 'subject')
+            ->where(function ($query) use ($employee, $historyIds) {
+                $query->where(function ($subjectQuery) use ($employee) {
+                    $subjectQuery
+                        ->where('subject_type', Employee::class)
+                        ->where('subject_id', $employee->id);
+                });
+
+                if (! empty($historyIds)) {
+                    $query->orWhere(function ($subjectQuery) use ($historyIds) {
+                        $subjectQuery
+                            ->where('subject_type', EmployeeEmploymentHistory::class)
+                            ->whereIn('subject_id', $historyIds);
+                    });
+                }
+            })
+            ->latest()
+            ->get();
+
+        return view('employees.show', compact('employee', 'employeeActivityLogs'));
     }
 
     public function edit(Employee $employee)
@@ -245,9 +274,14 @@ class EmployeeController extends Controller
 
     public function approve(Request $request, Employee $employee, MailService $mailService)
     {
+        $startDate = $request->input('start_date')
+            ?: optional($employee->hiring_date)->toDateString()
+            ?: now()->toDateString();
+        $startTime = $request->input('start_time') ?: '09:00';
+
         $employee->update([
             'status' => 'active',
-            'hiring_date' => $request->start_date // Storing start date in hiring_date field
+            'hiring_date' => $startDate,
         ]);
         
         // Send "Welcome" email
@@ -261,8 +295,8 @@ class EmployeeController extends Controller
                 $variables = [
                     'employeeName' => $employee->full_name,
                     'position' => $employee->designation ?? 'Team Member',
-                    'startDate' => date('F j, Y', strtotime($request->start_date)),
-                    'startTime' => date('g:i A', strtotime($request->start_time)),
+                    'startDate' => Carbon::parse($startDate)->format('F j, Y'),
+                    'startTime' => Carbon::parse($startTime)->format('g:i A'),
                     'officeLocation' => $officeLocation,
                     'hrContact' => $hrContact
                 ];
