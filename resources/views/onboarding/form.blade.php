@@ -171,7 +171,7 @@
             </div>
         </div>
         
-        <form id="onboardingForm" enctype="multipart/form-data">
+        <form id="onboardingForm" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="form-card">
                 <!-- Step 1: Personal Information -->
@@ -698,12 +698,27 @@
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     }
                 });
-                
-                const data = await response.json();
-                
+
+                const contentType = response.headers.get('content-type') || '';
+                const data = contentType.includes('application/json')
+                    ? await response.json()
+                    : { success: false, message: await response.text() };
+
+                if (!response.ok) {
+                    let message = data.message || 'Submission failed';
+
+                    if (data.errors) {
+                        const validationErrors = Object.values(data.errors).flat().join('\n');
+                        message = validationErrors || message;
+                    }
+
+                    throw new Error(message);
+                }
+
                 if (data.success) {
                     document.getElementById('successModal').classList.add('show');
                     if (data.redirect_url) {

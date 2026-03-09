@@ -8,6 +8,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 
 class OnboardingController extends Controller
 {
@@ -56,7 +57,7 @@ class OnboardingController extends Controller
             ->firstOrFail();
 
         // Validate all steps
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             // Step 1: Personal Information
             'full_name' => 'required|string|max:255',
             'phone' => 'required|digits:11',
@@ -88,6 +89,16 @@ class OnboardingController extends Controller
             'signature' => 'required|string', // Base64 image
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please correct the highlighted errors and try again.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+
         // Create storage directory
         $storagePath = "employees/{$employee->id}";
         Storage::disk('public')->makeDirectory($storagePath);
@@ -105,6 +116,14 @@ class OnboardingController extends Controller
         $signatureData = $request->input('signature');
         $signatureData = str_replace('data:image/png;base64,', '', $signatureData);
         $signatureData = base64_decode($signatureData);
+
+        if ($signatureData === false) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The provided signature could not be processed. Please sign again.',
+            ], 422);
+        }
+
         $signaturePath = "{$storagePath}/signature.png";
         Storage::disk('public')->put($signaturePath, $signatureData);
 
