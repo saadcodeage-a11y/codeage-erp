@@ -83,10 +83,33 @@
 </div>
 
 <div id="rolesTab" style="display: none;">
+    <div class="roles-overview">
+        <div>
+            <h2>Role Permissions</h2>
+            <p>Each role controls module-level read, create, and edit access across the system.</p>
+        </div>
+        <div class="roles-overview-metrics">
+            <div class="overview-pill">
+                <strong>{{ $roles->count() }}</strong>
+                <span>Roles</span>
+            </div>
+            <div class="overview-pill">
+                <strong>{{ count($modules) }}</strong>
+                <span>Modules</span>
+            </div>
+        </div>
+    </div>
+
     <div class="role-grid">
         @forelse($roles as $role)
             @php
                 $permissions = $role->permissionsByModule();
+                $allowedCount = collect($permissions)->reduce(function ($total, $permission) {
+                    return $total
+                        + ($permission['read'] ? 1 : 0)
+                        + ($permission['create'] ? 1 : 0)
+                        + ($permission['edit'] ? 1 : 0);
+                }, 0);
                 $rolePayload = ['id' => $role->id, 'name' => $role->name, 'permissions' => $permissions];
             @endphp
             <div class="role-card">
@@ -94,32 +117,33 @@
                     <div>
                         <h3>{{ $role->name }}</h3>
                         <p>{{ $role->users_count }} assigned {{ \Illuminate\Support\Str::plural('user', $role->users_count) }}</p>
+                        <div class="role-card-metrics">
+                            <span class="metric-chip">{{ $allowedCount }} permissions allowed</span>
+                            <span class="metric-chip muted">{{ count($modules) }} modules covered</span>
+                        </div>
                     </div>
                     <div class="action-buttons">
                         <button class="btn-action outline" onclick='openEditRole(@json($rolePayload))'><i data-lucide="edit-2"></i> Edit</button>
                         <button class="btn-action outline-red" onclick="deleteRole({{ $role->id }}, @json($role->name))"><i data-lucide="trash-2"></i> Delete</button>
                     </div>
                 </div>
-                <table class="permissions-table">
-                    <thead>
-                        <tr>
-                            <th>Module</th>
-                            <th>Read</th>
-                            <th>Create</th>
-                            <th>Edit</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($permissions as $permission)
-                            <tr>
-                                <td>{{ $permission['label'] }}</td>
-                                <td>{{ $permission['read'] ? 'Yes' : 'No' }}</td>
-                                <td>{{ $permission['create'] ? 'Yes' : 'No' }}</td>
-                                <td>{{ $permission['edit'] ? 'Yes' : 'No' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                <div class="role-permission-list">
+                    @foreach($permissions as $permission)
+                        <div class="module-permission-card">
+                            <div class="module-permission-header">
+                                <strong>{{ $permission['label'] }}</strong>
+                                <span class="module-status {{ ($permission['read'] || $permission['create'] || $permission['edit']) ? 'active' : 'inactive' }}">
+                                    {{ ($permission['read'] || $permission['create'] || $permission['edit']) ? 'Access Granted' : 'No Access' }}
+                                </span>
+                            </div>
+                            <div class="permission-chip-row">
+                                <span class="permission-chip {{ $permission['read'] ? 'allowed' : 'denied' }}">Read</span>
+                                <span class="permission-chip {{ $permission['create'] ? 'allowed' : 'denied' }}">Create</span>
+                                <span class="permission-chip {{ $permission['edit'] ? 'allowed' : 'denied' }}">Edit</span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         @empty
             <div class="empty-state-panel">No roles found. Create a role to start assigning module permissions.</div>
@@ -229,14 +253,115 @@
 <style>
     .avatar-sm.inactive { background: #9ca3af; }
     .role-badge { background: #fff1e7; color: #b45309; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .roles-overview {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 22px;
+        margin-bottom: 20px;
+        background: linear-gradient(135deg, #fff7ed 0%, #ffffff 55%, #f8fafc 100%);
+        border: 1px solid #fed7aa;
+        border-radius: 18px;
+    }
+    .roles-overview h2 { margin: 0 0 4px; font-size: 22px; color: #111827; }
+    .roles-overview p { margin: 0; color: #6b7280; font-size: 14px; }
+    .roles-overview-metrics { display: flex; gap: 12px; }
+    .overview-pill {
+        min-width: 96px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        text-align: center;
+    }
+    .overview-pill strong { display: block; font-size: 20px; color: #111827; }
+    .overview-pill span { font-size: 12px; color: #6b7280; }
     .role-grid { display: grid; gap: 20px; }
-    .role-card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
+    .role-card { background: white; border: 1px solid #e5e7eb; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05); }
     .role-card-header { display: flex; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid #f3f4f6; }
     .role-card-header h3 { margin: 0 0 4px; }
     .role-card-header p { margin: 0; color: #6b7280; font-size: 13px; }
-    .permissions-table { width: 100%; border-collapse: collapse; }
-    .permissions-table th, .permissions-table td { padding: 12px 20px; border-bottom: 1px solid #f3f4f6; text-align: left; font-size: 13px; }
-    .permissions-table tr:last-child td { border-bottom: none; }
+    .role-card-metrics { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .metric-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #ecfdf5;
+        color: #166534;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .metric-chip.muted {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .role-permission-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+        padding: 18px;
+        background: #fcfcfd;
+    }
+    .module-permission-card {
+        padding: 16px;
+        border: 1px solid #eef2f7;
+        border-radius: 14px;
+        background: white;
+    }
+    .module-permission-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .module-permission-header strong {
+        font-size: 14px;
+        color: #111827;
+    }
+    .module-status {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .module-status.active {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .module-status.inactive {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .permission-chip-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .permission-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 72px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .permission-chip.allowed {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+    }
+    .permission-chip.denied {
+        background: #f9fafb;
+        border-color: #e5e7eb;
+        color: #6b7280;
+    }
     .modal-form { display: flex; flex-direction: column; gap: 16px; }
     .modal-form input, .modal-form select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; }
     .checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; }
@@ -244,7 +369,11 @@
     .permission-row { display: grid; grid-template-columns: minmax(180px, 1fr) 120px 120px 120px; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f3f4f6; }
     .permission-row:last-child { border-bottom: none; }
     .permission-row label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; }
-    @media (max-width: 900px) { .role-card-header, .permission-row { grid-template-columns: 1fr; display: grid; } }
+    @media (max-width: 900px) {
+        .roles-overview { flex-direction: column; align-items: flex-start; }
+        .role-card-header, .permission-row { grid-template-columns: 1fr; display: grid; }
+        .module-permission-header { flex-direction: column; align-items: flex-start; }
+    }
 </style>
 
 <script>
