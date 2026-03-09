@@ -183,6 +183,34 @@ class EmployeeManagementTest extends TestCase
         $this->assertNotNull($histories->first()->effective_to);
     }
 
+    public function test_employment_timeline_starts_only_when_employee_becomes_active()
+    {
+        $user = User::factory()->create();
+        $dept = Department::create(['name' => 'IT']);
+        $employee = Employee::create([
+            'full_name' => 'Invited Timeline User',
+            'email' => 'invited-timeline@example.com',
+            'status' => 'invited',
+            'department_id' => $dept->id,
+            'designation' => 'Designer',
+            'employee_id' => 'EMP117',
+        ]);
+
+        $this->assertCount(0, $employee->employmentHistories);
+
+        $response = $this->actingAs($user)->patchJson("/employees/{$employee->id}/status", [
+            'status' => 'active',
+        ]);
+
+        $response->assertOk();
+
+        $histories = $employee->fresh()->employmentHistories;
+
+        $this->assertCount(1, $histories);
+        $this->assertSame('active', $histories->first()->employment_status);
+        $this->assertNull($histories->first()->effective_to);
+    }
+
     public function test_employment_history_is_versioned_when_job_details_change()
     {
         $user = User::factory()->create();

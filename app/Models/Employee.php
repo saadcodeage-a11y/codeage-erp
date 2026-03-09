@@ -83,6 +83,7 @@ class Employee extends Model
     public function syncEmploymentHistory(?Carbon $effectiveFrom = null): void
     {
         $effectiveFrom = $effectiveFrom ?? now();
+        $hasActiveEmployment = $this->hasActiveEmploymentTimeline();
 
         $snapshot = [
             'department_id' => $this->department_id,
@@ -97,12 +98,16 @@ class Employee extends Model
             ->latest('effective_from')
             ->first();
 
+        if (! $hasActiveEmployment && ! $activeHistory) {
+            return;
+        }
+
         if ($activeHistory && ! $this->employmentSnapshotChanged($activeHistory, $snapshot)) {
             return;
         }
 
         if ($activeHistory) {
-            $effectiveTo = $this->status === 'inactive'
+            $effectiveTo = ! $hasActiveEmployment
                 ? $effectiveFrom->copy()
                 : $effectiveFrom->copy()->subSecond();
 
@@ -113,7 +118,7 @@ class Employee extends Model
             $activeHistory->update(['effective_to' => $effectiveTo]);
         }
 
-        if ($this->status === 'inactive') {
+        if (! $hasActiveEmployment) {
             return;
         }
 
@@ -142,6 +147,11 @@ class Employee extends Model
         }
 
         return Carbon::parse($hiringDate)->startOfDay();
+    }
+
+    protected function hasActiveEmploymentTimeline(): bool
+    {
+        return $this->status === 'active';
     }
 
     protected function getActivityDescription($action)
