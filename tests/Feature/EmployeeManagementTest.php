@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Department;
+use App\Models\Setting;
 use App\Models\EmployeeEmploymentHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -57,6 +58,8 @@ class EmployeeManagementTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake('public');
         $user = User::factory()->create();
         $dept = Department::create(['name' => 'HR']);
+        Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
+        Setting::create(['key' => 'employee_id_counter', 'value' => '0']);
 
         $response = $this->actingAs($user)->post('/employees', [
             'full_name' => 'Jane Doe',
@@ -70,7 +73,12 @@ class EmployeeManagementTest extends TestCase
         $employee = Employee::where('email', 'jane@example.com')->first();
         $response->assertRedirect(route('employees.show', $employee));
         
-        $this->assertDatabaseHas('employees', ['email' => 'jane@example.com', 'full_name' => 'Jane Doe']);
+        $this->assertDatabaseHas('employees', [
+            'email' => 'jane@example.com',
+            'full_name' => 'Jane Doe',
+            'employee_id' => 'CA-E-001',
+        ]);
+        $this->assertDatabaseHas('settings', ['key' => 'employee_id_counter', 'value' => '1']);
         // Verify file storage
         $this->assertNotNull($employee->cnic_front_path);
         \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->cnic_front_path);
@@ -187,13 +195,14 @@ class EmployeeManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $dept = Department::create(['name' => 'IT']);
+        Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
+        Setting::create(['key' => 'employee_id_counter', 'value' => '0']);
         $employee = Employee::create([
             'full_name' => 'Invited Timeline User',
             'email' => 'invited-timeline@example.com',
             'status' => 'invited',
             'department_id' => $dept->id,
             'designation' => 'Designer',
-            'employee_id' => 'EMP117',
         ]);
 
         $this->assertCount(0, $employee->employmentHistories);
@@ -209,6 +218,7 @@ class EmployeeManagementTest extends TestCase
         $this->assertCount(1, $histories);
         $this->assertSame('active', $histories->first()->employment_status);
         $this->assertNull($histories->first()->effective_to);
+        $this->assertSame('CA-E-001', $employee->fresh()->employee_id);
     }
 
     public function test_employment_history_is_versioned_when_job_details_change()

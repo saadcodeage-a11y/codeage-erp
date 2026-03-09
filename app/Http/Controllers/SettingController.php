@@ -8,11 +8,12 @@ use App\Models\Bank;
 use App\Models\SmtpConfiguration;
 use App\Models\CompanyPolicy;
 use App\Models\Setting;
+use App\Services\EmployeeIdService;
 use Illuminate\Support\Facades\Mail;
 
 class SettingController extends Controller
 {
-    public function index()
+    public function index(EmployeeIdService $employeeIdService)
     {
         $banks = Bank::orderBy('name')->get();
         $smtpConfigs = SmtpConfiguration::all();
@@ -20,7 +21,9 @@ class SettingController extends Controller
         $policies = CompanyPolicy::orderBy('sort_order')->get();
         
         // General Settings
-        $employeeIdPrefix = Setting::where('key', 'employee_id_prefix')->value('value') ?? 'EMP';
+        $employeeIdPrefix = $employeeIdService->employeeIdPrefix();
+        $employeeIdCounter = $employeeIdService->currentCounter();
+        $nextEmployeeId = $employeeIdService->nextEmployeeIdPreview();
         $hrEmails = Setting::where('key', 'hr_notification_emails')->value('value') ?? '';
         $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
         $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
@@ -31,6 +34,8 @@ class SettingController extends Controller
             'defaultSmtp', 
             'policies',
             'employeeIdPrefix',
+            'employeeIdCounter',
+            'nextEmployeeId',
             'hrEmails',
             'officeLocation',
             'hrContact'
@@ -260,10 +265,14 @@ class SettingController extends Controller
     }
 
     // General Settings
-    public function updateGeneralSettings(Request $request)
+    public function updateGeneralSettings(Request $request, EmployeeIdService $employeeIdService)
     {
         if ($request->has('employee_id_prefix')) {
             Setting::updateOrCreate(['key' => 'employee_id_prefix'], ['value' => $request->employee_id_prefix]);
+        }
+
+        if ($request->boolean('reset_employee_id_counter')) {
+            $employeeIdService->resetCounter();
         }
 
         if ($request->has('hr_notification_emails')) {
@@ -278,6 +287,12 @@ class SettingController extends Controller
             Setting::updateOrCreate(['key' => 'hr_contact'], ['value' => $request->hr_contact]);
         }
 
-        return response()->json(['success' => true, 'message' => 'Settings updated successfully.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Settings updated successfully.',
+            'employeeIdPrefix' => $employeeIdService->employeeIdPrefix(),
+            'employeeIdCounter' => $employeeIdService->currentCounter(),
+            'nextEmployeeId' => $employeeIdService->nextEmployeeIdPreview(),
+        ]);
     }
 }

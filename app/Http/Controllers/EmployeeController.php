@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\EmailTemplate;
 use App\Models\Setting;
 use App\Models\EmployeeEmploymentHistory;
+use App\Services\EmployeeIdService;
 use App\Services\MailService;
 use Illuminate\Support\Carbon;
 
@@ -54,7 +55,7 @@ class EmployeeController extends Controller
     }
 
 
-    public function store(Request $request)
+    public function store(Request $request, EmployeeIdService $employeeIdService)
     {
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
@@ -110,10 +111,9 @@ class EmployeeController extends Controller
             $data['transcript_path'] = $request->file('transcript')->store('employees/documents', 'public');
         }
 
-        // Generate ID if not provided (Simplistic)
-        $data['employee_id'] = 'EMP' . rand(1000, 9999); 
-
         $employee = Employee::create($data);
+
+        $this->assignEmployeeIdIfNeeded($employee, $employeeIdService);
 
         return redirect()->route('employees.show', $employee)->with('success', 'Employee added successfully.');
     }
@@ -162,7 +162,7 @@ class EmployeeController extends Controller
         return view('employees.edit', compact('employee', 'departments'));
     }
 
-    public function update(Request $request, Employee $employee)
+    public function update(Request $request, Employee $employee, EmployeeIdService $employeeIdService)
     {
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
@@ -219,11 +219,12 @@ class EmployeeController extends Controller
         }
 
         $employee->update($data);
+        $this->assignEmployeeIdIfNeeded($employee, $employeeIdService);
 
         return redirect()->route('employees.show', $employee)->with('success', 'Employee updated successfully.');
     }
 
-    public function updateStatus(Request $request, Employee $employee)
+    public function updateStatus(Request $request, Employee $employee, EmployeeIdService $employeeIdService)
     {
         $request->validate([
             'status' => 'required|in:active,inactive,invited,pending_approval',
@@ -236,6 +237,7 @@ class EmployeeController extends Controller
                 ? $request->inactive_reason
                 : null,
         ]);
+        $this->assignEmployeeIdIfNeeded($employee, $employeeIdService);
 
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Status updated successfully.']);
@@ -289,7 +291,7 @@ class EmployeeController extends Controller
         return response()->json(['success' => true, 'message' => 'Invitation sent successfully.']);
     }
 
-    public function approve(Request $request, Employee $employee, MailService $mailService)
+    public function approve(Request $request, Employee $employee, MailService $mailService, EmployeeIdService $employeeIdService)
     {
         $startDate = $request->input('start_date')
             ?: optional($employee->hiring_date)->toDateString()
@@ -300,6 +302,7 @@ class EmployeeController extends Controller
             'status' => 'active',
             'hiring_date' => $startDate,
         ]);
+        $this->assignEmployeeIdIfNeeded($employee, $employeeIdService);
         
         // Send "Welcome" email
         try {
@@ -355,5 +358,16 @@ class EmployeeController extends Controller
         }
 
         return redirect()->route('employees.index')->with('success', 'Employee deleted successfully.');
+    }
+
+    protected function assignEmployeeIdIfNeeded(Employee $employee, EmployeeIdService $employeeIdService): void
+    {
+        if ($employee->status !== 'active' || $employee->employee_id) {
+            return;
+        }
+
+        $employee->updateQuietly([
+            'employee_id' => $employeeIdService->generateNextEmployeeId(),
+        ]);
     }
 }

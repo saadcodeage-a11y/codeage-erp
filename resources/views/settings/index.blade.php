@@ -350,7 +350,7 @@
                     <input type="text" id="id_prefix" class="form-control" value="{{ $employeeIdPrefix }}" placeholder="e.g., EMP" style="max-width: 200px; background: #f9fafb;">
                     <button onclick="updateGeneralSettings('id_prefix')" class="btn btn-primary" style="background: #111827;">Save Prefix</button>
                 </div>
-                <span class="hint">This prefix will be added before the employee number (e.g., {{ $employeeIdPrefix }}001, {{ $employeeIdPrefix }}002)</span>
+                <span class="hint">This prefix will be added before the employee number (e.g., <span id="employee_id_hint_one">{{ $employeeIdPrefix }}001</span>, <span id="employee_id_hint_two">{{ $employeeIdPrefix }}002</span>)</span>
             </div>
 
             <div style="margin-top: 24px; padding: 16px; background: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb;">
@@ -360,15 +360,15 @@
                         <div style="display: flex; gap: 32px;">
                             <div>
                                 <span style="font-size: 12px; color: #9ca3af;">Current Number</span>
-                                <p style="font-size: 18px; font-weight: 600; margin: 4px 0 0 0;">0</p>
+                                <p id="employee_id_current_number" style="font-size: 18px; font-weight: 600; margin: 4px 0 0 0;">{{ $employeeIdCounter }}</p>
                             </div>
                             <div>
                                 <span style="font-size: 12px; color: #9ca3af;">Next Employee ID</span>
-                                <p style="font-size: 18px; font-weight: 600; margin: 4px 0 0 0; color: #f97316;">{{ $employeeIdPrefix }}001</p>
+                                <p id="employee_id_next" style="font-size: 18px; font-weight: 600; margin: 4px 0 0 0; color: #f97316;">{{ $nextEmployeeId }}</p>
                             </div>
                         </div>
                     </div>
-                    <button class="btn btn-outline" style="height: 36px; font-size: 13px;">
+                    <button class="btn btn-outline" style="height: 36px; font-size: 13px;" onclick="resetEmployeeIdCounter()">
                         <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Reset Counter
                     </button>
                 </div>
@@ -1044,8 +1044,44 @@
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify(data)
         }).then(res => res.json()).then(data => {
-            if (data.success) alert(data.message);
+            if (data.success) {
+                syncEmployeeIdPreview(data);
+                alert(data.message);
+            }
         });
+    }
+
+    function resetEmployeeIdCounter() {
+        if (!confirm('Reset the employee ID counter back to 0?')) return;
+
+        fetch('/settings/general', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ reset_employee_id_counter: true })
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                syncEmployeeIdPreview(data);
+                alert('Employee ID counter reset successfully.');
+            }
+        });
+    }
+
+    function syncEmployeeIdPreview(data) {
+        if (!data) return;
+
+        if (data.employeeIdPrefix) {
+            document.getElementById('id_prefix').value = data.employeeIdPrefix;
+            document.getElementById('employee_id_hint_one').textContent = `${data.employeeIdPrefix}001`;
+            document.getElementById('employee_id_hint_two').textContent = `${data.employeeIdPrefix}002`;
+        }
+
+        if (typeof data.employeeIdCounter !== 'undefined') {
+            document.getElementById('employee_id_current_number').textContent = data.employeeIdCounter;
+        }
+
+        if (data.nextEmployeeId) {
+            document.getElementById('employee_id_next').textContent = data.nextEmployeeId;
+        }
     }
 
     window.addEventListener('click', function(e) {
