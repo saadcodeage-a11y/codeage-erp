@@ -5,18 +5,19 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
         $counts = [
-            'total' => User::count(),
-            'super_admins' => User::where('role', 'Super Admin')->count(),
-            'hr_managers' => User::where('role', 'HR Manager')->count(),
-            'accounts_managers' => User::where('role', 'Accounts Manager')->count(),
+            'total_users' => User::count(),
+            'active_users' => User::where('is_active', true)->count(),
+            'two_factor_enabled' => User::where('two_factor_enabled', true)->count(),
+            'total_roles' => Role::count(),
         ];
 
         $query = User::query();
@@ -38,7 +39,15 @@ class UserController extends Controller
             ->orderBy('full_name')
             ->get(['id', 'full_name', 'email', 'employee_id']);
 
-        return view('users.index', compact('users', 'counts', 'employees'));
+        $roles = Role::with('permissions')
+            ->withCount('users')
+            ->orderBy('name')
+            ->get();
+
+        $roleOptions = $roles->pluck('name');
+        $modules = Role::availableModules();
+
+        return view('users.index', compact('users', 'counts', 'employees', 'roles', 'roleOptions', 'modules'));
     }
 
     public function store(Request $request)
@@ -46,7 +55,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|string',
+            'role' => 'required|exists:roles,name',
             'password' => 'required|string|min:8',
             'two_factor_enabled' => 'nullable|boolean',
             'employee_id' => 'nullable|exists:employees,id',
@@ -79,7 +88,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|string',
+            'role' => 'required|exists:roles,name',
             'two_factor_enabled' => 'nullable|boolean',
             'employee_id' => 'nullable|exists:employees,id',
         ]);
@@ -121,5 +130,88 @@ class UserController extends Controller
         }
 
         return redirect()->route('users.index')->with('success', 'User deleted successfully.');
+    }
+
+    public function storeRole(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:roles,name',
+            'permissions' => 'nullable|array',
+        ]);
+
+        $role = DB::transaction(function () use ($validated) {
+            $role = Role::create([
+                'name' => $validated['name'],
+            ]);
+
+            $this->syncRolePermissions($role, $validated['permissions'] ?? []);
+
+            return $role;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Role created successfully.',
+            'role' => $role->load('permissions'),
+        ]);
+    }
+
+    public function updateRole(Request $request, Role $role)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'permissions' => 'nullable|array',
+        ]);
+
+        DB::transaction(function () use ($validated, $role) {
+            $originalName = $role->name;
+            $role->update([
+                'name' => $validated['name'],
+            ]);
+
+            if ($originalName !== $role->name) {
+                User::where('role', $originalName)->update(['role' => $role->name]);
+            }
+
+            $this->syncRolePermissions($role, $validated['permissions'] ?? []);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Role updated successfully.',
+            'role' => $role->fresh()->load('permissions'),
+        ]);
+    }
+
+    public function destroyRole(Role $role)
+    {
+        if ($role->users()->exists()) {
+            return response()->json([
+                'message' => 'This role is assigned to one or more users and cannot be deleted.',
+            ], 422);
+        }
+
+        $role->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Role deleted successfully.',
+        ]);
+    }
+
+    protected function syncRolePermissions(Role $role, array $permissions): void
+    {
+        foreach (Role::availableModules() as $module => $label) {
+            $modulePermissions = $permissions[$module] ?? [];
+
+            $role->permissions()->updateOrCreate(
+                ['module' => $module],
+                [
+                    'can_read' => (bool) ($modulePermissions['read'] ?? false),
+                    'can_create' => (bool) ($modulePermissions['create'] ?? false),
+                    'can_edit' => (bool) ($modulePermissions['edit'] ?? false),
+                ]
+            );
+        }
     }
 }

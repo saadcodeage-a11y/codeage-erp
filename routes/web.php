@@ -123,6 +123,9 @@ Route::middleware('auth')->group(function () {
     // User Management
     Route::resource('users', UserController::class);
     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    Route::post('roles', [UserController::class, 'storeRole'])->name('roles.store');
+    Route::put('roles/{role}', [UserController::class, 'updateRole'])->name('roles.update');
+    Route::delete('roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');

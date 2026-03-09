@@ -38,6 +38,11 @@ class User extends Authenticatable
         return $this->belongsTo(Employee::class);
     }
 
+    public function roleDefinition()
+    {
+        return $this->belongsTo(Role::class, 'role', 'name');
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
