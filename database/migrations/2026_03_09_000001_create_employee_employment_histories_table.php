@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('payroll_status')->nullable();
             $table->string('job_location')->nullable();
             $table->string('employment_status')->nullable();
-            $table->timestamp('effective_from');
-            $table->timestamp('effective_to')->nullable();
+            $table->dateTime('effective_from');
+            $table->dateTime('effective_to')->nullable();
             $table->timestamps();
 
             $table->index(['employee_id', 'effective_from']);
