@@ -61,6 +61,8 @@ class EmployeeController extends Controller
             'email' => 'required|email|unique:employees,email',
             'department_id' => 'required|exists:departments,id',
             'designation' => 'required|string|max:255',
+            'status' => 'nullable|in:active,inactive,invited,pending_approval',
+            'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
             'hiring_date' => 'nullable|date',
             // Personal
             'cnic' => 'nullable|string',
@@ -87,6 +89,9 @@ class EmployeeController extends Controller
 
         $data = $request->except(['profile_picture', 'cnic_front', 'cnic_back', 'cv', 'transcript']);
         $data['status'] = $request->input('status', 'active');
+        $data['inactive_reason'] = $data['status'] === 'inactive'
+            ? $request->input('inactive_reason')
+            : null;
         
         // Handle Uploads
         if ($request->hasFile('profile_picture')) {
@@ -164,6 +169,8 @@ class EmployeeController extends Controller
             'email' => 'required|email|unique:employees,email,' . $employee->id,
             'department_id' => 'required|exists:departments,id',
             'designation' => 'required|string|max:255',
+            'status' => 'nullable|in:active,inactive,invited,pending_approval',
+            'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
             'hiring_date' => 'nullable|date',
             // Personal
             'cnic' => 'nullable|string',
@@ -189,6 +196,10 @@ class EmployeeController extends Controller
         ]);
 
         $data = $request->except(['profile_picture', 'cnic_front', 'cnic_back', 'cv', 'transcript']);
+        $status = $request->input('status', $employee->status);
+        $data['inactive_reason'] = $status === 'inactive'
+            ? $request->input('inactive_reason')
+            : null;
         
         // Handle Uploads
         if ($request->hasFile('profile_picture')) {
@@ -215,12 +226,18 @@ class EmployeeController extends Controller
     public function updateStatus(Request $request, Employee $employee)
     {
         $request->validate([
-            'status' => 'required|in:active,inactive,invited,pending_approval'
+            'status' => 'required|in:active,inactive,invited,pending_approval',
+            'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
         ]);
 
-        $employee->update(['status' => $request->status]);
+        $employee->update([
+            'status' => $request->status,
+            'inactive_reason' => $request->status === 'inactive'
+                ? $request->inactive_reason
+                : null,
+        ]);
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Status updated successfully.']);
         }
 

@@ -25,7 +25,7 @@
             </button>
         @else
             @if($employee->status == 'active')
-                <button type="button" onclick="updateStatus({{ $employee->id }}, 'inactive')" class="btn btn-outline" style="text-decoration: none;">
+                <button type="button" onclick="openInactiveModal({{ $employee->id }})" class="btn btn-outline" style="text-decoration: none;">
                     <i data-lucide="user-minus"></i> Mark as Inactive
                 </button>
             @else
@@ -150,6 +150,12 @@
                 <label>Hiring Date</label>
                 <p>{{ $employee->hiring_date ? $employee->hiring_date->format('d F, Y') : 'Not specified' }}</p>
             </div>
+            @if($employee->inactive_reason)
+                <div class="info-item full-width">
+                    <label>Inactive Reason</label>
+                    <p>{{ $employee->inactive_reason }}</p>
+                </div>
+            @endif
         </div>
 
         <h3 class="section-title" style="margin-top: 32px;">Employment Timeline</h3>
@@ -282,6 +288,33 @@
         </div>
     </div>
 
+</div>
+
+<div id="inactiveEmployeeModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header">
+            <div>
+                <h2>Mark Employee as Inactive</h2>
+                <p class="modal-desc">A reason is required before this employee can be marked inactive.</p>
+            </div>
+            <button onclick="closeInactiveModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <form id="inactiveEmployeeForm">
+                @csrf
+                <input type="hidden" id="inactive_employee_id" value="{{ $employee->id }}">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Reason for Inactivation *</label>
+                    <textarea id="inactive_employee_reason" rows="4" required placeholder="Explain why this employee is being marked inactive" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;"></textarea>
+                    <span id="inactiveEmployeeError" class="text-red-500 text-xs" style="display: none; margin-top: 6px;"></span>
+                </div>
+                <div class="modal-footer" style="margin-top: 20px; padding: 0; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeInactiveModal()" class="btn btn-outline">Cancel</button>
+                    <button type="button" onclick="submitInactiveStatus()" class="btn btn-primary" style="background-color: #6b7280; color: white;">Save Reason & Mark Inactive</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Edit Employee Modal (same as index) -->
@@ -424,12 +457,16 @@
                         </div>
                         <div class="form-group full-width">
                             <label>Employee Status</label>
-                            <select name="status" id="edit_status">
+                            <select name="status" id="edit_status" onchange="toggleEditInactiveReasonField()">
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                                 <option value="invited">Invited</option>
                                 <option value="pending_approval">Pending Approval</option>
                             </select>
+                        </div>
+                        <div class="form-group full-width" id="editInactiveReasonGroup" style="display: none;">
+                            <label>Reason for Inactivation *</label>
+                            <textarea name="inactive_reason" id="edit_inactive_reason" rows="3" placeholder="Explain why this employee is being marked inactive" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;"></textarea>
                         </div>
                     </div>
                 </div>
@@ -553,6 +590,7 @@
             document.getElementById('edit_job_location').value = employee.job_location || '';
             document.getElementById('edit_payroll_status').value = employee.payroll_status || '';
             document.getElementById('edit_status').value = employee.status || '';
+            document.getElementById('edit_inactive_reason').value = employee.inactive_reason || '';
             document.getElementById('edit_hr_comments').value = employee.hr_comments || '';
             
             if (employee.bank_name) {
@@ -586,6 +624,7 @@
             document.getElementById('edit_cv_status').innerHTML = employee.cv_path ? '<small style="color: green">Uploaded</small>' : '';
             document.getElementById('edit_transcript_status').innerHTML = employee.transcript_path ? '<small style="color: green">Uploaded</small>' : '';
 
+            toggleEditInactiveReasonField();
             openEditModal();
         });
     }
@@ -607,6 +646,20 @@
         fields.style.display = (val === 'Yes') ? 'grid' : 'none';
     }
 
+    function toggleEditInactiveReasonField() {
+        const status = document.getElementById('edit_status').value;
+        const group = document.getElementById('editInactiveReasonGroup');
+        const field = document.getElementById('edit_inactive_reason');
+        const isInactive = status === 'inactive';
+
+        group.style.display = isInactive ? 'block' : 'none';
+        field.required = isInactive;
+
+        if (!isInactive) {
+            field.value = '';
+        }
+    }
+
     function previewEditProfilePhoto(input) {
         if (input.files && input.files[0]) {
             var reader = new FileReader();
@@ -621,24 +674,75 @@
         }
     }
 
-    function updateStatus(id, status) {
-        if (!confirm(`Are you sure you want to mark this employee as ${status}?`)) return;
+    function openInactiveModal(id) {
+        document.getElementById('inactive_employee_id').value = id;
+        document.getElementById('inactive_employee_reason').value = '';
+        document.getElementById('inactiveEmployeeError').textContent = '';
+        document.getElementById('inactiveEmployeeError').style.display = 'none';
+        document.getElementById('inactiveEmployeeModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeInactiveModal() {
+        document.getElementById('inactiveEmployeeModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function submitInactiveStatus() {
+        const id = document.getElementById('inactive_employee_id').value;
+        const reason = document.getElementById('inactive_employee_reason').value.trim();
+        const error = document.getElementById('inactiveEmployeeError');
+
+        if (!reason) {
+            error.textContent = 'Reason is required.';
+            error.style.display = 'block';
+            return;
+        }
+
+        updateStatus(id, 'inactive', reason);
+    }
+
+    function updateStatus(id, status, inactiveReason = null) {
+        if (status !== 'inactive' && !confirm(`Are you sure you want to mark this employee as ${status}?`)) return;
 
         fetch(`/employees/${id}/status`, {
             method: 'PATCH',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({ status: status })
+            body: JSON.stringify({
+                status: status,
+                inactive_reason: inactiveReason
+            })
         })
-        .then(response => response.json())
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                if (response.status === 422 && data.errors?.inactive_reason?.[0]) {
+                    const error = document.getElementById('inactiveEmployeeError');
+
+                    if (error) {
+                        error.textContent = data.errors.inactive_reason[0];
+                        error.style.display = 'block';
+                    }
+                } else {
+                    alert(data.message || 'Failed to update status.');
+                }
+
+                return null;
+            }
+
+            return data;
+        })
         .then(data => {
-            if (data.success) {
+            if (data?.success) {
+                closeInactiveModal();
                 location.reload();
-            } else {
-                alert('Failed to update status.');
             }
         });
     }
@@ -690,7 +794,11 @@
         if (event.target == document.getElementById('editEmployeeModal')) {
             closeEditModal();
         }
+        if (event.target == document.getElementById('inactiveEmployeeModal')) {
+            closeInactiveModal();
+        }
     });
+    toggleEditInactiveReasonField();
 </script>
 
 <style>

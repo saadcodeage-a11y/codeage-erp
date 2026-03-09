@@ -40,6 +40,7 @@ class Employee extends Model
         'designation',
         'department_id',
         'status',
+        'inactive_reason',
         'hiring_date',
         'cnic', 'phone', 'gender', 'dob', 
         'current_address', 'permanent_address', 
@@ -158,6 +159,10 @@ class Employee extends Model
         }
 
         if ($this->wasChanged('status')) {
+            if ($this->status === 'inactive' && $this->inactive_reason) {
+                return "Employee {$this->full_name} status changed to inactive. Reason: {$this->inactive_reason}";
+            }
+
             return "Employee {$this->full_name} status changed to {$this->status}";
         }
 

@@ -121,6 +121,63 @@ class EmployeeManagementTest extends TestCase
         $this->assertDatabaseHas('employees', ['id' => $employee->id, 'full_name' => 'New Name', 'designation' => 'Lead Dev']);
     }
 
+    public function test_employee_can_only_be_marked_inactive_with_a_reason()
+    {
+        $user = User::factory()->create();
+        $dept = Department::create(['name' => 'IT']);
+        $employee = Employee::create([
+            'full_name' => 'Status User',
+            'email' => 'status@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'employee_id' => 'EMP115',
+        ]);
+
+        $response = $this->actingAs($user)->patchJson("/employees/{$employee->id}/status", [
+            'status' => 'inactive',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['inactive_reason']);
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'status' => 'active',
+            'inactive_reason' => null,
+        ]);
+    }
+
+    public function test_can_mark_employee_inactive_with_reason()
+    {
+        $user = User::factory()->create();
+        $dept = Department::create(['name' => 'IT']);
+        $employee = Employee::create([
+            'full_name' => 'Inactive User',
+            'email' => 'inactive@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'employee_id' => 'EMP116',
+        ]);
+
+        $response = $this->actingAs($user)->patchJson("/employees/{$employee->id}/status", [
+            'status' => 'inactive',
+            'inactive_reason' => 'Position is on hold.',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'status' => 'inactive',
+            'inactive_reason' => 'Position is on hold.',
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'subject_id' => $employee->id,
+            'subject_type' => Employee::class,
+            'description' => 'Employee Inactive User status changed to inactive. Reason: Position is on hold.',
+        ]);
+    }
+
     public function test_employment_history_is_versioned_when_job_details_change()
     {
         $user = User::factory()->create();
