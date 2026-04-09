@@ -26,12 +26,13 @@ class AttendanceImportService
         'work_time',
     ];
 
-    public function import(UploadedFile $file, User $user): AttendanceImport
+    public function import(UploadedFile $file, User $user, string $attendanceMonth): AttendanceImport
     {
         $attendanceImport = AttendanceImport::create([
             'imported_by_user_id' => $user->id,
             'source_file_name' => $file->getClientOriginalName(),
             'source_file_extension' => strtolower($file->getClientOriginalExtension()),
+            'attendance_month' => $attendanceMonth,
             'imported_at' => now(),
         ]);
 
@@ -73,7 +74,7 @@ class AttendanceImportService
             'duplicate_rows' => 0,
         ];
 
-        DB::transaction(function () use ($rows, $headerMap, $attendanceImport, &$seenKeys, &$summary) {
+        DB::transaction(function () use ($rows, $headerMap, $attendanceImport, $attendanceMonth, &$seenKeys, &$summary) {
             foreach (array_slice($rows, 1) as $index => $row) {
                 if ($this->rowIsEmpty($row)) {
                     continue;
@@ -101,6 +102,17 @@ class AttendanceImportService
                 $parsedDate = $this->parseDateValue($attendanceDate);
                 if (! $parsedDate) {
                     $this->recordError($attendanceImport, $summary, $rowNumber, $payload, 'Attendance date could not be parsed.');
+                    continue;
+                }
+
+                if ($parsedDate->format('Y-m') !== $attendanceMonth) {
+                    $this->recordError(
+                        $attendanceImport,
+                        $summary,
+                        $rowNumber,
+                        $payload,
+                        "This row belongs to {$parsedDate->format('F Y')}, but the selected import month is " . Carbon::createFromFormat('Y-m', $attendanceMonth)->format('F Y') . '.'
+                    );
                     continue;
                 }
 

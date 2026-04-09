@@ -132,7 +132,7 @@
                     <a href="{{ route('attendance.index', ['month' => $month, 'import' => $import->id]) }}" class="import-card {{ $selectedImport?->id === $import->id ? 'active' : '' }}">
                         <div>
                             <strong>{{ $import->source_file_name }}</strong>
-                            <p>{{ optional($import->imported_at)->format('d M Y, h:i A') ?? 'Not imported yet' }}</p>
+                            <p>{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $import->attendance_month)->format('F Y') }} · {{ optional($import->imported_at)->format('d M Y, h:i A') ?? 'Not imported yet' }}</p>
                         </div>
                         <div class="import-card-metrics">
                             <span>{{ $import->imported_rows }} imported</span>
@@ -203,6 +203,11 @@
             <div class="modal-body" style="padding: 24px;">
                 <form method="POST" action="{{ route('attendance.import') }}" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 16px;">
                     @csrf
+                    <div class="form-group" style="margin: 0;">
+                        <label>Attendance Month</label>
+                        <input type="month" name="attendance_month" value="{{ $month }}" required>
+                        <span class="hint">Select the month this attendance file belongs to. Rows from a different month will be flagged as errors.</span>
+                    </div>
                     <div class="form-group" style="margin: 0;">
                         <label>Attendance File</label>
                         <input type="file" name="attendance_file" accept=".xls,.xlsx" required>

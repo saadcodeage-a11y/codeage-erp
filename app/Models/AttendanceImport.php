@@ -13,6 +13,7 @@ class AttendanceImport extends Model
         'imported_by_user_id',
         'source_file_name',
         'source_file_extension',
+        'attendance_month',
         'total_rows',
         'imported_rows',
         'error_rows',

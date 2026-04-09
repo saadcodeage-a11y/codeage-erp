@@ -62,15 +62,19 @@ class AttendanceController extends Controller
     public function import(Request $request, AttendanceImportService $attendanceImportService)
     {
         $validated = $request->validate([
+            'attendance_month' => 'required|date_format:Y-m',
             'attendance_file' => 'required|file|mimes:xls,xlsx',
         ]);
 
-        $attendanceImport = $attendanceImportService->import($validated['attendance_file'], $request->user());
-        $firstImportedRecord = $attendanceImport->records()->orderBy('attendance_date')->first();
+        $attendanceImport = $attendanceImportService->import(
+            $validated['attendance_file'],
+            $request->user(),
+            $validated['attendance_month']
+        );
 
         return redirect()
             ->route('attendance.index', [
-                'month' => $firstImportedRecord?->attendance_date?->format('Y-m') ?? now()->format('Y-m'),
+                'month' => $attendanceImport->attendance_month,
                 'import' => $attendanceImport->id,
             ])
             ->with('success', 'Attendance file imported successfully.');

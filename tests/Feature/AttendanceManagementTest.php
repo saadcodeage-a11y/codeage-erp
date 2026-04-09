@@ -79,6 +79,7 @@ class AttendanceManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
             'attendance_file' => $file,
         ]);
 
@@ -86,6 +87,7 @@ class AttendanceManagementTest extends TestCase
 
         $this->assertDatabaseHas('attendance_imports', [
             'source_file_name' => 'monthly-attendance.xls',
+            'attendance_month' => '2026-03',
             'imported_rows' => 2,
             'error_rows' => 0,
         ]);
@@ -115,6 +117,7 @@ class AttendanceManagementTest extends TestCase
         ]);
 
         $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
             'attendance_file' => $file,
         ])->assertRedirect();
 
@@ -150,6 +153,7 @@ class AttendanceManagementTest extends TestCase
         ]);
 
         $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
             'attendance_file' => $file,
         ])->assertRedirect();
 
@@ -169,5 +173,35 @@ class AttendanceManagementTest extends TestCase
         $accountsUser = $this->createUser('Accounts Manager');
 
         $this->actingAs($accountsUser)->get(route('attendance.index'))->assertForbidden();
+    }
+
+    public function test_import_records_error_when_row_month_does_not_match_selected_month(): void
+    {
+        $employee = $this->createEmployee([
+            'employee_id' => 'CA-E-11',
+            'full_name' => 'Month Check Employee',
+        ]);
+        $hrUser = $this->createUser('HR Manager');
+        $file = $this->createAttendanceFile([
+            ['CA-E-11', 'Month Check Employee', '02/04/2026', '09:17', '15:06', '00:17', '', '', '05:42'],
+        ]);
+
+        $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
+            'attendance_file' => $file,
+        ])->assertRedirect();
+
+        $import = AttendanceImport::firstOrFail();
+
+        $this->assertSame(0, $import->imported_rows);
+        $this->assertSame(1, $import->error_rows);
+        $this->assertDatabaseHas('attendance_import_errors', [
+            'attendance_import_id' => $import->id,
+            'employee_code' => 'CA-E-11',
+            'attendance_date' => '02/04/2026',
+        ]);
+        $this->assertDatabaseMissing('attendance_records', [
+            'employee_id' => $employee->id,
+        ]);
     }
 }

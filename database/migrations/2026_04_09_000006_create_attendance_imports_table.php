@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('imported_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('source_file_name');
             $table->string('source_file_extension', 10)->nullable();
+            $table->string('attendance_month', 7);
             $table->unsignedInteger('total_rows')->default(0);
             $table->unsignedInteger('imported_rows')->default(0);
             $table->unsignedInteger('error_rows')->default(0);
