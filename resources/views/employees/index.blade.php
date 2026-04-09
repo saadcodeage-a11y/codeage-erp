@@ -3,18 +3,24 @@
 @section('title', 'Employees')
 
 @section('content')
+@php
+    $canCreateEmployees = Auth::user()->canAccessModule('employees', 'create');
+    $canEditEmployees = Auth::user()->canAccessModule('employees', 'edit');
+@endphp
 <div class="page-header">
     <div class="header-left">
         <h1>Employee Management</h1>
         <p>Manage your team members and their information</p>
     </div>
     <div class="header-right">
-        <button class="btn btn-outline" onclick="openInviteModal()">
-            <i data-lucide="send"></i> Invite Employee
-        </button>
-        <a href="#" onclick="openModal(); return false;" class="btn btn-primary" style="text-decoration: none;">
-            <i data-lucide="plus"></i> Add Employee
-        </a>
+        @if($canCreateEmployees)
+            <button class="btn btn-outline" onclick="openInviteModal()">
+                <i data-lucide="send"></i> Invite Employee
+            </button>
+            <a href="#" onclick="openModal(); return false;" class="btn btn-primary" style="text-decoration: none;">
+                <i data-lucide="plus"></i> Add Employee
+            </a>
+        @endif
     </div>
 </div>
 
@@ -75,46 +81,52 @@
                 <td>{{ $employee->designation ?: 'Not assigned' }}</td>
                 <td>
                     <span class="status-badge {{ $employee->status }}">
-                        {{ ucfirst($employee->status) }}
+                        {{ ucfirst(str_replace('_', ' ', $employee->status)) }}
                     </span>
                 </td>
                 <td>
                     <div class="action-buttons">
-                        @if($employee->status == 'invited')
-                            <button class="btn-action outline-blue"><i data-lucide="send"></i> Resend</button>
-                        @endif
-                        
                         @if($employee->status == 'pending_approval')
-                           <button type="button" onclick="approveEmployee({{ $employee->id }})" class="btn-action outline-green"><i data-lucide="check"></i> Approve</button>
-                           <button type="button" onclick="disapproveEmployee({{ $employee->id }})" class="btn-action outline-red"><i data-lucide="x"></i> Disapprove</button>
+                           @if($canEditEmployees)
+                               <button type="button" onclick="approveEmployee({{ $employee->id }})" class="btn-action outline-green"><i data-lucide="check"></i> Approve</button>
+                               <button type="button" onclick="disapproveEmployee({{ $employee->id }})" class="btn-action outline-red"><i data-lucide="x"></i> Disapprove</button>
+                           @endif
                            <a href="{{ route('employees.show', $employee) }}" class="btn-action outline"><i data-lucide="eye"></i> Review</a>
                         @else
                            <a href="{{ route('employees.show', $employee) }}" class="btn-action outline"><i data-lucide="eye"></i> View</a>
-                           @if($employee->status != 'invited')
+                           @if($canEditEmployees && $employee->status != 'invited')
                                <button type="button" onclick="editEmployee({{ $employee->id }})" class="btn-action outline"><i data-lucide="edit-2"></i> Edit</button>
                            @endif
                         @endif
 
-                        <div class="dropdown">
-                            <button class="btn-action icon-only dropdown-toggle" onclick="toggleDropdown(this)">
-                                <i data-lucide="more-vertical"></i>
-                            </button>
-                            <div class="dropdown-menu">
-                                @if($employee->status == 'active')
-                                    <button type="button" class="dropdown-item" onclick="openInactiveModal({{ $employee->id }})">
-                                        <i data-lucide="user-minus" style="color: #6b7280;"></i> Mark as Inactive
-                                    </button>
-                                @else
-                                    <button type="button" class="dropdown-item" onclick="updateStatus({{ $employee->id }}, 'active')">
-                                        <i data-lucide="user-check" style="color: #10B981;"></i> Mark as Active
-                                    </button>
-                                @endif
-                                <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 4px 0;">
-                                <button type="button" class="dropdown-item text-red" onclick="deleteEmployee({{ $employee->id }})">
-                                    <i data-lucide="trash-2"></i> Delete Employee
+                        @if($canEditEmployees)
+                            <div class="dropdown">
+                                <button class="btn-action icon-only dropdown-toggle" onclick="toggleDropdown(this)">
+                                    <i data-lucide="more-vertical"></i>
                                 </button>
+                                <div class="dropdown-menu">
+                                    @if($employee->status == 'active')
+                                        <button type="button" class="dropdown-item" onclick="openInactiveModal({{ $employee->id }})">
+                                            <i data-lucide="user-minus" style="color: #6b7280;"></i> Mark as Inactive
+                                        </button>
+                                        <button type="button" class="dropdown-item" onclick="updateStatus({{ $employee->id }}, 'resigned')">
+                                            <i data-lucide="log-out" style="color: #6b7280;"></i> Mark as Resigned
+                                        </button>
+                                        <button type="button" class="dropdown-item" onclick="updateStatus({{ $employee->id }}, 'terminated')">
+                                            <i data-lucide="shield-x" style="color: #b91c1c;"></i> Mark as Terminated
+                                        </button>
+                                    @else
+                                        <button type="button" class="dropdown-item" onclick="updateStatus({{ $employee->id }}, 'active')">
+                                            <i data-lucide="user-check" style="color: #10B981;"></i> Mark as Active
+                                        </button>
+                                    @endif
+                                    <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 4px 0;">
+                                    <button type="button" class="dropdown-item text-red" onclick="deleteEmployee({{ $employee->id }})">
+                                        <i data-lucide="trash-2"></i> Delete Employee
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </td>
             </tr>
@@ -301,6 +313,8 @@
                                 <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
                                 <option value="invited" {{ old('status') == 'invited' ? 'selected' : '' }}>Invited</option>
                                 <option value="pending_approval" {{ old('status') == 'pending_approval' ? 'selected' : '' }}>Pending Approval</option>
+                                <option value="resigned" {{ old('status') == 'resigned' ? 'selected' : '' }}>Resigned</option>
+                                <option value="terminated" {{ old('status') == 'terminated' ? 'selected' : '' }}>Terminated</option>
                             </select>
                         </div>
                         <div class="form-group full-width" id="inactiveReasonGroup" style="display: none;">
@@ -634,6 +648,8 @@
                                 <option value="inactive">Inactive</option>
                                 <option value="invited">Invited</option>
                                 <option value="pending_approval">Pending Approval</option>
+                                <option value="resigned">Resigned</option>
+                                <option value="terminated">Terminated</option>
                             </select>
                         </div>
                         <div class="form-group full-width" id="editInactiveReasonGroup" style="display: none;">

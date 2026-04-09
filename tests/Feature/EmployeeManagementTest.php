@@ -15,9 +15,24 @@ class EmployeeManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function createHrUser(array $attributes = []): User
+    {
+        return User::factory()->create(array_merge([
+            'role' => 'HR Manager',
+        ], $attributes));
+    }
+
+    protected function createEmployeeUser(Employee $employee, array $attributes = []): User
+    {
+        return User::factory()->create(array_merge([
+            'role' => 'Employee',
+            'employee_id' => $employee->id,
+        ], $attributes));
+    }
+
     public function test_can_view_employee_list()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         Employee::create([
             'full_name' => 'John Doe',
@@ -36,7 +51,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_can_filter_employees_by_status()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         
         Employee::create(['full_name' => 'Active User', 'email' => 'active@ex.com', 'status' => 'active', 'department_id' => $dept->id, 'employee_id' => 'E1']);
@@ -56,7 +71,7 @@ class EmployeeManagementTest extends TestCase
     public function test_can_create_employee_with_files()
     {
         \Illuminate\Support\Facades\Storage::fake('public');
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'HR']);
         Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
         Setting::create(['key' => 'employee_id_counter', 'value' => '0']);
@@ -86,7 +101,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_can_view_single_employee_details()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         $employee = Employee::create([
             'full_name' => 'Test User',
@@ -107,7 +122,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_can_edit_employee()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         $employee = Employee::create([
             'full_name' => 'Old Name',
@@ -131,7 +146,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_employee_can_only_be_marked_inactive_with_a_reason()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         $employee = Employee::create([
             'full_name' => 'Status User',
@@ -157,7 +172,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_can_mark_employee_inactive_with_reason()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         $employee = Employee::create([
             'full_name' => 'Inactive User',
@@ -193,7 +208,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_employment_timeline_starts_only_when_employee_becomes_active()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
         Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
         Setting::create(['key' => 'employee_id_counter', 'value' => '0']);
@@ -223,7 +238,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_employment_history_is_versioned_when_job_details_change()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $deptOne = Department::create(['name' => 'IT']);
         $deptTwo = Department::create(['name' => 'Operations']);
 
@@ -268,7 +283,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_employee_detail_page_shows_employment_history_and_related_activity_logs()
     {
-        $user = User::factory()->create();
+        $user = $this->createHrUser();
         $dept = Department::create(['name' => 'IT']);
 
         $employee = Employee::create([
@@ -305,5 +320,23 @@ class EmployeeManagementTest extends TestCase
         $response->assertSee('Paid');
         $response->assertSee('Employee profile reviewed');
         $response->assertSee('Payroll changed to Paid');
+    }
+
+    public function test_employee_role_cannot_access_employee_management_pages()
+    {
+        $dept = Department::create(['name' => 'IT']);
+        $employee = Employee::create([
+            'full_name' => 'Portal User',
+            'email' => 'portal@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Support Engineer',
+            'employee_id' => 'EMP150',
+        ]);
+
+        $user = $this->createEmployeeUser($employee);
+
+        $this->actingAs($user)->get(route('employees.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('employees.show', $employee))->assertForbidden();
     }
 }

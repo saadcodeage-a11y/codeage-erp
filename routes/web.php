@@ -82,50 +82,85 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\LeaveController;
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'module:dashboard,read'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     // Employees
-    Route::resource('employees', EmployeeController::class);
-    Route::patch('employees/{employee}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
-    Route::post('employees/invite', [EmployeeController::class, 'invite'])->name('employees.invite');
-    Route::post('employees/{employee}/approve', [EmployeeController::class, 'approve'])->name('employees.approve');
-    Route::post('employees/{employee}/disapprove', [EmployeeController::class, 'disapprove'])->name('employees.disapprove');
+    Route::middleware('module:employees,read')->group(function () {
+        Route::get('employees', [EmployeeController::class, 'index'])->name('employees.index');
+        Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
+        Route::get('employees/{employee}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
+        Route::get('employees/{employee}/letters/{letter}/download', [EmployeeController::class, 'downloadLetter'])->name('employees.letters.download');
+    });
+    Route::middleware('module:employees,create')->group(function () {
+        Route::post('employees', [EmployeeController::class, 'store'])->name('employees.store');
+        Route::post('employees/invite', [EmployeeController::class, 'invite'])->name('employees.invite');
+    });
+    Route::middleware('module:employees,edit')->group(function () {
+        Route::put('employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+        Route::delete('employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+        Route::patch('employees/{employee}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
+        Route::post('employees/{employee}/approve', [EmployeeController::class, 'approve'])->name('employees.approve');
+        Route::post('employees/{employee}/disapprove', [EmployeeController::class, 'disapprove'])->name('employees.disapprove');
+        Route::post('employees/{employee}/letters', [EmployeeController::class, 'generateLetter'])->name('employees.letters.generate');
+    });
+
+    // Leave Management
+    Route::middleware('module:leave_management,read')->group(function () {
+        Route::get('/leaves', [LeaveController::class, 'index'])->name('leaves.index');
+        Route::post('/leaves/{leaveRequest}/cancel', [LeaveController::class, 'cancel'])->name('leaves.cancel');
+    });
+    Route::middleware('module:leave_management,create')->group(function () {
+        Route::post('/leaves', [LeaveController::class, 'store'])->name('leaves.store');
+    });
+    Route::middleware('module:leave_management,edit')->group(function () {
+        Route::post('/leaves/{leaveRequest}/approve', [LeaveController::class, 'approve'])->name('leaves.approve');
+        Route::post('/leaves/{leaveRequest}/reject', [LeaveController::class, 'reject'])->name('leaves.reject');
+        Route::post('/leave-types', [LeaveController::class, 'storeType'])->name('leave-types.store');
+        Route::put('/leave-types/{leaveType}', [LeaveController::class, 'updateType'])->name('leave-types.update');
+        Route::delete('/leave-types/{leaveType}', [LeaveController::class, 'destroyType'])->name('leave-types.destroy');
+    });
 
     // Settings
-    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::get('/settings', [SettingController::class, 'index'])->middleware('module:settings,read')->name('settings.index');
     
     // Bank Management
-    Route::post('/settings/banks', [SettingController::class, 'storeBank'])->name('settings.banks.store');
-    Route::put('/settings/banks/{bank}', [SettingController::class, 'updateBank'])->name('settings.banks.update');
-    Route::delete('/settings/banks/{bank}', [SettingController::class, 'destroyBank'])->name('settings.banks.destroy');
+    Route::post('/settings/banks', [SettingController::class, 'storeBank'])->middleware('module:settings,edit')->name('settings.banks.store');
+    Route::put('/settings/banks/{bank}', [SettingController::class, 'updateBank'])->middleware('module:settings,edit')->name('settings.banks.update');
+    Route::delete('/settings/banks/{bank}', [SettingController::class, 'destroyBank'])->middleware('module:settings,edit')->name('settings.banks.destroy');
     
     // SMTP Management
-    Route::post('/settings/smtp', [SettingController::class, 'storeSmtp'])->name('settings.smtp.store');
-    Route::put('/settings/smtp/{smtp}', [SettingController::class, 'updateSmtp'])->name('settings.smtp.update');
-    Route::delete('/settings/smtp/{smtp}', [SettingController::class, 'destroySmtp'])->name('settings.smtp.destroy');
-    Route::patch('/settings/smtp/{smtp}/default', [SettingController::class, 'setDefaultSmtp'])->name('settings.smtp.default');
+    Route::post('/settings/smtp', [SettingController::class, 'storeSmtp'])->middleware('module:settings,edit')->name('settings.smtp.store');
+    Route::put('/settings/smtp/{smtp}', [SettingController::class, 'updateSmtp'])->middleware('module:settings,edit')->name('settings.smtp.update');
+    Route::delete('/settings/smtp/{smtp}', [SettingController::class, 'destroySmtp'])->middleware('module:settings,edit')->name('settings.smtp.destroy');
+    Route::patch('/settings/smtp/{smtp}/default', [SettingController::class, 'setDefaultSmtp'])->middleware('module:settings,edit')->name('settings.smtp.default');
 
     // Policy Management
-    Route::post('/settings/policies', [SettingController::class, 'storePolicy'])->name('settings.policies.store');
-    Route::put('/settings/policies/{policy}', [SettingController::class, 'updatePolicy'])->name('settings.policies.update');
-    Route::delete('/settings/policies/{policy}', [SettingController::class, 'destroyPolicy'])->name('settings.policies.destroy');
-    Route::patch('/settings/policies/{policy}/toggle', [SettingController::class, 'togglePolicyVisibility'])->name('settings.policies.toggle');
-    Route::patch('/settings/policies/{policy}/reorder', [SettingController::class, 'reorderPolicy'])->name('settings.policies.reorder');
+    Route::post('/settings/policies', [SettingController::class, 'storePolicy'])->middleware('module:settings,edit')->name('settings.policies.store');
+    Route::put('/settings/policies/{policy}', [SettingController::class, 'updatePolicy'])->middleware('module:settings,edit')->name('settings.policies.update');
+    Route::delete('/settings/policies/{policy}', [SettingController::class, 'destroyPolicy'])->middleware('module:settings,edit')->name('settings.policies.destroy');
+    Route::patch('/settings/policies/{policy}/toggle', [SettingController::class, 'togglePolicyVisibility'])->middleware('module:settings,edit')->name('settings.policies.toggle');
+    Route::patch('/settings/policies/{policy}/reorder', [SettingController::class, 'reorderPolicy'])->middleware('module:settings,edit')->name('settings.policies.reorder');
 
     // General Settings
-    Route::post('/settings/general', [SettingController::class, 'updateGeneralSettings'])->name('settings.general.update');
+    Route::post('/settings/general', [SettingController::class, 'updateGeneralSettings'])->middleware('module:settings,edit')->name('settings.general.update');
     
     // Email Testing
-    Route::post('/settings/test-email', [SettingController::class, 'sendTestEmail'])->name('settings.test-email');
+    Route::post('/settings/test-email', [SettingController::class, 'sendTestEmail'])->middleware('module:settings,edit')->name('settings.test-email');
 
     // User Management
-    Route::resource('users', UserController::class);
-    Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
-    Route::post('roles', [UserController::class, 'storeRole'])->name('roles.store');
-    Route::put('roles/{role}', [UserController::class, 'updateRole'])->name('roles.update');
-    Route::delete('roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
+    Route::get('users', [UserController::class, 'index'])->middleware('module:user_management,read')->name('users.index');
+    Route::post('users', [UserController::class, 'store'])->middleware('module:user_management,edit')->name('users.store');
+    Route::put('users/{user}', [UserController::class, 'update'])->middleware('module:user_management,edit')->name('users.update');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('module:user_management,edit')->name('users.destroy');
+    Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('module:user_management,edit')->name('users.reset-password');
+    Route::post('roles', [UserController::class, 'storeRole'])->middleware('module:user_management,edit')->name('roles.store');
+    Route::put('roles/{role}', [UserController::class, 'updateRole'])->middleware('module:user_management,edit')->name('roles.update');
+    Route::delete('roles/{role}', [UserController::class, 'destroyRole'])->middleware('module:user_management,edit')->name('roles.destroy');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
@@ -134,11 +169,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/two-factor', [ProfileController::class, 'toggleTwoFactor'])->name('profile.two-factor.toggle');
 
     // Templates & Forms
-    Route::get('/templates', [TemplateController::class, 'index'])->name('templates.index');
-    Route::post('/templates/email', [TemplateController::class, 'storeEmailTemplate'])->name('templates.email.store');
-    Route::put('/templates/{id}/update', [TemplateController::class, 'updateEmailTemplate'])->name('templates.email.update');
-    Route::put('/templates/forms/{id}/update', [TemplateController::class, 'updateFormTemplate'])->name('templates.forms.update');
-    Route::post('/templates/toggle-status', [TemplateController::class, 'toggleStatus'])->name('templates.toggle-status');
+    Route::get('/templates', [TemplateController::class, 'index'])->middleware('module:templates,read')->name('templates.index');
+    Route::post('/templates/email', [TemplateController::class, 'storeEmailTemplate'])->middleware('module:templates,edit')->name('templates.email.store');
+    Route::put('/templates/{id}/update', [TemplateController::class, 'updateEmailTemplate'])->middleware('module:templates,edit')->name('templates.email.update');
+    Route::put('/templates/forms/{id}/update', [TemplateController::class, 'updateFormTemplate'])->middleware('module:templates,edit')->name('templates.forms.update');
+    Route::post('/templates/toggle-status', [TemplateController::class, 'toggleStatus'])->middleware('module:templates,edit')->name('templates.toggle-status');
 // Maintenance Routes
 Route::get('/migrate-storage', function() {
     $results = [];
@@ -187,5 +222,5 @@ Route::get('/migrate-storage', function() {
 });
 
     // Activity Logs
-    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->middleware('module:activity_logs,read')->name('activity-logs.index');
 });

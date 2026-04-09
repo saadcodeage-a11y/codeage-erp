@@ -3,38 +3,47 @@
 @section('title', $employee->full_name . ' - Employee Details')
 
 @section('content')
+@php
+    $canEditEmployees = Auth::user()->canAccessModule('employees', 'edit');
+@endphp
 <div class="page-header" style="margin-bottom: 24px;">
     <div style="display: flex; align-items: center; gap: 12px;">
         <a href="{{ route('employees.index') }}" class="btn btn-outline" style="padding: 8px 12px; text-decoration: none;">
             <i data-lucide="arrow-left"></i> Back to List
         </a>
     </div>
-    <div style="display: flex; gap: 10px;">
-        <button type="button" onclick="editEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #FF4A00; text-decoration: none;">
-            <i data-lucide="edit"></i> Edit Details
-        </button>
-        <button type="button" onclick="deleteEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #dc2626; text-decoration: none;">
-            <i data-lucide="trash-2"></i> Delete Employee
-        </button>
-        @if($employee->status == 'pending_approval')
-            <button type="button" onclick="approveEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #10B981; text-decoration: none;">
-                <i data-lucide="check"></i> Approve Application
+    @if($canEditEmployees)
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+            <button type="button" onclick="editEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #FF4A00; text-decoration: none;">
+                <i data-lucide="edit"></i> Edit Details
             </button>
-            <button type="button" onclick="disapproveEmployee({{ $employee->id }})" class="btn btn-outline" style="color: #dc2626; border-color: #dc2626; text-decoration: none;">
-                <i data-lucide="x"></i> Disapprove
+            <button type="button" onclick="deleteEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #dc2626; text-decoration: none;">
+                <i data-lucide="trash-2"></i> Delete Employee
             </button>
-        @else
-            @if($employee->status == 'active')
+            @if($employee->status == 'pending_approval')
+                <button type="button" onclick="approveEmployee({{ $employee->id }})" class="btn btn-primary" style="background-color: #10B981; text-decoration: none;">
+                    <i data-lucide="check"></i> Approve Application
+                </button>
+                <button type="button" onclick="disapproveEmployee({{ $employee->id }})" class="btn btn-outline" style="color: #dc2626; border-color: #dc2626; text-decoration: none;">
+                    <i data-lucide="x"></i> Disapprove
+                </button>
+            @elseif($employee->status == 'active')
                 <button type="button" onclick="openInactiveModal({{ $employee->id }})" class="btn btn-outline" style="text-decoration: none;">
                     <i data-lucide="user-minus"></i> Mark as Inactive
+                </button>
+                <button type="button" onclick="updateStatus({{ $employee->id }}, 'resigned')" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="log-out"></i> Mark as Resigned
+                </button>
+                <button type="button" onclick="updateStatus({{ $employee->id }}, 'terminated')" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="shield-x"></i> Mark as Terminated
                 </button>
             @else
                 <button type="button" onclick="updateStatus({{ $employee->id }}, 'active')" class="btn btn-outline" style="text-decoration: none;">
                     <i data-lucide="user-check"></i> Mark as Active
                 </button>
             @endif
-        @endif
-    </div>
+        </div>
+    @endif
 </div>
 
 <!-- Employee Header Card -->
@@ -62,6 +71,8 @@
     <button class="tab-btn" onclick="switchTab('employment', this)">Employment Summary</button>
     <button class="tab-btn" onclick="switchTab('job', this)">Job Details</button>
     <button class="tab-btn" onclick="switchTab('documents', this)">Documents</button>
+    <button class="tab-btn" onclick="switchTab('leave', this)">Leave History</button>
+    <button class="tab-btn" onclick="switchTab('letters', this)">HR Letters</button>
     <button class="tab-btn" onclick="switchTab('activity', this)">Activity Logs</button>
 </div>
 
@@ -204,7 +215,7 @@
         <div class="info-grid two-col">
              <div class="info-item">
                 <label>Department</label>
-                <p>{{ $employee->department->name }}</p>
+                <p>{{ $employee->department?->name ?? 'Not assigned' }}</p>
             </div>
             <div class="info-item">
                 <label>Hiring Date</label>
@@ -247,6 +258,101 @@
              @if($employee->transcript_path)
                 <a href="{{ asset('storage/'.$employee->transcript_path) }}" target="_blank" class="doc-link">View</a>
             @endif
+        </div>
+    </div>
+
+    <div id="leave" class="tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div>
+                <h3 class="section-title" style="margin-bottom: 4px;">Leave History</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Requests submitted for this employee across all leave types.</p>
+            </div>
+            @if(Auth::user()->canAccessModule('leave_management', 'create'))
+                <a href="{{ route('leaves.index') }}" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="calendar-range"></i> Open Leave Management
+                </a>
+            @endif
+        </div>
+
+        <div class="stacked-list">
+            @forelse($employee->leaveRequests as $leaveRequest)
+                <div class="timeline-card" style="margin-bottom: 14px;">
+                    <div class="timeline-header">
+                        <div>
+                            <h4>{{ $leaveRequest->leaveType?->name ?? 'Leave Request' }}</h4>
+                            <p>
+                                {{ $leaveRequest->start_date->format('d M Y') }} to {{ $leaveRequest->end_date->format('d M Y') }}
+                                • {{ $leaveRequest->days_count }} day{{ $leaveRequest->days_count === 1 ? '' : 's' }}
+                            </p>
+                        </div>
+                        <span class="status-badge {{ $leaveRequest->status }}">{{ ucfirst($leaveRequest->status) }}</span>
+                    </div>
+                    <div class="activity-log-meta" style="margin-bottom: 12px;">
+                        <span>Requested by {{ $leaveRequest->requestedBy?->name ?? 'System' }}</span>
+                        @if($leaveRequest->reviewed_at)
+                            <span>Reviewed {{ $leaveRequest->reviewed_at->format('d M Y, h:i A') }}</span>
+                        @endif
+                    </div>
+                    <p style="margin: 0; color: #374151; line-height: 1.6;">{{ $leaveRequest->reason }}</p>
+                    @if($leaveRequest->reviewer_notes)
+                        <div class="note-panel" style="margin-top: 12px;">
+                            <strong>Reviewer Notes:</strong> {{ $leaveRequest->reviewer_notes }}
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No leave requests have been recorded for this employee yet.
+                </div>
+            @endforelse
+        </div>
+    </div>
+
+    <div id="letters" class="tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div>
+                <h3 class="section-title" style="margin-bottom: 4px;">HR Letters</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Generate, store, and download employee letters from one place.</p>
+            </div>
+            @if($canEditEmployees)
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-outline" onclick="generateLetter('offer')">
+                        <i data-lucide="file-plus"></i> Offer Letter
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="generateLetter('experience')">
+                        <i data-lucide="badge-check"></i> Experience Letter
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="generateLetter('termination')">
+                        <i data-lucide="file-warning"></i> Termination Letter
+                    </button>
+                </div>
+            @endif
+        </div>
+
+        <div class="stacked-list">
+            @forelse($employee->hrLetters as $letter)
+                <div class="timeline-card" style="margin-bottom: 14px;">
+                    <div class="timeline-header">
+                        <div>
+                            <h4>{{ $letter->title }}</h4>
+                            <p>{{ ucfirst($letter->type) }} letter</p>
+                        </div>
+                        <div class="timeline-date">
+                            <strong>{{ optional($letter->generated_at)->format('d M Y, h:i A') ?? 'Generated' }}</strong>
+                            <span>{{ $letter->generatedBy?->name ? 'By ' . $letter->generatedBy->name : 'Generated by system' }}</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons" style="margin-top: 14px;">
+                        <a href="{{ route('employees.letters.download', [$employee, $letter]) }}" class="btn btn-outline" style="text-decoration: none;">
+                            <i data-lucide="download"></i> Download
+                        </a>
+                    </div>
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No HR letters have been generated for this employee yet.
+                </div>
+            @endforelse
         </div>
     </div>
     
@@ -462,6 +568,8 @@
                                 <option value="inactive">Inactive</option>
                                 <option value="invited">Invited</option>
                                 <option value="pending_approval">Pending Approval</option>
+                                <option value="resigned">Resigned</option>
+                                <option value="terminated">Terminated</option>
                             </select>
                         </div>
                         <div class="form-group full-width" id="editInactiveReasonGroup" style="display: none;">
@@ -789,6 +897,40 @@
         }).then(() => location.reload());
     }
 
+    function generateLetter(type) {
+        fetch(`/employees/{{ $employee->id }}/letters`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ type })
+        })
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                alert(data.message || 'Failed to generate the letter.');
+                return null;
+            }
+
+            return data;
+        })
+        .then(data => {
+            if (!data?.success) {
+                return;
+            }
+
+            if (data.download_url) {
+                window.open(data.download_url, '_blank');
+            }
+
+            location.reload();
+        });
+    }
+
     // Close on click outside
     window.addEventListener('click', function(event) {
         if (event.target == document.getElementById('editEmployeeModal')) {
@@ -870,6 +1012,23 @@
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         padding: 16px;
+    }
+    .stacked-list {
+        display: flex;
+        flex-direction: column;
+    }
+    .note-panel {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 12px 14px;
+        color: #4b5563;
+        font-size: 14px;
+    }
+    .status-badge.resigned,
+    .status-badge.terminated {
+        background: #fef2f2;
+        color: #b91c1c;
     }
     .doc-label {
         font-size: 13px;

@@ -70,6 +70,16 @@ class Employee extends Model
         return $this->belongsTo(Bank::class);
     }
 
+    public function leaveRequests()
+    {
+        return $this->hasMany(LeaveRequest::class)->latest();
+    }
+
+    public function hrLetters()
+    {
+        return $this->hasMany(HrLetter::class)->latest('generated_at');
+    }
+
     public function employmentHistories()
     {
         return $this->hasMany(EmployeeEmploymentHistory::class)->orderByDesc('effective_from');

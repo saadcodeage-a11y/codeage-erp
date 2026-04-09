@@ -24,34 +24,48 @@
             </div>
             
             <nav class="sidebar-nav">
-                <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                    <i data-lucide="layout-grid"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="#" class="nav-item">
-                    <i data-lucide="file-text"></i>
-                    <span>Reports</span>
-                </a>
-                <a href="{{ route('employees.index') }}" class="nav-item {{ request()->routeIs('employees.*') ? 'active' : '' }}">
-                    <i data-lucide="users"></i>
-                    <span>Employees</span>
-                </a>
-                <a href="{{ route('templates.index') }}" class="nav-item {{ request()->routeIs('templates.*') ? 'active' : '' }}">
-                    <i data-lucide="mail"></i>
-                    <span>Templates</span>
-                </a>
-                <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                    <i data-lucide="user-cog"></i>
-                    <span>User Management</span>
-                </a>
-                <a href="{{ route('activity-logs.index') }}" class="nav-item {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
-                    <i data-lucide="activity"></i>
-                    <span>Activity Logs</span>
-                </a>
-                <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                    <i data-lucide="settings"></i>
-                    <span>Settings</span>
-                </a>
+                @if(Auth::user()->canAccessModule('dashboard'))
+                    <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <i data-lucide="layout-grid"></i>
+                        <span>Dashboard</span>
+                    </a>
+                @endif
+                @if(Auth::user()->canAccessModule('employees'))
+                    <a href="{{ route('employees.index') }}" class="nav-item {{ request()->routeIs('employees.*') ? 'active' : '' }}">
+                        <i data-lucide="users"></i>
+                        <span>Employees</span>
+                    </a>
+                @endif
+                @if(Auth::user()->canAccessModule('leave_management'))
+                    <a href="{{ route('leaves.index') }}" class="nav-item {{ request()->routeIs('leaves.*') || request()->routeIs('leave-types.*') ? 'active' : '' }}">
+                        <i data-lucide="calendar-range"></i>
+                        <span>Leave Management</span>
+                    </a>
+                @endif
+                @if(Auth::user()->canAccessModule('templates'))
+                    <a href="{{ route('templates.index') }}" class="nav-item {{ request()->routeIs('templates.*') ? 'active' : '' }}">
+                        <i data-lucide="mail"></i>
+                        <span>Templates</span>
+                    </a>
+                @endif
+                @if(Auth::user()->canAccessModule('user_management'))
+                    <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') || request()->routeIs('roles.*') ? 'active' : '' }}">
+                        <i data-lucide="user-cog"></i>
+                        <span>User Management</span>
+                    </a>
+                @endif
+                @if(Auth::user()->canAccessModule('activity_logs'))
+                    <a href="{{ route('activity-logs.index') }}" class="nav-item {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
+                        <i data-lucide="activity"></i>
+                        <span>Activity Logs</span>
+                    </a>
+                @endif
+                @if(Auth::user()->canAccessModule('settings'))
+                    <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                        <i data-lucide="settings"></i>
+                        <span>Settings</span>
+                    </a>
+                @endif
             </nav>
 
             <div class="sidebar-footer">

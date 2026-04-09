@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\EmailTemplate;
 use App\Models\Setting;
+use App\Models\HrLetter;
+use App\Models\LeaveRequest;
 use App\Models\EmployeeEmploymentHistory;
 use App\Services\EmployeeIdService;
 use App\Services\MailService;
@@ -14,6 +16,15 @@ use Illuminate\Support\Carbon;
 
 class EmployeeController extends Controller
 {
+    protected const AVAILABLE_STATUSES = [
+        'active',
+        'inactive',
+        'invited',
+        'pending_approval',
+        'resigned',
+        'terminated',
+    ];
+
     public function index(Request $request)
     {
         // Counts for tabs
@@ -21,7 +32,7 @@ class EmployeeController extends Controller
             'active' => Employee::where('status', 'active')->count(),
             'invited' => Employee::where('status', 'invited')->count(),
             'pending_approval' => Employee::where('status', 'pending_approval')->count(),
-            'inactive' => Employee::whereIn('status', ['inactive', 'terminated', 'on_leave'])->count(),
+            'inactive' => Employee::whereIn('status', ['inactive', 'terminated', 'resigned', 'on_leave'])->count(),
         ];
 
         // Filter Logic
@@ -35,7 +46,7 @@ class EmployeeController extends Controller
         } elseif ($status === 'pending_approval') {
             $query->where('status', 'pending_approval');
         } elseif ($status === 'inactive') {
-            $query->whereIn('status', ['inactive', 'terminated', 'on_leave']);
+            $query->whereIn('status', ['inactive', 'terminated', 'resigned', 'on_leave']);
         }
 
         // Search Logic
@@ -62,7 +73,7 @@ class EmployeeController extends Controller
             'email' => 'required|email|unique:employees,email',
             'department_id' => 'required|exists:departments,id',
             'designation' => 'required|string|max:255',
-            'status' => 'nullable|in:active,inactive,invited,pending_approval',
+            'status' => 'nullable|in:' . implode(',', self::AVAILABLE_STATUSES),
             'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
             'hiring_date' => 'nullable|date',
             // Personal
@@ -124,12 +135,16 @@ class EmployeeController extends Controller
             'department',
             'bank',
             'employmentHistories.department',
+            'leaveRequests.leaveType',
+            'hrLetters.generatedBy',
         ]);
 
         $historyIds = $employee->employmentHistories->modelKeys();
+        $leaveRequestIds = $employee->leaveRequests->modelKeys();
+        $letterIds = $employee->hrLetters->modelKeys();
 
         $employeeActivityLogs = ActivityLog::with('user', 'subject')
-            ->where(function ($query) use ($employee, $historyIds) {
+            ->where(function ($query) use ($employee, $historyIds, $leaveRequestIds, $letterIds) {
                 $query->where(function ($subjectQuery) use ($employee) {
                     $subjectQuery
                         ->where('subject_type', Employee::class)
@@ -141,6 +156,22 @@ class EmployeeController extends Controller
                         $subjectQuery
                             ->where('subject_type', EmployeeEmploymentHistory::class)
                             ->whereIn('subject_id', $historyIds);
+                    });
+                }
+
+                if (! empty($leaveRequestIds)) {
+                    $query->orWhere(function ($subjectQuery) use ($leaveRequestIds) {
+                        $subjectQuery
+                            ->where('subject_type', LeaveRequest::class)
+                            ->whereIn('subject_id', $leaveRequestIds);
+                    });
+                }
+
+                if (! empty($letterIds)) {
+                    $query->orWhere(function ($subjectQuery) use ($letterIds) {
+                        $subjectQuery
+                            ->where('subject_type', HrLetter::class)
+                            ->whereIn('subject_id', $letterIds);
                     });
                 }
             })
@@ -169,7 +200,7 @@ class EmployeeController extends Controller
             'email' => 'required|email|unique:employees,email,' . $employee->id,
             'department_id' => 'required|exists:departments,id',
             'designation' => 'required|string|max:255',
-            'status' => 'nullable|in:active,inactive,invited,pending_approval',
+            'status' => 'nullable|in:' . implode(',', self::AVAILABLE_STATUSES),
             'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
             'hiring_date' => 'nullable|date',
             // Personal
@@ -227,7 +258,7 @@ class EmployeeController extends Controller
     public function updateStatus(Request $request, Employee $employee, EmployeeIdService $employeeIdService)
     {
         $request->validate([
-            'status' => 'required|in:active,inactive,invited,pending_approval',
+            'status' => 'required|in:' . implode(',', self::AVAILABLE_STATUSES),
             'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
         ]);
 
@@ -335,12 +366,10 @@ class EmployeeController extends Controller
 
     public function disapprove(Employee $employee)
     {
-        // For disapproval, move back to invited or delete? 
-        // User said "move the record to pending tab... approve, disapprove".
-        // Let's move to 'inactive' or keep in 'invited'? 
-        // Typically disapproval means "needs corrections", so maybe move back to invited and send email?
-        // Or just mark as inactive for now.
-        $employee->update(['status' => 'inactive']);
+        $employee->update([
+            'status' => 'inactive',
+            'inactive_reason' => 'Application disapproved.',
+        ]);
         
         if (request()->ajax()) {
             return response()->json(['success' => true, 'message' => 'Employee application disapproved.']);
@@ -360,6 +389,42 @@ class EmployeeController extends Controller
         return redirect()->route('employees.index')->with('success', 'Employee deleted successfully.');
     }
 
+    public function generateLetter(Request $request, Employee $employee)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:offer,experience,termination',
+        ]);
+
+        $letterType = $validated['type'];
+        $generatedAt = now();
+
+        $letter = $employee->hrLetters()->create([
+            'generated_by_user_id' => $request->user()->id,
+            'type' => $letterType,
+            'title' => $this->employeeLetterTitle($employee, $letterType),
+            'body' => $this->employeeLetterBody($employee, $letterType, $generatedAt),
+            'generated_at' => $generatedAt,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($letterType) . ' letter generated successfully.',
+            'download_url' => route('employees.letters.download', [$employee, $letter]),
+        ]);
+    }
+
+    public function downloadLetter(Employee $employee, HrLetter $letter)
+    {
+        abort_unless($letter->employee_id === $employee->id, 404);
+
+        $filename = str($letter->title)->slug()->append('.html')->toString();
+
+        return response($letter->body, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     protected function assignEmployeeIdIfNeeded(Employee $employee, EmployeeIdService $employeeIdService): void
     {
         if ($employee->status !== 'active' || $employee->employee_id) {
@@ -369,5 +434,53 @@ class EmployeeController extends Controller
         $employee->updateQuietly([
             'employee_id' => $employeeIdService->generateNextEmployeeId(),
         ]);
+    }
+
+    protected function employeeLetterTitle(Employee $employee, string $type): string
+    {
+        return match ($type) {
+            'offer' => "Offer Letter - {$employee->full_name}",
+            'experience' => "Experience Letter - {$employee->full_name}",
+            'termination' => "Termination Letter - {$employee->full_name}",
+        };
+    }
+
+    protected function employeeLetterBody(Employee $employee, string $type, Carbon $generatedAt): string
+    {
+        $companyName = config('app.name');
+        $officeLocation = Setting::where('key', 'office_location')->value('value') ?? 'our office';
+        $designation = $employee->designation ?? 'Team Member';
+        $department = $employee->department?->name ?? 'the assigned department';
+        $joiningDate = $employee->hiring_date?->format('F j, Y') ?? 'the assigned joining date';
+        $today = $generatedAt->format('F j, Y');
+
+        return match ($type) {
+            'offer' => <<<HTML
+                <h1>Offer Letter</h1>
+                <p>Date: {$today}</p>
+                <p>Dear {$employee->full_name},</p>
+                <p>We are pleased to offer you the position of <strong>{$designation}</strong> in <strong>{$department}</strong> at <strong>{$companyName}</strong>.</p>
+                <p>Your expected start date is <strong>{$joiningDate}</strong> and your work location will be <strong>{$officeLocation}</strong>.</p>
+                <p>We look forward to your contribution to the organization.</p>
+                <p>Sincerely,<br>{$companyName}</p>
+            HTML,
+            'experience' => <<<HTML
+                <h1>Experience Letter</h1>
+                <p>Date: {$today}</p>
+                <p>This letter confirms that <strong>{$employee->full_name}</strong> has served at <strong>{$companyName}</strong> as <strong>{$designation}</strong> in <strong>{$department}</strong>.</p>
+                <p>The employee joined on <strong>{$joiningDate}</strong> and fulfilled responsibilities assigned during the tenure with professionalism.</p>
+                <p>We appreciate the employee's services and wish them success in future endeavors.</p>
+                <p>Sincerely,<br>{$companyName}</p>
+            HTML,
+            'termination' => <<<HTML
+                <h1>Termination Letter</h1>
+                <p>Date: {$today}</p>
+                <p>Dear {$employee->full_name},</p>
+                <p>This letter serves as formal notice that your employment with <strong>{$companyName}</strong> in the role of <strong>{$designation}</strong> is concluded effective <strong>{$today}</strong>.</p>
+                <p>Please coordinate with HR for final clearance, handover, and settlement requirements.</p>
+                <p>We wish you the best in your future endeavors.</p>
+                <p>Sincerely,<br>{$companyName}</p>
+            HTML,
+        };
     }
 }

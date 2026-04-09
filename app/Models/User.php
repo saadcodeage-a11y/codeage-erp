@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 use App\Traits\LogsActivity;
+use App\Models\Role;
 
 class User extends Authenticatable
 {
@@ -41,6 +42,31 @@ class User extends Authenticatable
     public function roleDefinition()
     {
         return $this->belongsTo(Role::class, 'role', 'name');
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'Super Admin';
+    }
+
+    public function canAccessModule(string $module, string $ability = 'read'): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $role = $this->roleDefinition()->with('permissions')->first();
+        $permission = $role?->permissions->firstWhere('module', $module);
+
+        if (! $permission) {
+            return false;
+        }
+
+        return match ($ability) {
+            'create' => (bool) $permission->can_create,
+            'edit' => (bool) $permission->can_edit,
+            default => (bool) $permission->can_read,
+        };
     }
 
     /**
