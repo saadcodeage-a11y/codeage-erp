@@ -5,6 +5,8 @@
 @section('content')
 @php
     $canImportAttendance = Auth::user()->canAccessModule('attendance_management', 'create');
+    $hasAttendanceRecords = $attendanceRecords->count() > 0;
+    $selectedMonthLabel = \Illuminate\Support\Carbon::createFromFormat('Y-m', $month)->format('F Y');
 @endphp
 <div class="page-header">
     <div class="header-left">
@@ -48,49 +50,73 @@
         <div class="section-header">
             <div>
                 <h2>Attendance Records</h2>
-                <p>Daily summaries generated from the imported fingerprint machine report.</p>
+                <p>Daily summaries generated from the imported fingerprint machine report for {{ $selectedMonthLabel }}.</p>
+            </div>
+            <div class="section-badge-row">
+                <span class="summary-pill">{{ $stats['records'] }} rows</span>
+                <span class="summary-pill muted">{{ $selectedMonthLabel }}</span>
             </div>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Employee</th>
-                    <th>Date</th>
-                    <th>Shift</th>
-                    <th>Clock In</th>
-                    <th>Clock Out</th>
-                    <th>Late</th>
-                    <th>Early</th>
-                    <th>Absent</th>
-                    <th>Work Time</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($attendanceRecords as $record)
-                    <tr>
-                        <td>
-                            <div style="display: flex; flex-direction: column;">
-                                <strong>{{ $record->employee->full_name }}</strong>
-                                <span style="font-size: 12px; color: #6b7280;">{{ $record->employee->employee_id }}</span>
-                            </div>
-                        </td>
-                        <td>{{ $record->attendance_date->format('d M Y') }}</td>
-                        <td>{{ $record->shift_start_time ? \Illuminate\Support\Carbon::parse($record->shift_start_time)->format('H:i') : '--:--' }} to {{ $record->shift_end_time ? \Illuminate\Support\Carbon::parse($record->shift_end_time)->format('H:i') : '--:--' }}</td>
-                        <td>{{ $record->clock_in ? \Illuminate\Support\Carbon::parse($record->clock_in)->format('H:i') : '--:--' }}</td>
-                        <td>{{ $record->clock_out ? \Illuminate\Support\Carbon::parse($record->clock_out)->format('H:i') : '--:--' }}</td>
-                        <td>{{ $record->late_duration ?? '--:--' }}</td>
-                        <td>{{ $record->early_duration ?? '--:--' }}</td>
-                        <td>{{ $record->absent_duration ?? '--:--' }}</td>
-                        <td>{{ $record->work_duration ?? '--:--' }}</td>
-                        <td><span class="status-badge {{ $record->status }}">{{ ucfirst(str_replace('_', ' ', $record->status)) }}</span></td>
-                    </tr>
-                @empty
-                    <tr><td colspan="10" class="text-center">No attendance records found for the selected month.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="pagination-wrapper">{{ $attendanceRecords->links() }}</div>
+        @if($hasAttendanceRecords)
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Shift</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Late</th>
+                            <th>Early</th>
+                            <th>Absent</th>
+                            <th>Work Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($attendanceRecords as $record)
+                            <tr>
+                                <td>
+                                    <div style="display: flex; flex-direction: column;">
+                                        <strong>{{ $record->employee->full_name }}</strong>
+                                        <span style="font-size: 12px; color: #6b7280;">{{ $record->employee->employee_id }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ $record->attendance_date->format('d M Y') }}</td>
+                                <td>{{ $record->shift_start_time ? \Illuminate\Support\Carbon::parse($record->shift_start_time)->format('H:i') : '--:--' }} to {{ $record->shift_end_time ? \Illuminate\Support\Carbon::parse($record->shift_end_time)->format('H:i') : '--:--' }}</td>
+                                <td>{{ $record->clock_in ? \Illuminate\Support\Carbon::parse($record->clock_in)->format('H:i') : '--:--' }}</td>
+                                <td>{{ $record->clock_out ? \Illuminate\Support\Carbon::parse($record->clock_out)->format('H:i') : '--:--' }}</td>
+                                <td>{{ $record->late_duration ?? '--:--' }}</td>
+                                <td>{{ $record->early_duration ?? '--:--' }}</td>
+                                <td>{{ $record->absent_duration ?? '--:--' }}</td>
+                                <td>{{ $record->work_duration ?? '--:--' }}</td>
+                                <td><span class="status-badge {{ $record->status }}">{{ ucfirst(str_replace('_', ' ', $record->status)) }}</span></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-wrapper">{{ $attendanceRecords->links() }}</div>
+        @else
+            <div class="attendance-empty-state">
+                <div class="attendance-empty-icon">
+                    <i data-lucide="calendar-search"></i>
+                </div>
+                <h3>No Attendance Records Yet</h3>
+                <p>No attendance records were found for {{ $selectedMonthLabel }}. Import the fingerprint machine report for this month to populate the summary table.</p>
+                <div class="attendance-empty-meta">
+                    <span class="summary-pill muted">Expected file: .xls / .xlsx</span>
+                    <span class="summary-pill muted">Employee match: first column</span>
+                    <span class="summary-pill muted">Month: {{ $selectedMonthLabel }}</span>
+                </div>
+                @if($canImportAttendance)
+                    <button class="btn btn-primary" onclick="openModal('attendanceImportModal')">
+                        <i data-lucide="upload"></i> Import Attendance File
+                    </button>
+                @endif
+            </div>
+        @endif
     </div>
 
     <div class="side-panel-stack">
@@ -208,6 +234,7 @@
         justify-content: space-between;
         gap: 16px;
         align-items: center;
+        margin-bottom: 18px;
     }
     .section-header h2 {
         margin: 0 0 4px;
@@ -219,10 +246,84 @@
         color: #6b7280;
         font-size: 13px;
     }
+    .section-badge-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .summary-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #fed7aa;
+    }
+    .summary-pill.muted {
+        background: #f8fafc;
+        color: #475569;
+        border-color: #e2e8f0;
+    }
+    .table-scroll {
+        overflow-x: auto;
+        margin: 0 -2px;
+    }
     .import-list,
     .error-list {
         display: grid;
         gap: 12px;
+    }
+    .attendance-empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 16px;
+        min-height: 320px;
+        padding: 40px 28px;
+        background:
+            radial-gradient(circle at top, rgba(251, 146, 60, 0.14), transparent 42%),
+            linear-gradient(180deg, #fffaf5 0%, #ffffff 62%);
+        border: 1px dashed #fdba74;
+        border-radius: 18px;
+    }
+    .attendance-empty-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 16px 30px rgba(249, 115, 22, 0.22);
+    }
+    .attendance-empty-icon i {
+        width: 32px;
+        height: 32px;
+    }
+    .attendance-empty-state h3 {
+        margin: 0;
+        font-size: 24px;
+        color: #111827;
+    }
+    .attendance-empty-state p {
+        max-width: 620px;
+        margin: 0;
+        color: #6b7280;
+        line-height: 1.7;
+        font-size: 14px;
+    }
+    .attendance-empty-meta {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
     .import-card {
         display: flex;
@@ -284,6 +385,10 @@
     @media (max-width: 1180px) {
         .two-column-layout {
             grid-template-columns: 1fr;
+        }
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
         }
     }
 </style>
