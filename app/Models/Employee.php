@@ -46,9 +46,10 @@ class Employee extends Model
         'current_address', 'permanent_address', 
         'father_name', 'guardian_contact',
         'education_level', 'field_of_study',
-        'job_location', 'shift_start_time', 'shift_end_time', 'payroll_status',
+        'job_location', 'shift_start_time', 'shift_end_time', 'payroll_status', 'payment_mode',
         'profile_picture', 'cnic_front_path', 'cnic_back_path', 'cv_path', 'transcript_path',
-        'bank_id', 'bank_account_title', 'bank_account_number', 'bank_name', 'iban',
+        'bank_id', 'bank_account_title', 'bank_account_number', 'bank_name', 'bank_code', 'iban',
+        'current_salary', 'last_increment',
         'hr_comments', 'banking_comments',
         'signature_path', 'onboarding_token', 'onboarding_completed_at', 'policy_accepted_at'
     ];
@@ -58,6 +59,8 @@ class Employee extends Model
         'hiring_date' => 'date',
         'onboarding_completed_at' => 'datetime',
         'policy_accepted_at' => 'datetime',
+        'current_salary' => 'decimal:2',
+        'last_increment' => 'decimal:2',
     ];
 
     public function department()
@@ -88,6 +91,16 @@ class Employee extends Model
     public function employmentHistories()
     {
         return $this->hasMany(EmployeeEmploymentHistory::class)->orderByDesc('effective_from');
+    }
+
+    public function payrollRecords()
+    {
+        return $this->hasMany(EmployeePayrollRecord::class)->latest();
+    }
+
+    public function securityFundSnapshots()
+    {
+        return $this->hasMany(EmployeeSecurityFundSnapshot::class)->latest('snapshot_month');
     }
 
     public static function employmentHistoryTrackedFields(): array
