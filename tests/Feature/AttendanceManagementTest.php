@@ -63,6 +63,49 @@ class AttendanceManagementTest extends TestCase
         );
     }
 
+    protected function createLegacyMachineExportFile(array $rows): UploadedFile
+    {
+        $payload = $this->legacyRecord(0x0809, pack('vvv', 0, 0x0010, 0));
+        $allRows = [
+            ['No.', 'Name', 'Date', 'Clock In', 'Clock Out', 'Late', 'Early', 'Absent', 'Work Time'],
+            ...$rows,
+        ];
+
+        foreach ($allRows as $rowIndex => $columns) {
+            foreach ($columns as $columnIndex => $value) {
+                $payload .= $this->legacyLabelRecord($rowIndex, $columnIndex, (string) $value);
+            }
+        }
+
+        $payload .= $this->legacyRecord(0x000A, '');
+
+        $path = tempnam(sys_get_temp_dir(), 'legacy_attendance_');
+        $xlsPath = $path . '.xls';
+        rename($path, $xlsPath);
+        file_put_contents($xlsPath, $payload);
+
+        return new UploadedFile(
+            $xlsPath,
+            'machine-export.xls',
+            'application/octet-stream',
+            null,
+            true
+        );
+    }
+
+    protected function legacyRecord(int $recordId, string $payload): string
+    {
+        return pack('vv', $recordId, strlen($payload)) . $payload;
+    }
+
+    protected function legacyLabelRecord(int $row, int $column, string $value): string
+    {
+        $encoded = mb_convert_encoding($value, 'Windows-1252', 'UTF-8');
+        $payload = pack('vvCCC', $row, $column, 0x40, 0x00, 0x00) . chr(strlen($encoded)) . $encoded;
+
+        return $this->legacyRecord(0x0004, $payload);
+    }
+
     public function test_hr_can_import_attendance_xls_and_match_employee_ids(): void
     {
         $employee = $this->createEmployee([
@@ -107,6 +150,42 @@ class AttendanceManagementTest extends TestCase
         $this->assertSame('17:00:00', $firstRecord->shift_end_time);
         $this->assertSame('late', $firstRecord->status);
         $this->assertSame('present', $secondRecord->status);
+    }
+
+    public function test_hr_can_import_legacy_machine_export_file_and_match_employee_ids(): void
+    {
+        $employee = $this->createEmployee([
+            'employee_id' => 'CA-E-05',
+            'full_name' => 'Kumail Abbas',
+            'shift_start_time' => '09:00',
+            'shift_end_time' => '17:00',
+        ]);
+        $hrUser = $this->createUser('HR Manager');
+
+        $file = $this->createLegacyMachineExportFile([
+            ['CA-E-05', 'Kumail Abbas', '02/03/2026', '09:17', '15:06', '00:17', '', '', '05:42'],
+            ['CA-E-05', 'Kumail Abbas', '03/03/2026', '08:59', '16:07', '', '', '', '06:00'],
+        ]);
+
+        $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
+            'attendance_file' => $file,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('attendance_imports', [
+            'source_file_name' => 'machine-export.xls',
+            'attendance_month' => '2026-03',
+            'imported_rows' => 2,
+            'error_rows' => 0,
+        ]);
+
+        $record = AttendanceRecord::where('employee_id', $employee->id)
+            ->whereDate('attendance_date', '2026-03-02')
+            ->first();
+
+        $this->assertNotNull($record);
+        $this->assertSame('09:17:00', $record->clock_in);
+        $this->assertSame('15:06:00', $record->clock_out);
     }
 
     public function test_import_records_unknown_employee_id_as_error(): void

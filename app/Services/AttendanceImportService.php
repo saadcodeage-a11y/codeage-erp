@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Throwable;
 
 class AttendanceImportService
 {
@@ -36,9 +37,18 @@ class AttendanceImportService
             'imported_at' => now(),
         ]);
 
-        $spreadsheet = IOFactory::load($file->getRealPath());
-        $sheet = $spreadsheet->getSheet(0);
-        $rows = $sheet->toArray(null, false, false, false);
+        try {
+            $rows = $this->loadRows($file);
+        } catch (Throwable) {
+            $attendanceImport->errors()->create([
+                'row_number' => 1,
+                'reason' => 'The uploaded file format could not be read. Please upload the fingerprint machine export in the expected Excel format.',
+            ]);
+
+            $attendanceImport->update(['error_rows' => 1]);
+
+            return $attendanceImport->fresh(['errors', 'importedBy']);
+        }
 
         if ($rows === [] || count($rows) < 2) {
             $attendanceImport->errors()->create([
@@ -51,14 +61,14 @@ class AttendanceImportService
             return $attendanceImport->fresh(['errors', 'importedBy']);
         }
 
-        $headerMap = $this->resolveHeaderMap($rows[0]);
+        [$headerRowIndex, $headerMap] = $this->locateHeaderRow($rows);
 
         $missingHeaders = array_values(array_diff(self::REQUIRED_HEADERS, array_keys($headerMap)));
         if ($missingHeaders !== []) {
             $attendanceImport->errors()->create([
-                'row_number' => 1,
+                'row_number' => $headerRowIndex + 1,
                 'reason' => 'The uploaded file is missing required columns: ' . implode(', ', $missingHeaders),
-                'row_payload' => $rows[0],
+                'row_payload' => $rows[$headerRowIndex] ?? [],
             ]);
 
             $attendanceImport->update(['error_rows' => 1]);
@@ -74,14 +84,14 @@ class AttendanceImportService
             'duplicate_rows' => 0,
         ];
 
-        DB::transaction(function () use ($rows, $headerMap, $attendanceImport, $attendanceMonth, &$seenKeys, &$summary) {
-            foreach (array_slice($rows, 1) as $index => $row) {
+        DB::transaction(function () use ($rows, $headerRowIndex, $headerMap, $attendanceImport, $attendanceMonth, &$seenKeys, &$summary) {
+            foreach (array_slice($rows, $headerRowIndex + 1) as $index => $row) {
                 if ($this->rowIsEmpty($row)) {
                     continue;
                 }
 
                 $summary['total_rows']++;
-                $rowNumber = $index + 2;
+                $rowNumber = $headerRowIndex + $index + 2;
                 $payload = $this->extractPayload($row, $headerMap);
 
                 $employeeCode = $payload['employee_code'];
@@ -151,6 +161,38 @@ class AttendanceImportService
         });
 
         return $attendanceImport->fresh(['errors', 'importedBy']);
+    }
+
+    protected function loadRows(UploadedFile $file): array
+    {
+        try {
+            $spreadsheet = IOFactory::load($file->getRealPath());
+
+            return $spreadsheet->getSheet(0)->toArray(null, false, false, false);
+        } catch (Throwable) {
+            return $this->parseLegacyWorksheetRows($file->getRealPath());
+        }
+    }
+
+    protected function locateHeaderRow(array $rows): array
+    {
+        $bestIndex = 0;
+        $bestMap = [];
+
+        foreach ($rows as $index => $row) {
+            $map = $this->resolveHeaderMap($row);
+
+            if (count($map) > count($bestMap)) {
+                $bestIndex = $index;
+                $bestMap = $map;
+            }
+
+            if (array_diff(self::REQUIRED_HEADERS, array_keys($map)) === []) {
+                return [$index, $map];
+            }
+        }
+
+        return [$bestIndex, $bestMap];
     }
 
     protected function resolveHeaderMap(array $headerRow): array
@@ -269,6 +311,68 @@ class AttendanceImportService
         }
 
         return null;
+    }
+
+    protected function parseLegacyWorksheetRows(string $path): array
+    {
+        $binary = file_get_contents($path);
+
+        if ($binary === false || strlen($binary) < 4) {
+            throw new \RuntimeException('Attendance file could not be read.');
+        }
+
+        $cells = [];
+        $offset = 0;
+        $length = strlen($binary);
+
+        while ($offset + 4 <= $length) {
+            $recordId = unpack('v', substr($binary, $offset, 2))[1];
+            $recordLength = unpack('v', substr($binary, $offset + 2, 2))[1];
+            $payload = substr($binary, $offset + 4, $recordLength);
+
+            if (strlen($payload) !== $recordLength) {
+                break;
+            }
+
+            if ($recordId === 0x0004 && $recordLength >= 8) {
+                $row = unpack('v', substr($payload, 0, 2))[1];
+                $column = unpack('v', substr($payload, 2, 2))[1];
+                $textLength = ord($payload[7]);
+                $value = substr($payload, 8, $textLength);
+
+                $cells[$row][$column] = $this->normalizeLegacyCellValue($value);
+            }
+
+            $offset += 4 + $recordLength;
+        }
+
+        if ($cells === []) {
+            throw new \RuntimeException('Attendance file did not contain readable worksheet rows.');
+        }
+
+        ksort($cells);
+        $maxColumn = max(array_map(static fn (array $row): int => max(array_keys($row)), $cells));
+        $rows = [];
+
+        foreach ($cells as $columns) {
+            ksort($columns);
+            $row = [];
+
+            for ($column = 0; $column <= $maxColumn; $column++) {
+                $row[$column] = $columns[$column] ?? null;
+            }
+
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    protected function normalizeLegacyCellValue(string $value): string
+    {
+        $normalized = str_replace("\0", '', $value);
+
+        return trim(mb_convert_encoding($normalized, 'UTF-8', 'Windows-1252'));
     }
 
     protected function resolveStatus(array $payload): string

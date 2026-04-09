@@ -45,9 +45,35 @@
     </form>
 </div>
 
+@if(session('success') || session('warning') || $errors->any())
+    <div class="attendance-feedback-stack">
+        @if(session('success'))
+            <div class="status-banner success">
+                <i data-lucide="circle-check-big"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
+        @if(session('warning'))
+            <div class="status-banner warning">
+                <i data-lucide="triangle-alert"></i>
+                <span>{{ session('warning') }}</span>
+            </div>
+        @endif
+        @if($errors->any())
+            <div class="status-banner danger">
+                <i data-lucide="octagon-alert"></i>
+                <div>
+                    <strong>Attendance import could not be completed.</strong>
+                    <p>{{ $errors->first() }}</p>
+                </div>
+            </div>
+        @endif
+    </div>
+@endif
+
 <div class="two-column-layout">
-    <div class="table-card">
-        <div class="section-header">
+    <div class="table-card attendance-records-card">
+        <div class="section-header attendance-records-header">
             <div>
                 <h2>Attendance Records</h2>
                 <p>Daily summaries generated from the imported fingerprint machine report for {{ $selectedMonthLabel }}.</p>
@@ -99,22 +125,24 @@
             </div>
             <div class="pagination-wrapper">{{ $attendanceRecords->links() }}</div>
         @else
-            <div class="attendance-empty-state">
-                <div class="attendance-empty-icon">
-                    <i data-lucide="calendar-search"></i>
+            <div class="attendance-empty-shell">
+                <div class="attendance-empty-state">
+                    <div class="attendance-empty-icon">
+                        <i data-lucide="calendar-search"></i>
+                    </div>
+                    <h3>No Attendance Records Yet</h3>
+                    <p>No attendance records were found for {{ $selectedMonthLabel }}. Import the fingerprint machine report for this month to populate the summary table.</p>
+                    <div class="attendance-empty-meta">
+                        <span class="summary-pill muted">Expected file: .xls / .xlsx</span>
+                        <span class="summary-pill muted">Employee match: first column</span>
+                        <span class="summary-pill muted">Month: {{ $selectedMonthLabel }}</span>
+                    </div>
+                    @if($canImportAttendance)
+                        <button class="btn btn-primary" onclick="openModal('attendanceImportModal')">
+                            <i data-lucide="upload"></i> Import Attendance File
+                        </button>
+                    @endif
                 </div>
-                <h3>No Attendance Records Yet</h3>
-                <p>No attendance records were found for {{ $selectedMonthLabel }}. Import the fingerprint machine report for this month to populate the summary table.</p>
-                <div class="attendance-empty-meta">
-                    <span class="summary-pill muted">Expected file: .xls / .xlsx</span>
-                    <span class="summary-pill muted">Employee match: first column</span>
-                    <span class="summary-pill muted">Month: {{ $selectedMonthLabel }}</span>
-                </div>
-                @if($canImportAttendance)
-                    <button class="btn btn-primary" onclick="openModal('attendanceImportModal')">
-                        <i data-lucide="upload"></i> Import Attendance File
-                    </button>
-                @endif
             </div>
         @endif
     </div>
@@ -132,7 +160,7 @@
                     <a href="{{ route('attendance.index', ['month' => $month, 'import' => $import->id]) }}" class="import-card {{ $selectedImport?->id === $import->id ? 'active' : '' }}">
                         <div>
                             <strong>{{ $import->source_file_name }}</strong>
-                            <p>{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $import->attendance_month)->format('F Y') }} · {{ optional($import->imported_at)->format('d M Y, h:i A') ?? 'Not imported yet' }}</p>
+                            <p>{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $import->attendance_month)->format('F Y') }} | {{ optional($import->imported_at)->format('d M Y, h:i A') ?? 'Not imported yet' }}</p>
                         </div>
                         <div class="import-card-metrics">
                             <span>{{ $import->imported_rows }} imported</span>
@@ -205,7 +233,7 @@
                     @csrf
                     <div class="form-group" style="margin: 0;">
                         <label>Attendance Month</label>
-                        <input type="month" name="attendance_month" value="{{ $month }}" required>
+                        <input type="month" name="attendance_month" value="{{ old('attendance_month', $month) }}" required>
                         <span class="hint">Select the month this attendance file belongs to. Rows from a different month will be flagged as errors.</span>
                     </div>
                     <div class="form-group" style="margin: 0;">
@@ -234,6 +262,51 @@
         display: grid;
         gap: 24px;
     }
+    .attendance-feedback-stack {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    .status-banner {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 18px;
+        border-radius: 12px;
+        border: 1px solid;
+        background: #fff;
+    }
+    .status-banner i {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    .status-banner strong,
+    .status-banner span,
+    .status-banner p {
+        color: inherit;
+    }
+    .status-banner p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .status-banner.success {
+        color: #166534;
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+    }
+    .status-banner.warning {
+        color: #9a3412;
+        border-color: #fed7aa;
+        background: #fff7ed;
+    }
+    .status-banner.danger {
+        color: #991b1b;
+        border-color: #fecaca;
+        background: #fef2f2;
+    }
     .section-header {
         display: flex;
         justify-content: space-between;
@@ -250,6 +323,12 @@
         margin: 0;
         color: #6b7280;
         font-size: 13px;
+        line-height: 1.6;
+    }
+    .attendance-records-header {
+        padding: 24px 24px 18px;
+        margin-bottom: 0;
+        border-bottom: 1px solid #f1f5f9;
     }
     .section-badge-row {
         display: flex;
@@ -275,12 +354,17 @@
     }
     .table-scroll {
         overflow-x: auto;
-        margin: 0 -2px;
+    }
+    .attendance-records-card .pagination-wrapper {
+        padding: 18px 24px 24px;
     }
     .import-list,
     .error-list {
         display: grid;
         gap: 12px;
+    }
+    .attendance-empty-shell {
+        padding: 24px;
     }
     .attendance-empty-state {
         display: flex;
@@ -288,9 +372,9 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        gap: 16px;
-        min-height: 320px;
-        padding: 40px 28px;
+        gap: 14px;
+        min-height: 280px;
+        padding: 36px 28px;
         background:
             radial-gradient(circle at top, rgba(251, 146, 60, 0.14), transparent 42%),
             linear-gradient(180deg, #fffaf5 0%, #ffffff 62%);
@@ -321,7 +405,7 @@
         max-width: 620px;
         margin: 0;
         color: #6b7280;
-        line-height: 1.7;
+        line-height: 1.75;
         font-size: 14px;
     }
     .attendance-empty-meta {
@@ -340,6 +424,11 @@
         text-decoration: none;
         color: inherit;
         background: #fff;
+        transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+    .import-card:hover {
+        border-color: #fdba74;
+        transform: translateY(-1px);
     }
     .import-card.active {
         border-color: #fdba74;
@@ -395,6 +484,9 @@
             flex-direction: column;
             align-items: flex-start;
         }
+        .attendance-records-header {
+            padding-bottom: 16px;
+        }
     }
 </style>
 
@@ -412,6 +504,12 @@
         if (event.target.classList.contains('modal-overlay')) {
             event.target.style.display = 'none';
         }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        @if($errors->has('attendance_file') || $errors->has('attendance_month'))
+            openModal('attendanceImportModal');
+        @endif
     });
 </script>
 @endsection

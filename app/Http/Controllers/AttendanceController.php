@@ -63,7 +63,9 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'attendance_month' => 'required|date_format:Y-m',
-            'attendance_file' => 'required|file|mimes:xls,xlsx',
+            'attendance_file' => 'required|file|extensions:xls,xlsx',
+        ], [
+            'attendance_file.extensions' => 'The attendance file must use the .xls or .xlsx extension exported by the fingerprint machine.',
         ]);
 
         $attendanceImport = $attendanceImportService->import(
@@ -72,11 +74,15 @@ class AttendanceController extends Controller
             $validated['attendance_month']
         );
 
+        $message = $attendanceImport->imported_rows > 0
+            ? 'Attendance file imported successfully.'
+            : 'Attendance file was uploaded, but no attendance records were imported. Review the import issues below.';
+
         return redirect()
             ->route('attendance.index', [
                 'month' => $attendanceImport->attendance_month,
                 'import' => $attendanceImport->id,
             ])
-            ->with('success', 'Attendance file imported successfully.');
+            ->with($attendanceImport->imported_rows > 0 ? 'success' : 'warning', $message);
     }
 }
