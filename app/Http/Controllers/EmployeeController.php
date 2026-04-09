@@ -271,6 +271,23 @@ class EmployeeController extends Controller
         return redirect()->route('employees.show', $employee)->with('success', 'Employee updated successfully.');
     }
 
+    public function updateShiftTiming(Request $request, Employee $employee)
+    {
+        $validated = $request->validate([
+            'shift_start_time' => 'nullable|date_format:H:i|required_with:shift_end_time',
+            'shift_end_time' => 'nullable|date_format:H:i|required_with:shift_start_time',
+        ]);
+
+        $employee->update([
+            'shift_start_time' => $this->normalizeShiftTime($validated['shift_start_time'] ?? null),
+            'shift_end_time' => $this->normalizeShiftTime($validated['shift_end_time'] ?? null),
+        ]);
+
+        return redirect()
+            ->route('employees.show', $employee)
+            ->with('success', 'Employee working hours updated successfully.');
+    }
+
     public function updateStatus(Request $request, Employee $employee, EmployeeIdService $employeeIdService)
     {
         $request->validate([

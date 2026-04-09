@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class AttendanceRecord extends Model
 {
+    public const STATUS_PRESENT = 'present';
+    public const STATUS_LATE = 'late';
+    public const STATUS_ABSENT = 'absent';
+    public const STATUS_INCOMPLETE = 'incomplete';
+    public const STATUS_EARLY_LEAVE = 'early_leave';
+    public const STATUS_HOLIDAY = 'holiday';
+    public const STATUS_WEEKEND = 'weekend';
+
     protected $fillable = [
         'employee_id',
         'attendance_import_id',

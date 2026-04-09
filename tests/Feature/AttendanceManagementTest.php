@@ -6,6 +6,8 @@ use App\Models\AttendanceImport;
 use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\OfficialHoliday;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -152,6 +154,44 @@ class AttendanceManagementTest extends TestCase
         $this->assertSame('present', $secondRecord->status);
     }
 
+    public function test_import_applies_global_late_grace_minutes_against_employee_shift(): void
+    {
+        Setting::create([
+            'key' => 'attendance_late_grace_minutes',
+            'value' => '10',
+        ]);
+
+        $employee = $this->createEmployee([
+            'employee_id' => 'CA-E-55',
+            'full_name' => 'Grace Employee',
+            'shift_start_time' => '09:00',
+            'shift_end_time' => '17:00',
+        ]);
+        $hrUser = $this->createUser('HR Manager');
+
+        $file = $this->createAttendanceFile([
+            ['CA-E-55', 'Grace Employee', '02/03/2026', '09:08', '17:00', '00:17', '', '', '07:52'],
+            ['CA-E-55', 'Grace Employee', '03/03/2026', '09:17', '17:00', '', '', '', '07:43'],
+        ]);
+
+        $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
+            'attendance_file' => $file,
+        ])->assertRedirect();
+
+        $withinGrace = AttendanceRecord::where('employee_id', $employee->id)
+            ->whereDate('attendance_date', '2026-03-02')
+            ->firstOrFail();
+        $beyondGrace = AttendanceRecord::where('employee_id', $employee->id)
+            ->whereDate('attendance_date', '2026-03-03')
+            ->firstOrFail();
+
+        $this->assertSame('present', $withinGrace->status);
+        $this->assertNull($withinGrace->late_duration);
+        $this->assertSame('late', $beyondGrace->status);
+        $this->assertSame('00:07', $beyondGrace->late_duration);
+    }
+
     public function test_hr_can_import_legacy_machine_export_file_and_match_employee_ids(): void
     {
         $employee = $this->createEmployee([
@@ -252,6 +292,51 @@ class AttendanceManagementTest extends TestCase
         $accountsUser = $this->createUser('Accounts Manager');
 
         $this->actingAs($accountsUser)->get(route('attendance.index'))->assertForbidden();
+    }
+
+    public function test_hr_can_update_attendance_rules_and_add_official_holiday(): void
+    {
+        $hrUser = $this->createUser('HR Manager');
+
+        $this->actingAs($hrUser)->post(route('attendance.settings.update'), [
+            'month' => '2026-03',
+            'late_grace_minutes' => 12,
+        ])->assertRedirect(route('attendance.index', ['month' => '2026-03']));
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'attendance_late_grace_minutes',
+            'value' => '12',
+        ]);
+
+        $this->actingAs($hrUser)->post(route('attendance.holidays.store'), [
+            'name' => 'Pakistan Day',
+            'holiday_date' => '2026-03-23',
+            'description' => 'Public holiday',
+        ])->assertRedirect(route('attendance.index', ['month' => '2026-03']));
+
+        $this->assertTrue(
+            OfficialHoliday::query()
+                ->where('name', 'Pakistan Day')
+                ->whereDate('holiday_date', '2026-03-23')
+                ->exists()
+        );
+    }
+
+    public function test_weekend_cannot_be_added_as_official_holiday(): void
+    {
+        $hrUser = $this->createUser('HR Manager');
+
+        $response = $this->actingAs($hrUser)->from(route('attendance.index', ['month' => '2026-03']))->post(route('attendance.holidays.store'), [
+            'name' => 'Weekend Test',
+            'holiday_date' => '2026-03-22',
+            'description' => 'Should fail because it is Sunday',
+        ]);
+
+        $response->assertRedirect(route('attendance.index', ['month' => '2026-03']));
+        $response->assertSessionHasErrors('holiday_date');
+        $this->assertDatabaseMissing('official_holidays', [
+            'name' => 'Weekend Test',
+        ]);
     }
 
     public function test_import_records_error_when_row_month_does_not_match_selected_month(): void

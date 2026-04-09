@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\AttendanceImport;
+use App\Models\OfficialHoliday;
 use App\Models\AttendanceRecord;
 use App\Models\Employee;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -26,6 +28,8 @@ class AttendanceImportService
         'absent',
         'work_time',
     ];
+
+    protected array $officialHolidayCache = [];
 
     public function import(UploadedFile $file, User $user, string $attendanceMonth): AttendanceImport
     {
@@ -139,19 +143,38 @@ class AttendanceImportService
                     continue;
                 }
 
+                $clockIn = $this->parseTimeValue($payload['clock_in']);
+                $clockOut = $this->parseTimeValue($payload['clock_out']);
+                $earlyDuration = $this->parseDurationValue($payload['early']);
+                $absentDuration = $this->parseDurationValue($payload['absent']);
+                $workDuration = $this->parseDurationValue($payload['work_time']);
+                $lateDuration = $this->resolveLateDuration(
+                    $employee,
+                    $clockIn,
+                    $this->parseDurationValue($payload['late'])
+                );
+
                 AttendanceRecord::create([
                     'employee_id' => $employee->id,
                     'attendance_import_id' => $attendanceImport->id,
                     'attendance_date' => $parsedDate->toDateString(),
-                    'clock_in' => $this->parseTimeValue($payload['clock_in']),
-                    'clock_out' => $this->parseTimeValue($payload['clock_out']),
-                    'late_duration' => $this->parseDurationValue($payload['late']),
-                    'early_duration' => $this->parseDurationValue($payload['early']),
-                    'absent_duration' => $this->parseDurationValue($payload['absent']),
-                    'work_duration' => $this->parseDurationValue($payload['work_time']),
+                    'clock_in' => $clockIn,
+                    'clock_out' => $clockOut,
+                    'late_duration' => $lateDuration,
+                    'early_duration' => $earlyDuration,
+                    'absent_duration' => $absentDuration,
+                    'work_duration' => $workDuration,
                     'shift_start_time' => $this->parseTimeValue($employee->shift_start_time),
                     'shift_end_time' => $this->parseTimeValue($employee->shift_end_time),
-                    'status' => $this->resolveStatus($payload),
+                    'status' => $this->resolveStatus(
+                        $parsedDate,
+                        $clockIn,
+                        $clockOut,
+                        $lateDuration,
+                        $earlyDuration,
+                        $absentDuration,
+                        $workDuration
+                    ),
                 ]);
 
                 $summary['imported_rows']++;
@@ -375,36 +398,97 @@ class AttendanceImportService
         return trim(mb_convert_encoding($normalized, 'UTF-8', 'Windows-1252'));
     }
 
-    protected function resolveStatus(array $payload): string
+    protected function resolveLateDuration(Employee $employee, ?string $clockIn, ?string $importedLateDuration): ?string
     {
-        $clockIn = $this->parseTimeValue($payload['clock_in']);
-        $clockOut = $this->parseTimeValue($payload['clock_out']);
-        $late = $this->parseDurationValue($payload['late']);
-        $early = $this->parseDurationValue($payload['early']);
-        $absent = $this->parseDurationValue($payload['absent']);
-        $work = $this->parseDurationValue($payload['work_time']);
+        if (! $clockIn) {
+            return $importedLateDuration;
+        }
+
+        $shiftStart = $this->parseTimeValue($employee->shift_start_time);
+
+        if (! $shiftStart) {
+            return $importedLateDuration;
+        }
+
+        $graceMinutes = $this->lateGraceMinutes();
+        $shiftStartAt = Carbon::createFromFormat('H:i:s', $shiftStart);
+        $clockInAt = Carbon::createFromFormat('H:i:s', $clockIn);
+        $lateFrom = $shiftStartAt->copy()->addMinutes($graceMinutes);
+
+        if ($clockInAt->lessThanOrEqualTo($lateFrom)) {
+            return null;
+        }
+
+        return $this->formatMinutesAsDuration($lateFrom->diffInMinutes($clockInAt));
+    }
+
+    protected function resolveStatus(
+        Carbon $attendanceDate,
+        ?string $clockIn,
+        ?string $clockOut,
+        ?string $late,
+        ?string $early,
+        ?string $absent,
+        ?string $work
+    ): string {
+        if ($this->isWeekend($attendanceDate) && ! $clockIn && ! $clockOut && ! $work) {
+            return AttendanceRecord::STATUS_WEEKEND;
+        }
+
+        if ($this->isOfficialHoliday($attendanceDate) && ! $clockIn && ! $clockOut && ! $work) {
+            return AttendanceRecord::STATUS_HOLIDAY;
+        }
 
         if ($absent && $absent !== '00:00') {
-            return 'absent';
+            return AttendanceRecord::STATUS_ABSENT;
         }
 
         if (($clockIn && ! $clockOut) || (! $clockIn && $clockOut)) {
-            return 'incomplete';
+            return AttendanceRecord::STATUS_INCOMPLETE;
         }
 
         if ($late && $late !== '00:00') {
-            return 'late';
+            return AttendanceRecord::STATUS_LATE;
         }
 
         if ($early && $early !== '00:00') {
-            return 'early_leave';
+            return AttendanceRecord::STATUS_EARLY_LEAVE;
         }
 
         if (! $clockIn && ! $clockOut && ! $work) {
-            return 'absent';
+            return AttendanceRecord::STATUS_ABSENT;
         }
 
-        return 'present';
+        return AttendanceRecord::STATUS_PRESENT;
+    }
+
+    protected function lateGraceMinutes(): int
+    {
+        return max(0, (int) (Setting::where('key', 'attendance_late_grace_minutes')->value('value') ?? 0));
+    }
+
+    protected function isOfficialHoliday(Carbon $attendanceDate): bool
+    {
+        $dateKey = $attendanceDate->toDateString();
+
+        if (! array_key_exists($dateKey, $this->officialHolidayCache)) {
+            $this->officialHolidayCache[$dateKey] = OfficialHoliday::whereDate('holiday_date', $dateKey)->exists();
+        }
+
+        return $this->officialHolidayCache[$dateKey];
+    }
+
+    protected function isWeekend(Carbon $attendanceDate): bool
+    {
+        return $attendanceDate->isWeekend();
+    }
+
+    protected function formatMinutesAsDuration(int $minutes): string
+    {
+        $hours = intdiv($minutes, 60);
+        $remainingMinutes = $minutes % 60;
+
+        return str_pad((string) $hours, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $remainingMinutes, 2, '0', STR_PAD_LEFT);
     }
 
     protected function recordError(

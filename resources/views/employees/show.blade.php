@@ -212,7 +212,17 @@
 
     <!-- Job Details Tab (Placeholder mostly same as employment for now, user screenshot shows 'Position & Dates') -->
     <div id="job" class="tab-content" style="display: none;">
-        <h3 class="section-title">Position & Dates</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div>
+                <h3 class="section-title" style="margin-bottom: 4px;">Position & Dates</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Employee-specific working hours are managed here and used by attendance imports.</p>
+            </div>
+            @if($canEditEmployees)
+                <button type="button" class="btn btn-outline" onclick="openShiftTimingModal()">
+                    <i data-lucide="clock-3"></i> Adjust Working Hours
+                </button>
+            @endif
+        </div>
         <div class="info-grid two-col">
              <div class="info-item">
                 <label>Department</label>
@@ -321,13 +331,20 @@
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
             <div>
                 <h3 class="section-title" style="margin-bottom: 4px;">Recent Attendance</h3>
-                <p style="margin: 0; color: #6b7280; font-size: 13px;">Latest imported attendance rows for this employee, including the assigned shift timings.</p>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Latest imported attendance rows for this employee, including the assigned shift timings and global late policy.</p>
             </div>
-            @if(Auth::user()->canAccessModule('attendance_management'))
-                <a href="{{ route('attendance.index', ['search' => $employee->employee_id, 'month' => now()->format('Y-m')]) }}" class="btn btn-outline" style="text-decoration: none;">
-                    <i data-lucide="fingerprint"></i> Open Attendance Module
-                </a>
-            @endif
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                @if($canEditEmployees)
+                    <button type="button" class="btn btn-outline" onclick="openShiftTimingModal()">
+                        <i data-lucide="clock-3"></i> Adjust Working Hours
+                    </button>
+                @endif
+                @if(Auth::user()->canAccessModule('attendance_management'))
+                    <a href="{{ route('attendance.index', ['search' => $employee->employee_id, 'month' => now()->format('Y-m')]) }}" class="btn btn-outline" style="text-decoration: none;">
+                        <i data-lucide="fingerprint"></i> Open Attendance Module
+                    </a>
+                @endif
+            </div>
         </div>
 
         <div class="stacked-list">
@@ -471,6 +488,38 @@
                 <div class="modal-footer" style="margin-top: 20px; padding: 0; display: flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" onclick="closeInactiveModal()" class="btn btn-outline">Cancel</button>
                     <button type="button" onclick="submitInactiveStatus()" class="btn btn-primary" style="background-color: #6b7280; color: white;">Save Reason & Mark Inactive</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="shiftTimingModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header">
+            <div>
+                <h2>Adjust Working Hours</h2>
+                <p class="modal-desc">Update the employee-specific shift timing used for attendance review and late calculation.</p>
+            </div>
+            <button type="button" onclick="closeShiftTimingModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <form method="POST" action="{{ route('employees.shift-timing.update', $employee) }}">
+                @csrf
+                @method('PATCH')
+                <div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Shift Start Time</label>
+                        <input type="time" name="shift_start_time" value="{{ old('shift_start_time', $employee->shift_start_time ? \Illuminate\Support\Carbon::parse($employee->shift_start_time)->format('H:i') : '') }}">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Shift End Time</label>
+                        <input type="time" name="shift_end_time" value="{{ old('shift_end_time', $employee->shift_end_time ? \Illuminate\Support\Carbon::parse($employee->shift_end_time)->format('H:i') : '') }}">
+                    </div>
+                </div>
+                <div class="modal-footer" style="margin-top: 20px; padding: 0;">
+                    <button type="button" onclick="closeShiftTimingModal()" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: #FF4A00; color: white;">Save Working Hours</button>
                 </div>
             </form>
         </div>
@@ -812,6 +861,17 @@
         document.body.style.overflow = 'auto';
     }
 
+    function openShiftTimingModal() {
+        document.getElementById('shiftTimingModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeShiftTimingModal() {
+        document.getElementById('shiftTimingModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
     function toggleEditBankFields() {
         var val = document.getElementById('edit_bankToggle').value;
         var fields = document.getElementById('edit_bankFields');
@@ -1000,11 +1060,17 @@
         if (event.target == document.getElementById('editEmployeeModal')) {
             closeEditModal();
         }
+        if (event.target == document.getElementById('shiftTimingModal')) {
+            closeShiftTimingModal();
+        }
         if (event.target == document.getElementById('inactiveEmployeeModal')) {
             closeInactiveModal();
         }
     });
     toggleEditInactiveReasonField();
+    @if($errors->has('shift_start_time') || $errors->has('shift_end_time'))
+        openShiftTimingModal();
+    @endif
 </script>
 
 <style>
@@ -1093,6 +1159,11 @@
     .status-badge.terminated {
         background: #fef2f2;
         color: #b91c1c;
+    }
+    .status-badge.holiday,
+    .status-badge.weekend {
+        background: #e0f2fe;
+        color: #0f766e;
     }
     .doc-label {
         font-size: 13px;

@@ -470,6 +470,34 @@ class EmployeeManagementTest extends TestCase
         ]);
     }
 
+    public function test_can_update_employee_shift_timings_from_dedicated_route()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'Operations']);
+        $employee = Employee::create([
+            'full_name' => 'Shift Route User',
+            'email' => 'shift-route@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Coordinator',
+            'employee_id' => 'CA-E-91',
+            'shift_start_time' => '09:00:00',
+            'shift_end_time' => '17:00:00',
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('employees.shift-timing.update', $employee), [
+            'shift_start_time' => '10:00',
+            'shift_end_time' => '18:30',
+        ]);
+
+        $response->assertRedirect(route('employees.show', $employee));
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'shift_start_time' => '10:00:00',
+            'shift_end_time' => '18:30:00',
+        ]);
+    }
+
     public function test_employee_detail_page_shows_employment_history_and_related_activity_logs()
     {
         $user = $this->createHrUser();

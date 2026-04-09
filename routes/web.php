@@ -104,6 +104,7 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware('module:employees,edit')->group(function () {
         Route::put('employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+        Route::patch('employees/{employee}/shift-timing', [EmployeeController::class, 'updateShiftTiming'])->name('employees.shift-timing.update');
         Route::delete('employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
         Route::patch('employees/{employee}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
         Route::post('employees/{employee}/approve', [EmployeeController::class, 'approve'])->name('employees.approve');
@@ -133,6 +134,11 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware('module:attendance_management,create')->group(function () {
         Route::post('/attendance/import', [AttendanceController::class, 'import'])->name('attendance.import');
+    });
+    Route::middleware('module:attendance_management,edit')->group(function () {
+        Route::post('/attendance/settings', [AttendanceController::class, 'updateSettings'])->name('attendance.settings.update');
+        Route::post('/attendance/holidays', [AttendanceController::class, 'storeHoliday'])->name('attendance.holidays.store');
+        Route::delete('/attendance/holidays/{holiday}', [AttendanceController::class, 'destroyHoliday'])->name('attendance.holidays.destroy');
     });
 
     // Settings
