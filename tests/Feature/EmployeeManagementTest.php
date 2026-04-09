@@ -7,6 +7,9 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Department;
+use App\Models\PayrollRun;
+use App\Models\EmployeePayrollRecord;
+use App\Models\EmployeeSecurityFundSnapshot;
 use App\Models\Setting;
 use App\Models\EmployeeEmploymentHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -537,6 +540,81 @@ class EmployeeManagementTest extends TestCase
         $response->assertSee('Paid');
         $response->assertSee('Employee profile reviewed');
         $response->assertSee('Payroll changed to Paid');
+    }
+
+    public function test_employee_detail_page_shows_payroll_and_security_fund_information()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'Finance']);
+
+        $employee = Employee::create([
+            'full_name' => 'Payroll User',
+            'email' => 'payroll@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Accounts Executive',
+            'employee_id' => 'CA-E-201',
+            'payroll_status' => 'Paid',
+            'payment_mode' => 'Bank Transfer',
+            'current_salary' => 150000,
+            'last_increment' => 10000,
+        ]);
+
+        $payrollRun = PayrollRun::create([
+            'name' => 'December 2025 Payroll',
+            'pay_period_month' => '2025-12-01',
+            'payment_date' => '2025-12-31',
+            'source_workbook' => 'December Salaries.xlsx',
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $payrollRun->id,
+            'employee_id' => $employee->id,
+            'basic_salary' => 140000,
+            'last_increment' => 10000,
+            'incentives_bonus' => 5000,
+            'punctuality_bonus' => 2000,
+            'positive_arrears' => 1500,
+            'positive_other' => 750,
+            'security_deduction' => 3000,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 500,
+            'arrears_deduction' => 250,
+            'other_deduction' => 100,
+            'gross_salary' => 159250,
+            'income_tax' => 9250,
+            'net_salary' => 150000,
+            'days_absent' => 1,
+            'short_hours_days' => 2,
+            'beneficiary_name' => 'Payroll User',
+            'beneficiary_account_no' => '1234567890',
+        ]);
+
+        EmployeeSecurityFundSnapshot::create([
+            'employee_id' => $employee->id,
+            'fiscal_year_label' => 'FY 2025-26',
+            'snapshot_month' => '2025-12-01',
+            'opening_arrears' => 1000,
+            'july_amount' => 500,
+            'august_amount' => 500,
+            'september_amount' => 500,
+            'october_amount' => 500,
+            'november_amount' => 500,
+            'december_amount' => 500,
+            'paid_amount' => 1500,
+            'balance_in_account' => 2000,
+            'remarks' => 'Imported from payroll workbook',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('employees.show', $employee));
+
+        $response->assertStatus(200);
+        $response->assertSee('Payroll Overview');
+        $response->assertSee('Bank Transfer');
+        $response->assertSee('December 2025 Payroll');
+        $response->assertSee('PKR 150,000.00');
+        $response->assertSee('FY 2025-26');
+        $response->assertSee('Imported from payroll workbook');
     }
 
     public function test_employee_role_cannot_access_employee_management_pages()

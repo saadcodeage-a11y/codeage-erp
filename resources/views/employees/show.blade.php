@@ -5,6 +5,8 @@
 @section('content')
 @php
     $canEditEmployees = Auth::user()->canAccessModule('employees', 'edit');
+    $formatMoney = fn ($amount) => 'PKR ' . number_format((float) ($amount ?? 0), 2);
+    $latestPayrollRecord = $employee->payrollRecords->first();
 @endphp
 <div class="page-header" style="margin-bottom: 24px;">
     <div style="display: flex; align-items: center; gap: 12px;">
@@ -73,6 +75,7 @@
     <button class="tab-btn" onclick="switchTab('documents', this)">Documents</button>
     <button class="tab-btn" onclick="switchTab('leave', this)">Leave History</button>
     <button class="tab-btn" onclick="switchTab('attendance', this)">Attendance</button>
+    <button class="tab-btn" onclick="switchTab('payroll', this)">Payroll</button>
     <button class="tab-btn" onclick="switchTab('letters', this)">HR Letters</button>
     <button class="tab-btn" onclick="switchTab('activity', this)">Activity Logs</button>
 </div>
@@ -374,6 +377,178 @@
             @empty
                 <div class="empty-state-panel">
                     No attendance records have been imported for this employee yet.
+                </div>
+            @endforelse
+        </div>
+    </div>
+
+    <div id="payroll" class="tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div>
+                <h3 class="section-title" style="margin-bottom: 4px;">Payroll Overview</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Current salary settings, latest payroll breakdown, and security-fund balances for this employee.</p>
+            </div>
+        </div>
+
+        <div class="info-grid two-col">
+            <div class="info-item">
+                <label>Current Salary</label>
+                <p>{{ $employee->current_salary !== null ? $formatMoney($employee->current_salary) : 'Not specified' }}</p>
+            </div>
+            <div class="info-item">
+                <label>Payment Mode</label>
+                <p>{{ $employee->payment_mode ?? 'Not specified' }}</p>
+            </div>
+            <div class="info-item">
+                <label>Payroll Status</label>
+                <p>{{ $employee->payroll_status ?? 'Not specified' }}</p>
+            </div>
+            <div class="info-item">
+                <label>Last Increment</label>
+                <p>{{ $employee->last_increment !== null ? $formatMoney($employee->last_increment) : 'Not specified' }}</p>
+            </div>
+        </div>
+
+        <h3 class="section-title" style="margin-top: 32px;">Latest Payroll Run</h3>
+        @if($latestPayrollRecord)
+            <div class="info-grid two-col" style="margin-bottom: 20px;">
+                <div class="info-item">
+                    <label>Pay Period</label>
+                    <p>{{ optional($latestPayrollRecord->payrollRun?->pay_period_month)->format('F Y') ?? 'Not specified' }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Payment Date</label>
+                    <p>{{ optional($latestPayrollRecord->payrollRun?->payment_date)->format('d F, Y') ?? 'Not specified' }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Gross Salary</label>
+                    <p>{{ $formatMoney($latestPayrollRecord->gross_salary) }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Net Salary</label>
+                    <p>{{ $formatMoney($latestPayrollRecord->net_salary) }}</p>
+                </div>
+            </div>
+
+            <div class="info-grid two-col" style="margin-bottom: 20px;">
+                <div class="timeline-card">
+                    <div class="timeline-header" style="margin-bottom: 12px;">
+                        <div>
+                            <h4>Earnings</h4>
+                            <p>Amounts contributing positively to payroll.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-meta" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+                        <span>Basic: {{ $formatMoney($latestPayrollRecord->basic_salary) }}</span>
+                        <span>Increment: {{ $formatMoney($latestPayrollRecord->last_increment) }}</span>
+                        <span>Incentives: {{ $formatMoney($latestPayrollRecord->incentives_bonus) }}</span>
+                        <span>Punctuality: {{ $formatMoney($latestPayrollRecord->punctuality_bonus) }}</span>
+                        <span>Arrears: {{ $formatMoney($latestPayrollRecord->positive_arrears) }}</span>
+                        <span>Other: {{ $formatMoney($latestPayrollRecord->positive_other) }}</span>
+                    </div>
+                </div>
+                <div class="timeline-card">
+                    <div class="timeline-header" style="margin-bottom: 12px;">
+                        <div>
+                            <h4>Deductions</h4>
+                            <p>Amounts reducing the payable salary.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-meta" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+                        <span>Security: {{ $formatMoney($latestPayrollRecord->security_deduction) }}</span>
+                        <span>Non-Paid Leave: {{ $formatMoney($latestPayrollRecord->non_paid_leave_deduction) }}</span>
+                        <span>Attendance Penalty: {{ $formatMoney($latestPayrollRecord->attendance_penalty) }}</span>
+                        <span>Arrears: {{ $formatMoney($latestPayrollRecord->arrears_deduction) }}</span>
+                        <span>Other: {{ $formatMoney($latestPayrollRecord->other_deduction) }}</span>
+                        <span>Income Tax: {{ $formatMoney($latestPayrollRecord->income_tax) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-grid two-col">
+                <div class="info-item">
+                    <label>Days Absent</label>
+                    <p>{{ $latestPayrollRecord->days_absent }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Short Hours Days</label>
+                    <p>{{ $latestPayrollRecord->short_hours_days }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Beneficiary Name</label>
+                    <p>{{ $latestPayrollRecord->beneficiary_name ?? 'Not specified' }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Beneficiary Account</label>
+                    <p>{{ $latestPayrollRecord->beneficiary_account_no ?? 'Not specified' }}</p>
+                </div>
+            </div>
+        @else
+            <div class="empty-state-panel">
+                No payroll records are available for this employee yet.
+            </div>
+        @endif
+
+        <h3 class="section-title" style="margin-top: 32px;">Payroll History</h3>
+        <div class="stacked-list">
+            @forelse($employee->payrollRecords as $payrollRecord)
+                <div class="timeline-card" style="margin-bottom: 14px;">
+                    <div class="timeline-header">
+                        <div>
+                            <h4>{{ optional($payrollRecord->payrollRun?->pay_period_month)->format('F Y') ?? 'Payroll Run' }}</h4>
+                            <p>{{ $payrollRecord->payrollRun?->name ?? 'Imported payroll record' }}</p>
+                        </div>
+                        <div class="timeline-date">
+                            <strong>{{ $formatMoney($payrollRecord->net_salary) }}</strong>
+                            <span>Gross {{ $formatMoney($payrollRecord->gross_salary) }}</span>
+                        </div>
+                    </div>
+                    <div class="timeline-meta">
+                        <span>Basic: {{ $formatMoney($payrollRecord->basic_salary) }}</span>
+                        <span>Tax: {{ $formatMoney($payrollRecord->income_tax) }}</span>
+                        <span>Security: {{ $formatMoney($payrollRecord->security_deduction) }}</span>
+                        <span>Absence Days: {{ $payrollRecord->days_absent }}</span>
+                    </div>
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No payroll history has been recorded for this employee yet.
+                </div>
+            @endforelse
+        </div>
+
+        <h3 class="section-title" style="margin-top: 32px;">Security Fund</h3>
+        <div class="stacked-list">
+            @forelse($employee->securityFundSnapshots as $snapshot)
+                <div class="timeline-card" style="margin-bottom: 14px;">
+                    <div class="timeline-header">
+                        <div>
+                            <h4>{{ $snapshot->fiscal_year_label }}</h4>
+                            <p>Snapshot month {{ $snapshot->snapshot_month->format('F Y') }}</p>
+                        </div>
+                        <div class="timeline-date">
+                            <strong>Balance {{ $formatMoney($snapshot->balance_in_account) }}</strong>
+                            <span>Paid {{ $formatMoney($snapshot->paid_amount) }}</span>
+                        </div>
+                    </div>
+                    <div class="timeline-meta">
+                        <span>Opening Arrears: {{ $formatMoney($snapshot->opening_arrears) }}</span>
+                        <span>July: {{ $formatMoney($snapshot->july_amount) }}</span>
+                        <span>August: {{ $formatMoney($snapshot->august_amount) }}</span>
+                        <span>September: {{ $formatMoney($snapshot->september_amount) }}</span>
+                        <span>October: {{ $formatMoney($snapshot->october_amount) }}</span>
+                        <span>November: {{ $formatMoney($snapshot->november_amount) }}</span>
+                        <span>December: {{ $formatMoney($snapshot->december_amount) }}</span>
+                    </div>
+                    @if($snapshot->remarks)
+                        <div class="note-panel" style="margin-top: 12px;">
+                            <strong>Remarks:</strong> {{ $snapshot->remarks }}
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No security-fund snapshots are available for this employee yet.
                 </div>
             @endforelse
         </div>
