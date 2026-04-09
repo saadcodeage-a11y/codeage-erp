@@ -3,6 +3,9 @@
 @section('title', 'User Management')
 
 @section('content')
+@php
+    $moduleLabels = \App\Models\Role::availableModules();
+@endphp
 <div class="page-header">
     <div class="header-left">
         <h1>User Management</h1>
@@ -94,7 +97,7 @@
                 <span>Roles</span>
             </div>
             <div class="overview-pill">
-                <strong>{{ count($modules) }}</strong>
+                <strong>{{ count($moduleLabels) }}</strong>
                 <span>Modules</span>
             </div>
         </div>
@@ -110,6 +113,7 @@
                         + ($permission['create'] ? 1 : 0)
                         + ($permission['edit'] ? 1 : 0);
                 }, 0);
+                $moduleCount = count($permissions);
                 $rolePayload = ['id' => $role->id, 'name' => $role->name, 'permissions' => $permissions];
             @endphp
             <div class="role-card">
@@ -119,7 +123,7 @@
                         <p>{{ $role->users_count }} assigned {{ \Illuminate\Support\Str::plural('user', $role->users_count) }}</p>
                         <div class="role-card-metrics">
                             <span class="metric-chip">{{ $allowedCount }} permissions allowed</span>
-                            <span class="metric-chip muted">{{ count($modules) }} modules covered</span>
+                            <span class="metric-chip muted">{{ $moduleCount }} modules covered</span>
                         </div>
                     </div>
                     <div class="action-buttons">
@@ -299,7 +303,7 @@
     }
     .role-permission-list {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 14px;
         padding: 18px;
         background: #fcfcfd;

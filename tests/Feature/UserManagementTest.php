@@ -25,6 +25,9 @@ class UserManagementTest extends TestCase
         $response->assertSee('HR Manager');
         $response->assertSee('Accounts Manager');
         $response->assertSee('Employee');
+        $response->assertSee('Leave Management');
+        $response->assertSee('>7<', false);
+        $response->assertSee('Modules');
     }
 
     public function test_can_create_role_with_module_permissions(): void
@@ -38,6 +41,7 @@ class UserManagementTest extends TestCase
             'permissions' => [
                 'dashboard' => ['read' => true, 'create' => false, 'edit' => false],
                 'employees' => ['read' => true, 'create' => true, 'edit' => true],
+                'leave_management' => ['read' => true, 'create' => true, 'edit' => false],
                 'user_management' => ['read' => true, 'create' => false, 'edit' => false],
                 'settings' => ['read' => false, 'create' => false, 'edit' => false],
                 'templates' => ['read' => true, 'create' => false, 'edit' => true],
@@ -56,6 +60,14 @@ class UserManagementTest extends TestCase
             'can_read' => true,
             'can_create' => true,
             'can_edit' => true,
+        ]);
+
+        $this->assertDatabaseHas('role_permissions', [
+            'role_id' => $role->id,
+            'module' => 'leave_management',
+            'can_read' => true,
+            'can_create' => true,
+            'can_edit' => false,
         ]);
 
         $this->assertDatabaseHas('role_permissions', [
