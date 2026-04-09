@@ -42,6 +42,12 @@
                         <span>Leave Management</span>
                     </a>
                 @endif
+                @if(Auth::user()->canAccessModule('attendance_management'))
+                    <a href="{{ route('attendance.index') }}" class="nav-item {{ request()->routeIs('attendance.*') ? 'active' : '' }}">
+                        <i data-lucide="fingerprint"></i>
+                        <span>Attendance</span>
+                    </a>
+                @endif
                 @if(Auth::user()->canAccessModule('templates'))
                     <a href="{{ route('templates.index') }}" class="nav-item {{ request()->routeIs('templates.*') ? 'active' : '' }}">
                         <i data-lucide="mail"></i>

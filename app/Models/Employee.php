@@ -46,7 +46,7 @@ class Employee extends Model
         'current_address', 'permanent_address', 
         'father_name', 'guardian_contact',
         'education_level', 'field_of_study',
-        'job_location', 'payroll_status',
+        'job_location', 'shift_start_time', 'shift_end_time', 'payroll_status',
         'profile_picture', 'cnic_front_path', 'cnic_back_path', 'cv_path', 'transcript_path',
         'bank_id', 'bank_account_title', 'bank_account_number', 'bank_name', 'iban',
         'hr_comments', 'banking_comments',
@@ -78,6 +78,11 @@ class Employee extends Model
     public function hrLetters()
     {
         return $this->hasMany(HrLetter::class)->latest('generated_at');
+    }
+
+    public function attendanceRecords()
+    {
+        return $this->hasMany(AttendanceRecord::class)->latest('attendance_date');
     }
 
     public function employmentHistories()

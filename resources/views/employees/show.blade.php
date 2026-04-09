@@ -72,6 +72,7 @@
     <button class="tab-btn" onclick="switchTab('job', this)">Job Details</button>
     <button class="tab-btn" onclick="switchTab('documents', this)">Documents</button>
     <button class="tab-btn" onclick="switchTab('leave', this)">Leave History</button>
+    <button class="tab-btn" onclick="switchTab('attendance', this)">Attendance</button>
     <button class="tab-btn" onclick="switchTab('letters', this)">HR Letters</button>
     <button class="tab-btn" onclick="switchTab('activity', this)">Activity Logs</button>
 </div>
@@ -221,6 +222,14 @@
                 <label>Hiring Date</label>
                 <p>{{ $employee->hiring_date ? $employee->hiring_date->format('d F, Y') : 'Not specified' }}</p>
             </div>
+            <div class="info-item">
+                <label>Shift Timing</label>
+                <p>
+                    {{ $employee->shift_start_time ? \Illuminate\Support\Carbon::parse($employee->shift_start_time)->format('H:i') : '--:--' }}
+                    to
+                    {{ $employee->shift_end_time ? \Illuminate\Support\Carbon::parse($employee->shift_end_time)->format('H:i') : '--:--' }}
+                </p>
+            </div>
         </div>
     </div>
 
@@ -303,6 +312,51 @@
             @empty
                 <div class="empty-state-panel">
                     No leave requests have been recorded for this employee yet.
+                </div>
+            @endforelse
+        </div>
+    </div>
+
+    <div id="attendance" class="tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div>
+                <h3 class="section-title" style="margin-bottom: 4px;">Recent Attendance</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Latest imported attendance rows for this employee, including the assigned shift timings.</p>
+            </div>
+            @if(Auth::user()->canAccessModule('attendance_management'))
+                <a href="{{ route('attendance.index', ['search' => $employee->employee_id, 'month' => now()->format('Y-m')]) }}" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="fingerprint"></i> Open Attendance Module
+                </a>
+            @endif
+        </div>
+
+        <div class="stacked-list">
+            @forelse($employee->attendanceRecords as $attendanceRecord)
+                <div class="timeline-card" style="margin-bottom: 14px;">
+                    <div class="timeline-header">
+                        <div>
+                            <h4>{{ $attendanceRecord->attendance_date->format('d M Y') }}</h4>
+                            <p>
+                                Shift
+                                {{ $attendanceRecord->shift_start_time ? \Illuminate\Support\Carbon::parse($attendanceRecord->shift_start_time)->format('H:i') : '--:--' }}
+                                to
+                                {{ $attendanceRecord->shift_end_time ? \Illuminate\Support\Carbon::parse($attendanceRecord->shift_end_time)->format('H:i') : '--:--' }}
+                            </p>
+                        </div>
+                        <span class="status-badge {{ $attendanceRecord->status }}">{{ ucfirst(str_replace('_', ' ', $attendanceRecord->status)) }}</span>
+                    </div>
+                    <div class="timeline-meta">
+                        <span>Clock In: {{ $attendanceRecord->clock_in ? \Illuminate\Support\Carbon::parse($attendanceRecord->clock_in)->format('H:i') : '--:--' }}</span>
+                        <span>Clock Out: {{ $attendanceRecord->clock_out ? \Illuminate\Support\Carbon::parse($attendanceRecord->clock_out)->format('H:i') : '--:--' }}</span>
+                        <span>Late: {{ $attendanceRecord->late_duration ?? '--:--' }}</span>
+                        <span>Early: {{ $attendanceRecord->early_duration ?? '--:--' }}</span>
+                        <span>Absent: {{ $attendanceRecord->absent_duration ?? '--:--' }}</span>
+                        <span>Work Time: {{ $attendanceRecord->work_duration ?? '--:--' }}</span>
+                    </div>
+                </div>
+            @empty
+                <div class="empty-state-panel">
+                    No attendance records have been imported for this employee yet.
                 </div>
             @endforelse
         </div>
@@ -547,10 +601,18 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Shift Start Time</label>
+                            <input type="time" name="shift_start_time" id="edit_shift_start_time">
+                        </div>
+                        <div class="form-group">
                             <label>Department *</label>
                             <select name="department_id" id="edit_department_id" required>
                                 <option value="">Select Department</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Shift End Time</label>
+                            <input type="time" name="shift_end_time" id="edit_shift_end_time">
                         </div>
                         <div class="form-group full-width">
                             <label>Payroll Status</label>
@@ -696,6 +758,8 @@
             document.getElementById('edit_hiring_date').value = employee.hiring_date ? employee.hiring_date.split('T')[0] : '';
             document.getElementById('edit_designation').value = employee.designation || '';
             document.getElementById('edit_job_location').value = employee.job_location || '';
+            document.getElementById('edit_shift_start_time').value = employee.shift_start_time ? employee.shift_start_time.substring(0, 5) : '';
+            document.getElementById('edit_shift_end_time').value = employee.shift_end_time ? employee.shift_end_time.substring(0, 5) : '';
             document.getElementById('edit_payroll_status').value = employee.payroll_status || '';
             document.getElementById('edit_status').value = employee.status || '';
             document.getElementById('edit_inactive_reason').value = employee.inactive_reason || '';

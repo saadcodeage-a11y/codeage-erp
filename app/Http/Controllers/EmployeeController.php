@@ -88,6 +88,8 @@ class EmployeeController extends Controller
             'education_level' => 'nullable|string',
             'field_of_study' => 'nullable|string',
             'job_location' => 'nullable|string',
+            'shift_start_time' => 'nullable|date_format:H:i|required_with:shift_end_time',
+            'shift_end_time' => 'nullable|date_format:H:i|required_with:shift_start_time',
             'payroll_status' => 'nullable|string',
             'hr_comments' => 'nullable|string',
             'banking_comments' => 'nullable|string',
@@ -104,6 +106,8 @@ class EmployeeController extends Controller
         $data['inactive_reason'] = $data['status'] === 'inactive'
             ? $request->input('inactive_reason')
             : null;
+        $data['shift_start_time'] = $this->normalizeShiftTime($request->input('shift_start_time'));
+        $data['shift_end_time'] = $this->normalizeShiftTime($request->input('shift_end_time'));
         
         // Handle Uploads
         if ($request->hasFile('profile_picture')) {
@@ -137,6 +141,7 @@ class EmployeeController extends Controller
             'employmentHistories.department',
             'leaveRequests.leaveType',
             'hrLetters.generatedBy',
+            'attendanceRecords' => fn ($query) => $query->latest('attendance_date')->limit(10),
         ]);
 
         $historyIds = $employee->employmentHistories->modelKeys();
@@ -215,6 +220,8 @@ class EmployeeController extends Controller
             'education_level' => 'nullable|string',
             'field_of_study' => 'nullable|string',
             'job_location' => 'nullable|string',
+            'shift_start_time' => 'nullable|date_format:H:i|required_with:shift_end_time',
+            'shift_end_time' => 'nullable|date_format:H:i|required_with:shift_start_time',
             'payroll_status' => 'nullable|string',
             'hr_comments' => 'nullable|string',
             'banking_comments' => 'nullable|string',
@@ -231,6 +238,8 @@ class EmployeeController extends Controller
         $data['inactive_reason'] = $status === 'inactive'
             ? $request->input('inactive_reason')
             : null;
+        $data['shift_start_time'] = $this->normalizeShiftTime($request->input('shift_start_time'));
+        $data['shift_end_time'] = $this->normalizeShiftTime($request->input('shift_end_time'));
         
         // Handle Uploads
         if ($request->hasFile('profile_picture')) {
@@ -443,6 +452,15 @@ class EmployeeController extends Controller
             'experience' => "Experience Letter - {$employee->full_name}",
             'termination' => "Termination Letter - {$employee->full_name}",
         };
+    }
+
+    protected function normalizeShiftTime(?string $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        return Carbon::createFromFormat('H:i', $value)->format('H:i:s');
     }
 
     protected function employeeLetterBody(Employee $employee, string $type, Carbon $generatedAt): string

@@ -26,7 +26,8 @@ class UserManagementTest extends TestCase
         $response->assertSee('Accounts Manager');
         $response->assertSee('Employee');
         $response->assertSee('Leave Management');
-        $response->assertSee('>7<', false);
+        $response->assertSee('Attendance Management');
+        $response->assertSee('>8<', false);
         $response->assertSee('Modules');
     }
 
@@ -42,6 +43,7 @@ class UserManagementTest extends TestCase
                 'dashboard' => ['read' => true, 'create' => false, 'edit' => false],
                 'employees' => ['read' => true, 'create' => true, 'edit' => true],
                 'leave_management' => ['read' => true, 'create' => true, 'edit' => false],
+                'attendance_management' => ['read' => true, 'create' => false, 'edit' => false],
                 'user_management' => ['read' => true, 'create' => false, 'edit' => false],
                 'settings' => ['read' => false, 'create' => false, 'edit' => false],
                 'templates' => ['read' => true, 'create' => false, 'edit' => true],
@@ -67,6 +69,14 @@ class UserManagementTest extends TestCase
             'module' => 'leave_management',
             'can_read' => true,
             'can_create' => true,
+            'can_edit' => false,
+        ]);
+
+        $this->assertDatabaseHas('role_permissions', [
+            'role_id' => $role->id,
+            'module' => 'attendance_management',
+            'can_read' => true,
+            'can_create' => false,
             'can_edit' => false,
         ]);
 

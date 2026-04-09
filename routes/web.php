@@ -83,6 +83,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\AttendanceController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
@@ -123,6 +124,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/leave-types', [LeaveController::class, 'storeType'])->name('leave-types.store');
         Route::put('/leave-types/{leaveType}', [LeaveController::class, 'updateType'])->name('leave-types.update');
         Route::delete('/leave-types/{leaveType}', [LeaveController::class, 'destroyType'])->name('leave-types.destroy');
+    });
+
+    // Attendance Management
+    Route::middleware('module:attendance_management,read')->group(function () {
+        Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+    });
+    Route::middleware('module:attendance_management,create')->group(function () {
+        Route::post('/attendance/import', [AttendanceController::class, 'import'])->name('attendance.import');
     });
 
     // Settings

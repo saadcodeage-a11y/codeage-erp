@@ -281,6 +281,36 @@ class EmployeeManagementTest extends TestCase
         $this->assertNull($activeHistory->effective_to);
     }
 
+    public function test_can_set_shift_timings_for_employee()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'IT']);
+        $employee = Employee::create([
+            'full_name' => 'Shift User',
+            'email' => 'shift@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'employee_id' => 'EMP125',
+        ]);
+
+        $response = $this->actingAs($user)->put(route('employees.update', $employee), [
+            'full_name' => 'Shift User',
+            'email' => 'shift@example.com',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'shift_start_time' => '09:00',
+            'shift_end_time' => '17:00',
+        ]);
+
+        $response->assertRedirect(route('employees.show', $employee));
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'shift_start_time' => '09:00:00',
+            'shift_end_time' => '17:00:00',
+        ]);
+    }
+
     public function test_employee_detail_page_shows_employment_history_and_related_activity_logs()
     {
         $user = $this->createHrUser();

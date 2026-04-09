@@ -288,6 +288,11 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Shift Start Time</label>
+                            <input type="time" name="shift_start_time" value="{{ old('shift_start_time') }}">
+                            @error('shift_start_time') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
                              <label>Department *</label>
                             <select name="department_id" required class="@error('department_id') border-red-500 @enderror">
                                 <option value="">Select Department</option>
@@ -296,6 +301,11 @@
                                 @endforeach
                             </select>
                             @error('department_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>Shift End Time</label>
+                            <input type="time" name="shift_end_time" value="{{ old('shift_end_time') }}">
+                            @error('shift_end_time') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                          <div class="form-group full-width">
                             <label>Payroll Status</label>
@@ -627,10 +637,18 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Shift Start Time</label>
+                            <input type="time" name="shift_start_time" id="edit_shift_start_time">
+                        </div>
+                        <div class="form-group">
                             <label>Department *</label>
                             <select name="department_id" id="edit_department_id" required>
                                 <option value="">Select Department</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Shift End Time</label>
+                            <input type="time" name="shift_end_time" id="edit_shift_end_time">
                         </div>
                         <div class="form-group full-width">
                             <label>Payroll Status</label>
@@ -786,6 +804,8 @@
             document.getElementById('edit_hiring_date').value = employee.hiring_date ? employee.hiring_date.split('T')[0] : '';
             document.getElementById('edit_designation').value = employee.designation || '';
             document.getElementById('edit_job_location').value = employee.job_location || '';
+            document.getElementById('edit_shift_start_time').value = employee.shift_start_time ? employee.shift_start_time.substring(0, 5) : '';
+            document.getElementById('edit_shift_end_time').value = employee.shift_end_time ? employee.shift_end_time.substring(0, 5) : '';
             document.getElementById('edit_payroll_status').value = employee.payroll_status || '';
             document.getElementById('edit_status').value = employee.status || '';
             document.getElementById('edit_inactive_reason').value = employee.inactive_reason || '';
