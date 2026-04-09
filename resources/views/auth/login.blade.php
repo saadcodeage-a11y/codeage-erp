@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - CodeAge ERP</title>
+    <title>Login - {{ config('app.name') }}</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/login.css'])
     @else
@@ -21,10 +21,10 @@
     <div class="login-container">
         <div class="login-card">
             <div class="logo-container">
-                <img src="{{ asset('images/logo.png') }}" alt="CodeAge ERP" class="logo">
+                <img src="{{ asset('images/logo.png') }}" alt="{{ config('app.name') }}" class="logo">
             </div>
             
-            <h1 class="welcome-title">Welcome to CodeAge ERP</h1>
+            <h1 class="welcome-title">Welcome to {{ config('app.name') }}</h1>
             <p class="welcome-subtitle">Sign in to continue to your dashboard</p>
 
             <form method="POST" action="{{ route('login') }}">

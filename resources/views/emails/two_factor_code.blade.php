@@ -16,7 +16,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <a href="{{ config('app.url') }}" class="logo">CodeAge ERP</a>
+            <a href="{{ config('app.url') }}" class="logo">{{ config('app.name') }}</a>
         </div>
         <p>Hello,</p>
         <p>You have requested to log in. Please use the verification code below to complete your sign-in process.</p>
@@ -28,7 +28,7 @@
         <p>This code will expire in 10 minutes. If you did not attempt to sign in, please contact your administrator immediately.</p>
         
         <div class="footer">
-            &copy; {{ date('Y') }} CodeAge ERP. All rights reserved.
+            &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
         </div>
     </div>
 </body>

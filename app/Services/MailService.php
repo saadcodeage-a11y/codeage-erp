@@ -49,7 +49,7 @@ class MailService
     {
         $this->setDynamicConfig($smtp);
 
-        Mail::raw("Hello,\n\nThis is a test email from CodeAge ERP system. If you received this, your SMTP configuration '{$smtp->name}' is working correctly.\n\nRegards,\nCodeAge ERP", function ($message) use ($to, $smtp) {
+        Mail::raw("Hello,\n\nThis is a test email from " . config('app.name') . " system. If you received this, your SMTP configuration '{$smtp->name}' is working correctly.\n\nRegards,\n" . config('app.name'), function ($message) use ($to, $smtp) {
             $message->to($to)
                     ->subject('SMTP Test Email - ' . config('app.name'));
         });
