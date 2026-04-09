@@ -74,6 +74,48 @@ class EmployeeManagementTest extends TestCase
         $response->assertSee('EMP100');
     }
 
+    public function test_employee_list_is_sorted_by_employee_id_in_ascending_order()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'IT']);
+
+        Employee::create([
+            'full_name' => 'Employee 100',
+            'email' => 'employee100@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'employee_id' => 'CA-E-100',
+        ]);
+
+        Employee::create([
+            'full_name' => 'Employee 44',
+            'email' => 'employee44@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'employee_id' => 'CA-E-44',
+        ]);
+
+        Employee::create([
+            'full_name' => 'Employee 9',
+            'email' => 'employee9@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Developer',
+            'employee_id' => 'CA-E-9',
+        ]);
+
+        $response = $this->actingAs($user)->get('/employees');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder([
+            'CA-E-9',
+            'CA-E-44',
+            'CA-E-100',
+        ]);
+    }
+
     public function test_can_filter_employees_by_status()
     {
         $user = $this->createHrUser();

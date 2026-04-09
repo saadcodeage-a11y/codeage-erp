@@ -61,7 +61,12 @@ class EmployeeController extends Controller
             });
         }
 
-        $employees = $query->latest()->paginate(10)->withQueryString();
+        $employees = $query
+            ->orderByRaw("CASE WHEN employee_id IS NULL OR employee_id = '' THEN 1 ELSE 0 END")
+            ->orderByRaw('LENGTH(employee_id)')
+            ->orderBy('employee_id')
+            ->paginate(10)
+            ->withQueryString();
         $departments = \App\Models\Department::all();
 
         return view('employees.index', compact('employees', 'counts', 'status', 'departments'));

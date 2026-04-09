@@ -1,5 +1,5 @@
--- December 2025 payroll workbook seed for CodeAge Pvt. Ltd.
--- Generated from December Salaries.xlsx on 2026-04-09.
+-- December 2025 payroll seed for CodeAge Pvt. Ltd.
+-- Import this after 2026_04_09_000011_employee_master_seed.sql.
 SET NAMES utf8mb4;
 
 -- Schema alignment for payroll fields and tables.
