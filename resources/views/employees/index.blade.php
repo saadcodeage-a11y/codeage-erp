@@ -17,6 +17,9 @@
             <button class="btn btn-outline" onclick="openInviteModal()">
                 <i data-lucide="send"></i> Invite Employee
             </button>
+            <button class="btn btn-outline" onclick="openEmployeeImportModal()">
+                <i data-lucide="file-up"></i> Import Employees
+            </button>
             <a href="#" onclick="openModal(); return false;" class="btn btn-primary" style="text-decoration: none;">
                 <i data-lucide="plus"></i> Add Employee
             </a>
@@ -48,6 +51,65 @@
         <input type="text" name="search" placeholder="Search by name, ID, or position..." value="{{ request('search') }}" class="search-input">
     </form>
 </div>
+
+@if(session('success') || session('warning') || session('employeeImportSummary') || $errors->employeeImport->any())
+    <div class="employee-feedback-stack">
+        @if(session('success'))
+            <div class="employee-status-banner success">
+                <i data-lucide="circle-check-big"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
+
+        @if(session('warning'))
+            <div class="employee-status-banner warning">
+                <i data-lucide="triangle-alert"></i>
+                <span>{{ session('warning') }}</span>
+            </div>
+        @endif
+
+        @if(session('employeeImportSummary'))
+            @php($importSummary = session('employeeImportSummary'))
+            <div class="employee-import-summary">
+                <div class="employee-import-summary-header">
+                    <div>
+                        <h3>Employee Upload Summary</h3>
+                        <p>Imported records were saved under the default <strong>Unassigned</strong> department with position <strong>Not assigned</strong>.</p>
+                    </div>
+                    <div class="employee-import-metrics">
+                        <span class="summary-chip success">{{ $importSummary['imported'] }} imported</span>
+                        <span class="summary-chip muted">{{ count($importSummary['errors']) }} skipped</span>
+                        <span class="summary-chip muted">Counter: {{ $importSummary['counter'] }}</span>
+                    </div>
+                </div>
+
+                @if(!empty($importSummary['errors']))
+                    <div class="employee-import-errors">
+                        <strong>Import Issues</strong>
+                        <ul>
+                            @foreach(array_slice($importSummary['errors'], 0, 8) as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        @if(count($importSummary['errors']) > 8)
+                            <p>{{ count($importSummary['errors']) - 8 }} more row issues were skipped during import.</p>
+                        @endif
+                    </div>
+                @endif
+            </div>
+        @endif
+
+        @if($errors->employeeImport->any())
+            <div class="employee-status-banner danger">
+                <i data-lucide="octagon-alert"></i>
+                <div>
+                    <strong>Employee upload could not be completed.</strong>
+                    <p>{{ $errors->employeeImport->first() }}</p>
+                </div>
+            </div>
+        @endif
+    </div>
+@endif
 
 <!-- Table -->
 <div class="table-card">
@@ -146,6 +208,13 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         openModal();
+    });
+</script>
+@endif
+@if($errors->employeeImport->any() || session('open_modal') === 'employeeImportModal')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        openEmployeeImportModal();
     });
 </script>
 @endif
@@ -404,6 +473,50 @@
                 <div class="modal-footer">
                     <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="background-color: #FF4A00; color: white;">+ Add Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="employeeImportModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 560px;">
+        <div class="modal-header">
+            <div>
+                <h2>Import Employees from CSV</h2>
+                <p class="modal-desc" style="margin-bottom: 0;">Upload a CSV with Employee ID, Employee Name, Email, Contact Number, CNIC, and Gender. Imported employees will be created as active records.</p>
+            </div>
+            <button onclick="closeEmployeeImportModal()" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+            @if($errors->employeeImport->any())
+                <div class="employee-inline-error">
+                    <strong>Upload Error</strong>
+                    <ul>
+                        @foreach($errors->employeeImport->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form action="{{ route('employees.import') }}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 16px;">
+                @csrf
+                <div class="employee-import-spec">
+                    <h4>Expected CSV Columns</h4>
+                    <p><code>Employee ID</code>, <code>Employee Name</code>, <code>Email</code>, <code>Contact Number</code>, <code>CNIC</code>, <code>Gender</code></p>
+                    <p>The employee counter will be updated to the highest imported number for the current employee ID prefix.</p>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label>Employee CSV File</label>
+                    <input type="file" name="employee_csv" accept=".csv" required>
+                    <span class="hint">Rows with duplicate employee IDs, duplicate emails, or invalid genders will be skipped.</span>
+                </div>
+                <div class="modal-footer" style="padding: 0; margin-top: 8px;">
+                    <button type="button" onclick="closeEmployeeImportModal()" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="upload"></i> Upload CSV
+                    </button>
                 </div>
             </form>
         </div>
@@ -763,6 +876,17 @@
         document.body.style.overflow = 'auto';
     }
 
+    function openEmployeeImportModal() {
+        document.getElementById('employeeImportModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeEmployeeImportModal() {
+        document.getElementById('employeeImportModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
     function editEmployee(id) {
         fetch(`/employees/${id}/edit`, {
             headers: {
@@ -1039,6 +1163,9 @@
         if (event.target == document.getElementById('addEmployeeModal')) {
             closeModal();
         }
+        if (event.target == document.getElementById('employeeImportModal')) {
+            closeEmployeeImportModal();
+        }
         if (event.target == document.getElementById('editEmployeeModal')) {
             closeEditModal();
         }
@@ -1172,6 +1299,158 @@
 </script>
 
 <style>
+    .employee-feedback-stack {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    .employee-status-banner {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 18px;
+        border-radius: 12px;
+        border: 1px solid;
+    }
+    .employee-status-banner i {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    .employee-status-banner strong,
+    .employee-status-banner span,
+    .employee-status-banner p {
+        color: inherit;
+    }
+    .employee-status-banner p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .employee-status-banner.success {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+    .employee-status-banner.warning {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #9a3412;
+    }
+    .employee-status-banner.danger {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+    }
+    .employee-import-summary {
+        background: linear-gradient(180deg, #fffaf5 0%, #ffffff 100%);
+        border: 1px solid #fed7aa;
+        border-radius: 16px;
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+    }
+    .employee-import-summary-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    .employee-import-summary-header h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        color: #111827;
+    }
+    .employee-import-summary-header p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .employee-import-metrics {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .summary-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #475569;
+    }
+    .summary-chip.success {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+    .summary-chip.muted {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        color: #475569;
+    }
+    .employee-import-errors {
+        border-top: 1px solid #ffedd5;
+        padding-top: 16px;
+    }
+    .employee-import-errors strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #9a3412;
+    }
+    .employee-import-errors ul {
+        margin: 0;
+        padding-left: 18px;
+        color: #7c2d12;
+        display: grid;
+        gap: 6px;
+    }
+    .employee-import-errors p {
+        margin: 10px 0 0;
+        color: #9a3412;
+        font-size: 13px;
+    }
+    .employee-inline-error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        padding: 14px 16px;
+        border-radius: 12px;
+    }
+    .employee-inline-error strong {
+        display: block;
+        margin-bottom: 8px;
+    }
+    .employee-inline-error ul {
+        margin: 0;
+        padding-left: 18px;
+    }
+    .employee-import-spec {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+    .employee-import-spec h4 {
+        margin: 0 0 6px;
+        font-size: 14px;
+        color: #111827;
+    }
+    .employee-import-spec p {
+        margin: 0;
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .employee-import-spec p + p {
+        margin-top: 6px;
+    }
     .border-red-500 {
         border-color: #ef4444 !important;
     }
@@ -1181,6 +1460,14 @@
     .text-xs {
         font-size: 12px;
         margin-top: 4px;
+    }
+    @media (max-width: 900px) {
+        .employee-import-summary-header {
+            flex-direction: column;
+        }
+        .employee-import-metrics {
+            justify-content: flex-start;
+        }
     }
 </style>
 @endsection

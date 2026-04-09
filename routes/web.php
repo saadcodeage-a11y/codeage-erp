@@ -100,6 +100,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('module:employees,create')->group(function () {
         Route::post('employees', [EmployeeController::class, 'store'])->name('employees.store');
         Route::post('employees/invite', [EmployeeController::class, 'invite'])->name('employees.invite');
+        Route::post('employees/import', [EmployeeController::class, 'importCsv'])->name('employees.import');
     });
     Route::middleware('module:employees,edit')->group(function () {
         Route::put('employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');

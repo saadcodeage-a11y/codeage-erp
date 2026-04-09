@@ -10,6 +10,7 @@ use App\Models\Department;
 use App\Models\Setting;
 use App\Models\EmployeeEmploymentHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 
 class EmployeeManagementTest extends TestCase
 {
@@ -28,6 +29,30 @@ class EmployeeManagementTest extends TestCase
             'role' => 'Employee',
             'employee_id' => $employee->id,
         ], $attributes));
+    }
+
+    protected function createEmployeeCsvFile(array $rows): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'employees_');
+        $csvPath = $path . '.csv';
+        rename($path, $csvPath);
+
+        $handle = fopen($csvPath, 'wb');
+        fputcsv($handle, ['Employee ID', 'Employee Name', 'Email', 'Contact Number', 'CNIC', 'Gender']);
+
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
+
+        fclose($handle);
+
+        return new UploadedFile(
+            $csvPath,
+            'employees.csv',
+            'text/csv',
+            null,
+            true
+        );
     }
 
     public function test_can_view_employee_list()
@@ -97,6 +122,98 @@ class EmployeeManagementTest extends TestCase
         // Verify file storage
         $this->assertNotNull($employee->cnic_front_path);
         \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->cnic_front_path);
+    }
+
+    public function test_can_import_employees_from_csv_and_sync_employee_counter()
+    {
+        $user = $this->createHrUser();
+        $department = Department::create(['name' => 'Operations']);
+        Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
+        Setting::create(['key' => 'employee_id_counter', 'value' => '0']);
+
+        $file = $this->createEmployeeCsvFile([
+            ['CA-E-43', 'Imported User One', 'import.one@example.com', '03001234567', '11111-1111111-1', 'Male'],
+            ['CA-E-44', 'Imported User Two', 'import.two@example.com', '03007654321', '22222-2222222-2', 'Female'],
+        ]);
+
+        $response = $this->actingAs($user)->post(route('employees.import'), [
+            'employee_csv' => $file,
+        ]);
+
+        $response->assertRedirect(route('employees.index'));
+
+        $unassignedDepartment = Department::where('name', 'Unassigned')->first();
+
+        $this->assertNotNull($unassignedDepartment);
+        $this->assertDatabaseHas('employees', [
+            'employee_id' => 'CA-E-43',
+            'full_name' => 'Imported User One',
+            'department_id' => $unassignedDepartment->id,
+            'designation' => 'Not assigned',
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('employees', [
+            'employee_id' => 'CA-E-44',
+            'full_name' => 'Imported User Two',
+            'department_id' => $unassignedDepartment->id,
+            'designation' => 'Not assigned',
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'employee_id_counter',
+            'value' => '44',
+        ]);
+
+        $createResponse = $this->actingAs($user)->post('/employees', [
+            'full_name' => 'Manual User',
+            'email' => 'manual@example.com',
+            'department_id' => $department->id,
+            'designation' => 'Coordinator',
+        ]);
+
+        $employee = Employee::where('email', 'manual@example.com')->first();
+
+        $createResponse->assertRedirect(route('employees.show', $employee));
+        $this->assertSame('CA-E-045', $employee->employee_id);
+    }
+
+    public function test_employee_csv_import_skips_duplicate_rows_and_keeps_counter_on_highest_imported_id()
+    {
+        $user = $this->createHrUser();
+        Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
+        Setting::create(['key' => 'employee_id_counter', 'value' => '10']);
+
+        $existingDepartment = Department::create(['name' => 'IT']);
+        Employee::create([
+            'full_name' => 'Existing User',
+            'email' => 'existing@example.com',
+            'status' => 'active',
+            'department_id' => $existingDepartment->id,
+            'designation' => 'Developer',
+            'employee_id' => 'CA-E-042',
+        ]);
+
+        $file = $this->createEmployeeCsvFile([
+            ['CA-E-41', 'Imported Duplicate Email', 'existing@example.com', '03001234567', '11111-1111111-1', 'Male'],
+            ['CA-E-44', 'Imported Valid User', 'valid.import@example.com', '03007654321', '22222-2222222-2', 'Female'],
+        ]);
+
+        $response = $this->actingAs($user)->post(route('employees.import'), [
+            'employee_csv' => $file,
+        ]);
+
+        $response->assertRedirect(route('employees.index'));
+        $response->assertSessionHas('employeeImportSummary');
+
+        $summary = $response->getSession()->get('employeeImportSummary');
+
+        $this->assertSame(1, $summary['imported']);
+        $this->assertCount(1, $summary['errors']);
+        $this->assertStringContainsString('Email already exists in the ERP.', $summary['errors'][0]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'employee_id_counter',
+            'value' => '44',
+        ]);
     }
 
     public function test_can_view_single_employee_details()

@@ -11,8 +11,10 @@ use App\Models\HrLetter;
 use App\Models\LeaveRequest;
 use App\Models\EmployeeEmploymentHistory;
 use App\Services\EmployeeIdService;
+use App\Services\EmployeeImportService;
 use App\Services\MailService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 class EmployeeController extends Controller
 {
@@ -329,6 +331,32 @@ class EmployeeController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Invitation sent successfully.']);
+    }
+
+    public function importCsv(Request $request, EmployeeImportService $employeeImportService)
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_csv' => 'required|file|extensions:csv',
+        ], [
+            'employee_csv.extensions' => 'The employee upload file must be a .csv file.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()
+                ->route('employees.index')
+                ->withErrors($validator, 'employeeImport')
+                ->with('open_modal', 'employeeImportModal');
+        }
+
+        $summary = $employeeImportService->import($request->file('employee_csv'));
+        $message = $summary['imported'] > 0
+            ? "{$summary['imported']} employees imported successfully."
+            : 'Employee CSV was uploaded, but no employees were imported.';
+
+        return redirect()
+            ->route('employees.index')
+            ->with($summary['imported'] > 0 ? 'success' : 'warning', $message)
+            ->with('employeeImportSummary', $summary);
     }
 
     public function approve(Request $request, Employee $employee, MailService $mailService, EmployeeIdService $employeeIdService)
