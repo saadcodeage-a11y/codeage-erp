@@ -437,30 +437,37 @@
                 <!-- Banking Information -->
                 <div class="form-section">
                     <h3>Banking Information</h3>
-                     <div class="form-group">
+                    <div class="form-group">
                         <label>Do they have a Bank Account?</label>
                         <select id="bankToggle" onchange="toggleBankFields()">
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
+                            <option value="No" {{ old('bank_id') || old('bank_account_title') || old('bank_account_number') || old('iban') ? '' : 'selected' }}>No</option>
+                            <option value="Yes" {{ old('bank_id') || old('bank_account_title') || old('bank_account_number') || old('iban') ? 'selected' : '' }}>Yes</option>
                         </select>
                     </div>
 
                     <div id="bankFields" class="form-grid" style="display: none; margin-top: 15px;">
                         <div class="form-group">
-                            <label>Bank Name</label>
-                            <input type="text" name="bank_name" placeholder="e.g. HBL" value="{{ old('bank_name') }}">
+                            <label>Bank</label>
+                            <select name="bank_id" id="bank_id">
+                                <option value="">Select Bank</option>
+                                @foreach($banks as $bank)
+                                    <option value="{{ $bank->id }}" {{ (string) old('bank_id') === (string) $bank->id ? 'selected' : '' }}>
+                                        {{ $bank->name }}{{ $bank->code ? ' (' . $bank->code . ')' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Account Title</label>
-                            <input type="text" name="bank_account_title" placeholder="Account Title" value="{{ old('bank_account_title') }}">
+                            <input type="text" name="bank_account_title" id="bank_account_title" placeholder="Account Title" value="{{ old('bank_account_title') }}">
                         </div>
                          <div class="form-group">
                             <label>Account Number</label>
-                            <input type="text" name="bank_account_number" placeholder="Account Number" value="{{ old('bank_account_number') }}">
+                            <input type="text" name="bank_account_number" id="bank_account_number" placeholder="Account Number" value="{{ old('bank_account_number') }}">
                         </div>
                          <div class="form-group">
                             <label>IBAN</label>
-                            <input type="text" name="iban" placeholder="IBAN" value="{{ old('iban') }}">
+                            <input type="text" name="iban" id="bank_iban" placeholder="IBAN" value="{{ old('iban') }}">
                         </div>
                     </div>
 
@@ -834,8 +841,10 @@
                     </div>
                     <div id="edit_bankFields" class="form-grid" style="display: none; margin-top: 15px;">
                         <div class="form-group">
-                            <label>Bank Name</label>
-                            <input type="text" name="bank_name" id="edit_bank_name">
+                            <label>Bank</label>
+                            <select name="bank_id" id="edit_bank_id">
+                                <option value="">Select Bank</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Account Title</label>
@@ -897,6 +906,7 @@
         .then(data => {
             const employee = data.employee;
             const departments = data.departments;
+            const banks = data.banks;
             
             // Set Form Action
             document.getElementById('editEmployeeForm').action = `/employees/${id}`;
@@ -910,6 +920,16 @@
                 opt.textContent = dept.name;
                 if (employee.department_id == dept.id) opt.selected = true;
                 deptSelect.appendChild(opt);
+            });
+
+            const bankSelect = document.getElementById('edit_bank_id');
+            bankSelect.innerHTML = '<option value="">Select Bank</option>';
+            banks.forEach(bank => {
+                const opt = document.createElement('option');
+                opt.value = bank.id;
+                opt.textContent = bank.code ? `${bank.name} (${bank.code})` : bank.name;
+                if (employee.bank_id == bank.id) opt.selected = true;
+                bankSelect.appendChild(opt);
             });
 
             // Populate Fields
@@ -936,14 +956,13 @@
             document.getElementById('edit_hr_comments').value = employee.hr_comments || '';
             
             // Bank Toggle
-            if (employee.bank_name) {
+            if (employee.bank_id || employee.bank_name) {
                 document.getElementById('edit_bankToggle').value = 'Yes';
                 document.getElementById('edit_bankFields').style.display = 'grid';
             } else {
                 document.getElementById('edit_bankToggle').value = 'No';
                 document.getElementById('edit_bankFields').style.display = 'none';
             }
-            document.getElementById('edit_bank_name').value = employee.bank_name || '';
             document.getElementById('edit_bank_account_title').value = employee.bank_account_title || '';
             document.getElementById('edit_bank_account_number').value = employee.bank_account_number || '';
             document.getElementById('edit_iban').value = employee.iban || '';
@@ -988,7 +1007,15 @@
     function toggleEditBankFields() {
         var val = document.getElementById('edit_bankToggle').value;
         var fields = document.getElementById('edit_bankFields');
-        fields.style.display = (val === 'Yes') ? 'grid' : 'none';
+        var shouldShow = val === 'Yes';
+        fields.style.display = shouldShow ? 'grid' : 'none';
+
+        if (!shouldShow) {
+            document.getElementById('edit_bank_id').value = '';
+            document.getElementById('edit_bank_account_title').value = '';
+            document.getElementById('edit_bank_account_number').value = '';
+            document.getElementById('edit_iban').value = '';
+        }
     }
 
     function toggleInactiveReasonField() {
@@ -1036,7 +1063,15 @@
     function toggleBankFields() {
         var val = document.getElementById('bankToggle').value;
         var fields = document.getElementById('bankFields');
-        fields.style.display = (val === 'Yes') ? 'grid' : 'none';
+        var shouldShow = val === 'Yes';
+        fields.style.display = shouldShow ? 'grid' : 'none';
+
+        if (!shouldShow) {
+            document.getElementById('bank_id').value = '';
+            document.getElementById('bank_account_title').value = '';
+            document.getElementById('bank_account_number').value = '';
+            document.getElementById('bank_iban').value = '';
+        }
     }
 
     function previewProfilePhoto(input) {
@@ -1186,6 +1221,7 @@
         }
     });
     toggleInactiveReasonField();
+    toggleBankFields();
     function openInviteModal() {
         document.getElementById('inviteEmployeeModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';

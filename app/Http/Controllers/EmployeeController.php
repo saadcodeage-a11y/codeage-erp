@@ -9,6 +9,7 @@ use App\Models\EmailTemplate;
 use App\Models\Setting;
 use App\Models\HrLetter;
 use App\Models\LeaveRequest;
+use App\Models\Bank;
 use App\Models\EmployeeEmploymentHistory;
 use App\Services\EmployeeIdService;
 use App\Services\EmployeeImportService;
@@ -68,8 +69,9 @@ class EmployeeController extends Controller
             ->paginate(10)
             ->withQueryString();
         $departments = \App\Models\Department::all();
+        $banks = Bank::orderBy('name')->get();
 
-        return view('employees.index', compact('employees', 'counts', 'status', 'departments'));
+        return view('employees.index', compact('employees', 'counts', 'status', 'departments', 'banks'));
     }
 
 
@@ -99,6 +101,10 @@ class EmployeeController extends Controller
             'shift_end_time' => 'nullable|date_format:H:i|required_with:shift_start_time',
             'payroll_status' => 'nullable|string',
             'hr_comments' => 'nullable|string',
+            'bank_id' => 'nullable|exists:banks,id',
+            'bank_account_title' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:255',
+            'iban' => 'nullable|string|max:255',
             'banking_comments' => 'nullable|string',
             // Files
             'profile_picture' => 'nullable|image|max:10240',
@@ -115,6 +121,7 @@ class EmployeeController extends Controller
             : null;
         $data['shift_start_time'] = $this->normalizeShiftTime($request->input('shift_start_time'));
         $data['shift_end_time'] = $this->normalizeShiftTime($request->input('shift_end_time'));
+        $data = $this->syncEmployeeBankData($data);
         
         // Handle Uploads
         if ($request->hasFile('profile_picture')) {
@@ -200,11 +207,14 @@ class EmployeeController extends Controller
         if (request()->ajax()) {
             return response()->json([
                 'employee' => $employee,
-                'departments' => \App\Models\Department::all()
+                'departments' => \App\Models\Department::all(),
+                'banks' => Bank::orderBy('name')->get(),
             ]);
         }
         $departments = \App\Models\Department::all();
-        return view('employees.edit', compact('employee', 'departments'));
+        $banks = Bank::orderBy('name')->get();
+
+        return view('employees.edit', compact('employee', 'departments', 'banks'));
     }
 
     public function update(Request $request, Employee $employee, EmployeeIdService $employeeIdService)
@@ -233,6 +243,10 @@ class EmployeeController extends Controller
             'shift_end_time' => 'nullable|date_format:H:i|required_with:shift_start_time',
             'payroll_status' => 'nullable|string',
             'hr_comments' => 'nullable|string',
+            'bank_id' => 'nullable|exists:banks,id',
+            'bank_account_title' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:255',
+            'iban' => 'nullable|string|max:255',
             'banking_comments' => 'nullable|string',
             // Files (nullable on update)
             'profile_picture' => 'nullable|image|max:10240',
@@ -249,6 +263,7 @@ class EmployeeController extends Controller
             : null;
         $data['shift_start_time'] = $this->normalizeShiftTime($request->input('shift_start_time'));
         $data['shift_end_time'] = $this->normalizeShiftTime($request->input('shift_end_time'));
+        $data = $this->syncEmployeeBankData($data);
         
         // Handle Uploads
         if ($request->hasFile('profile_picture')) {
@@ -513,6 +528,31 @@ class EmployeeController extends Controller
         }
 
         return Carbon::createFromFormat('H:i', $value)->format('H:i:s');
+    }
+
+    protected function syncEmployeeBankData(array $data): array
+    {
+        $data['bank_account_title'] = blank($data['bank_account_title'] ?? null) ? null : $data['bank_account_title'];
+        $data['bank_account_number'] = blank($data['bank_account_number'] ?? null) ? null : $data['bank_account_number'];
+        $data['iban'] = blank($data['iban'] ?? null) ? null : $data['iban'];
+
+        if (blank($data['bank_id'] ?? null)) {
+            $data['bank_id'] = null;
+            $data['bank_name'] = null;
+            $data['bank_code'] = null;
+
+            return $data;
+        }
+
+        $bank = Bank::find($data['bank_id']);
+
+        if ($bank) {
+            $data['bank_id'] = $bank->id;
+            $data['bank_name'] = $bank->name;
+            $data['bank_code'] = $bank->code;
+        }
+
+        return $data;
     }
 
     protected function employeeLetterBody(Employee $employee, string $type, Carbon $generatedAt): string

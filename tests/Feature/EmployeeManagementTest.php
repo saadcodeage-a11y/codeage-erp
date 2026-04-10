@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Department;
+use App\Models\Bank;
 use App\Models\PayrollRun;
 use App\Models\EmployeePayrollRecord;
 use App\Models\EmployeeSecurityFundSnapshot;
@@ -169,6 +170,53 @@ class EmployeeManagementTest extends TestCase
         \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->cnic_front_path);
     }
 
+    public function test_employee_create_form_shows_bank_dropdown_options()
+    {
+        $user = $this->createHrUser();
+        Bank::create(['name' => 'HBL', 'code' => 'HBL']);
+        Bank::create(['name' => 'Meezan Bank', 'code' => 'MEBL']);
+
+        $response = $this->actingAs($user)->get(route('employees.index'));
+
+        $response->assertOk();
+        $response->assertSee('Select Bank');
+        $response->assertSee('HBL (HBL)');
+        $response->assertSee('Meezan Bank (MEBL)');
+    }
+
+    public function test_can_create_employee_with_linked_bank()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'HR']);
+        $bank = Bank::create(['name' => 'HBL', 'code' => 'HBL']);
+        Setting::create(['key' => 'employee_id_prefix', 'value' => 'CA-E-']);
+        Setting::create(['key' => 'employee_id_counter', 'value' => '0']);
+
+        $response = $this->actingAs($user)->post('/employees', [
+            'full_name' => 'Bank User',
+            'email' => 'bank-user@example.com',
+            'department_id' => $dept->id,
+            'designation' => 'Manager',
+            'bank_id' => $bank->id,
+            'bank_account_title' => 'Bank User',
+            'bank_account_number' => '00112233',
+            'iban' => 'PK00HBL00000000112233',
+        ]);
+
+        $employee = Employee::where('email', 'bank-user@example.com')->first();
+
+        $response->assertRedirect(route('employees.show', $employee));
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'bank_id' => $bank->id,
+            'bank_name' => 'HBL',
+            'bank_code' => 'HBL',
+            'bank_account_title' => 'Bank User',
+            'bank_account_number' => '00112233',
+            'iban' => 'PK00HBL00000000112233',
+        ]);
+    }
+
     public function test_can_import_employees_from_csv_and_sync_employee_counter()
     {
         $user = $this->createHrUser();
@@ -304,6 +352,47 @@ class EmployeeManagementTest extends TestCase
 
         $response->assertRedirect(route('employees.show', $employee));
         $this->assertDatabaseHas('employees', ['id' => $employee->id, 'full_name' => 'New Name', 'designation' => 'Lead Dev']);
+    }
+
+    public function test_can_update_employee_bank_from_bank_list()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'IT']);
+        $oldBank = Bank::create(['name' => 'Old Bank', 'code' => 'OLD']);
+        $newBank = Bank::create(['name' => 'Meezan Bank', 'code' => 'MEBL']);
+        $employee = Employee::create([
+            'full_name' => 'Bank Update User',
+            'email' => 'bank-update@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Dev',
+            'employee_id' => 'EMP112',
+            'bank_id' => $oldBank->id,
+            'bank_name' => $oldBank->name,
+            'bank_code' => $oldBank->code,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('employees.update', $employee), [
+            'full_name' => 'Bank Update User',
+            'email' => 'bank-update@example.com',
+            'department_id' => $dept->id,
+            'designation' => 'Lead Dev',
+            'bank_id' => $newBank->id,
+            'bank_account_title' => 'Bank Update User',
+            'bank_account_number' => '44556677',
+            'iban' => 'PK00MEBL0000000044556677',
+        ]);
+
+        $response->assertRedirect(route('employees.show', $employee));
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'bank_id' => $newBank->id,
+            'bank_name' => 'Meezan Bank',
+            'bank_code' => 'MEBL',
+            'bank_account_title' => 'Bank Update User',
+            'bank_account_number' => '44556677',
+            'iban' => 'PK00MEBL0000000044556677',
+        ]);
     }
 
     public function test_employee_can_only_be_marked_inactive_with_a_reason()

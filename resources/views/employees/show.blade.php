@@ -909,8 +909,10 @@
                     </div>
                     <div id="edit_bankFields" class="form-grid" style="display: none; margin-top: 15px;">
                         <div class="form-group">
-                            <label>Bank Name</label>
-                            <input type="text" name="bank_name" id="edit_bank_name">
+                            <label>Bank</label>
+                            <select name="bank_id" id="edit_bank_id">
+                                <option value="">Select Bank</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Account Title</label>
@@ -956,6 +958,7 @@
         .then(data => {
             const employee = data.employee;
             const departments = data.departments;
+            const banks = data.banks;
             document.getElementById('editEmployeeForm').action = `/employees/${id}`;
             const deptSelect = document.getElementById('edit_department_id');
             deptSelect.innerHTML = '<option value="">Select Department</option>';
@@ -965,6 +968,16 @@
                 opt.textContent = dept.name;
                 if (employee.department_id == dept.id) opt.selected = true;
                 deptSelect.appendChild(opt);
+            });
+
+            const bankSelect = document.getElementById('edit_bank_id');
+            bankSelect.innerHTML = '<option value="">Select Bank</option>';
+            banks.forEach(bank => {
+                const opt = document.createElement('option');
+                opt.value = bank.id;
+                opt.textContent = bank.code ? `${bank.name} (${bank.code})` : bank.name;
+                if (employee.bank_id == bank.id) opt.selected = true;
+                bankSelect.appendChild(opt);
             });
 
             document.getElementById('edit_full_name').value = employee.full_name || '';
@@ -989,14 +1002,13 @@
             document.getElementById('edit_inactive_reason').value = employee.inactive_reason || '';
             document.getElementById('edit_hr_comments').value = employee.hr_comments || '';
             
-            if (employee.bank_name) {
+            if (employee.bank_id || employee.bank_name) {
                 document.getElementById('edit_bankToggle').value = 'Yes';
                 document.getElementById('edit_bankFields').style.display = 'grid';
             } else {
                 document.getElementById('edit_bankToggle').value = 'No';
                 document.getElementById('edit_bankFields').style.display = 'none';
             }
-            document.getElementById('edit_bank_name').value = employee.bank_name || '';
             document.getElementById('edit_bank_account_title').value = employee.bank_account_title || '';
             document.getElementById('edit_bank_account_number').value = employee.bank_account_number || '';
             document.getElementById('edit_iban').value = employee.iban || '';
@@ -1050,7 +1062,15 @@
     function toggleEditBankFields() {
         var val = document.getElementById('edit_bankToggle').value;
         var fields = document.getElementById('edit_bankFields');
-        fields.style.display = (val === 'Yes') ? 'grid' : 'none';
+        var shouldShow = val === 'Yes';
+        fields.style.display = shouldShow ? 'grid' : 'none';
+
+        if (!shouldShow) {
+            document.getElementById('edit_bank_id').value = '';
+            document.getElementById('edit_bank_account_title').value = '';
+            document.getElementById('edit_bank_account_number').value = '';
+            document.getElementById('edit_iban').value = '';
+        }
     }
 
     function toggleEditInactiveReasonField() {
