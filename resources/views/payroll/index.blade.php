@@ -143,6 +143,11 @@
                         <i data-lucide="sheet"></i> Download IBFT
                         <span class="button-count">{{ $selectedRunExportCounts['ibft'] }}</span>
                     </a>
+                    @if($canGeneratePayroll && $selectedRun->status !== 'finalized')
+                        <button type="button" class="btn btn-outline" onclick="openPayoutModal('{{ $selectedRun->pay_period_month->format('Y-m') }}', '{{ optional($selectedRun->payment_date)->toDateString() }}', @json($selectedRun->notes), true)">
+                            <i data-lucide="square-pen"></i> Edit Payout
+                        </button>
+                    @endif
                     @if($canEditPayroll && $selectedRun->status !== 'finalized')
                         <form method="POST" action="{{ route('payroll.finalize', $selectedRun) }}">
                             @csrf
@@ -268,7 +273,7 @@
 
                     <div class="modal-footer payout-modal-footer">
                         <button type="button" onclick="closePayoutModal()" class="btn btn-outline">Cancel</button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="payoutSubmitButton">
                             <i data-lucide="wallet-cards"></i> Save & Create Payout Pack
                         </button>
                     </div>
@@ -303,11 +308,13 @@
         grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
         gap: 24px;
         align-items: start;
+        min-width: 0;
     }
 
     .payroll-history-panel {
         position: sticky;
         top: 24px;
+        min-width: 0;
     }
 
     .payroll-history-list {
@@ -372,6 +379,12 @@
     .payroll-detail-panel {
         display: grid;
         gap: 20px;
+        min-width: 0;
+    }
+
+    .payroll-detail-panel > .card,
+    .payroll-workspace > * {
+        min-width: 0;
     }
 
     .payroll-detail-metrics {
@@ -405,6 +418,7 @@
         flex-wrap: wrap;
         gap: 12px;
         align-items: center;
+        min-width: 0;
     }
 
     .button-count {
@@ -426,6 +440,8 @@
         overflow: auto;
         border: 1px solid #edf2f7;
         border-radius: 16px;
+        max-width: 100%;
+        width: 100%;
     }
 
     .payout-records-table,
@@ -596,12 +612,33 @@
             const previewContainer = document.getElementById('payoutPreviewContainer');
             const previewTitle = document.getElementById('payoutPreviewTitle');
             const previewCaption = document.getElementById('payoutPreviewCaption');
+            const submitButton = document.getElementById('payoutSubmitButton');
+            const paymentDateInput = document.querySelector('#createPayoutForm [name="payment_date"]');
+            const notesInput = document.querySelector('#createPayoutForm [name="notes"]');
             const previewUrl = @json(route('payroll.payout-preview'));
             let previewController = null;
 
-            window.openPayoutModal = function () {
+            function defaultPaymentDate(month) {
+                if (!month) {
+                    return '';
+                }
+
+                const [year, monthNumber] = month.split('-').map(Number);
+                const date = new Date(year, monthNumber, 1);
+                return date.toISOString().slice(0, 10);
+            }
+
+            window.openPayoutModal = function (month = @json($payoutMonth), paymentDate = '', notes = '', isEditing = false) {
+                monthInput.value = month || @json($payoutMonth);
+                paymentDateInput.value = paymentDate || defaultPaymentDate(monthInput.value);
+                notesInput.value = notes || '';
+                submitButton.innerHTML = isEditing
+                    ? '<i data-lucide="square-pen"></i> Save Changes & Regenerate Pack'
+                    : '<i data-lucide="wallet-cards"></i> Save & Create Payout Pack';
+
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
+                loadPreview(monthInput.value);
                 if (window.lucide) window.lucide.createIcons();
             };
 

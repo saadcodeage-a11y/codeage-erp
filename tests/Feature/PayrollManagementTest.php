@@ -203,6 +203,85 @@ class PayrollManagementTest extends TestCase
         );
     }
 
+    public function test_can_regenerate_existing_draft_payout_before_finalizing(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-305',
+            'current_salary' => 50000,
+            'last_increment' => 10000,
+        ]);
+
+        $existingRun = PayrollRun::create([
+            'name' => 'March 2026 Payroll',
+            'pay_period_month' => '2026-03-01',
+            'payment_date' => '2026-04-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'draft',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now()->subDay(),
+            'notes' => 'Initial draft',
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $existingRun->id,
+            'employee_id' => $employee->id,
+            'bank_code' => 'MBL',
+            'beneficiary_name' => 'Payroll Employee',
+            'beneficiary_account_no' => 'PK00TEST1234567890',
+            'contact_number' => '03001234567',
+            'email_address' => $employee->email,
+            'days_absent' => 0,
+            'short_hours_days' => 0,
+            'basic_salary' => 50000,
+            'last_increment' => 10000,
+            'incentives_bonus' => 0,
+            'punctuality_bonus' => 0,
+            'positive_arrears' => 0,
+            'positive_other' => 0,
+            'security_deduction' => 0,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 0,
+            'arrears_deduction' => 0,
+            'other_deduction' => 0,
+            'gross_salary' => 60000,
+            'income_tax' => 100,
+            'net_salary' => 59900,
+        ]);
+
+        $response = $this->actingAs($accountsUser)->post(route('payroll.generate'), [
+            'month' => '2026-03',
+            'payment_date' => '2026-04-05',
+            'notes' => 'Edited draft payout',
+            'adjustments' => [
+                $employee->id => [
+                    'incentives_bonus' => 1500,
+                    'punctuality_bonus' => 500,
+                    'attendance_penalty' => 0,
+                    'arrears_adjustment' => 0,
+                    'other_adjustment' => 0,
+                    'remarks' => 'Updated before finalizing',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseCount('payroll_runs', 1);
+        $this->assertDatabaseHas('payroll_runs', [
+            'id' => $existingRun->id,
+            'notes' => 'Edited draft payout',
+            'status' => 'draft',
+        ]);
+        $this->assertSame('2026-04-05', PayrollRun::findOrFail($existingRun->id)->payment_date->toDateString());
+        $this->assertDatabaseHas('employee_payroll_records', [
+            'payroll_run_id' => $existingRun->id,
+            'employee_id' => $employee->id,
+            'incentives_bonus' => '1500.00',
+            'punctuality_bonus' => '500.00',
+        ]);
+    }
+
     public function test_can_finalize_payroll_run_and_download_pdf_payslip(): void
     {
         $accountsUser = $this->createUser('Accounts Manager');
