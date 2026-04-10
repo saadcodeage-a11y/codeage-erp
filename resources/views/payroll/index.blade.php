@@ -442,6 +442,7 @@
         border-radius: 16px;
         max-width: 100%;
         width: 100%;
+        max-height: 62vh;
     }
 
     .payout-records-table,
@@ -469,6 +470,9 @@
         font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
 
     .payout-records-table tbody tr:last-child td,
@@ -483,6 +487,28 @@
         border: 1px solid #dbe2ea;
         border-radius: 8px;
         font-size: 13px;
+    }
+
+    .payout-preview-tools {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .payout-search-box {
+        flex: 1 1 320px;
+        min-width: 0;
+    }
+
+    .payout-search-box input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #dbe2ea;
+        border-radius: 10px;
+        font-size: 13px;
+        background: #fff;
     }
 
     .payout-employee-cell,
@@ -601,6 +627,11 @@
             flex-direction: column;
             align-items: stretch;
         }
+
+        .payout-preview-tools {
+            flex-direction: column;
+            align-items: stretch;
+        }
     }
 </style>
 
@@ -617,6 +648,43 @@
             const notesInput = document.querySelector('#createPayoutForm [name="notes"]');
             const previewUrl = @json(route('payroll.payout-preview'));
             let previewController = null;
+
+            function bindPayoutPreviewInteractions() {
+                const searchInput = previewContainer.querySelector('[data-payout-search]');
+                const rows = Array.from(previewContainer.querySelectorAll('[data-payout-row]'));
+                const emptyState = previewContainer.querySelector('[data-payout-empty-search]');
+                const countNode = previewContainer.querySelector('[data-payout-search-count]');
+
+                if (!searchInput || rows.length === 0) {
+                    return;
+                }
+
+                const applyFilter = () => {
+                    const term = searchInput.value.trim().toLowerCase();
+                    let visibleCount = 0;
+
+                    rows.forEach((row) => {
+                        const haystack = row.dataset.searchText || '';
+                        const matches = term === '' || haystack.includes(term);
+                        row.style.display = matches ? '' : 'none';
+
+                        if (matches) {
+                            visibleCount++;
+                        }
+                    });
+
+                    if (countNode) {
+                        countNode.textContent = `${visibleCount} employee${visibleCount === 1 ? '' : 's'}`;
+                    }
+
+                    if (emptyState) {
+                        emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+                    }
+                };
+
+                searchInput.addEventListener('input', applyFilter);
+                applyFilter();
+            }
 
             function defaultPaymentDate(month) {
                 if (!month) {
@@ -677,6 +745,7 @@
                     previewContainer.innerHTML = payload.html;
                     previewTitle.textContent = `${payload.month_label} Preview`;
                     previewCaption.textContent = `${payload.row_count} employees ready for payout processing.`;
+                    bindPayoutPreviewInteractions();
                 } catch (error) {
                     if (error.name === 'AbortError') {
                         return;
@@ -695,6 +764,8 @@
                     closePayoutModal();
                 }
             });
+
+            bindPayoutPreviewInteractions();
         })();
     </script>
 @endif

@@ -1,4 +1,11 @@
 @if($rows->isNotEmpty())
+    <div class="payout-preview-tools">
+        <div class="payout-search-box">
+            <input type="search" placeholder="Search employee by name, ID, designation, bank, or account" data-payout-search>
+        </div>
+        <span class="summary-pill muted" data-payout-search-count>{{ $rows->count() }} employees</span>
+    </div>
+
     <div class="payout-preview-table-wrap">
         <table class="payout-preview-table">
             <thead>
@@ -26,8 +33,15 @@
                         $adjustment = $row['adjustment'];
                         $bankLabel = $employee->bank?->name ?: ($row['bank_code'] ?: 'No linked bank');
                         $accountLabel = $row['beneficiary_account_no'] ?: 'No account';
+                        $searchText = collect([
+                            $employee->full_name,
+                            $employee->employee_id,
+                            $employee->designation,
+                            $bankLabel,
+                            $accountLabel,
+                        ])->filter()->implode(' ');
                     @endphp
-                    <tr>
+                    <tr data-payout-row data-search-text="{{ strtolower($searchText) }}">
                         <td>
                             <div class="payout-employee-cell">
                                 <strong>{{ $employee->full_name }}</strong>
@@ -68,6 +82,9 @@
                 @endforeach
             </tbody>
         </table>
+    </div>
+    <div class="empty-state-panel" data-payout-empty-search style="display: none; margin-top: 12px;">
+        No employees match the current search.
     </div>
 @else
     <div class="empty-state-panel">
