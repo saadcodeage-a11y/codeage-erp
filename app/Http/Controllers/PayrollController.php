@@ -7,6 +7,8 @@ use App\Models\PayrollRun;
 use App\Services\PayrollCalculationService;
 use App\Services\PayslipPdfService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class PayrollController extends Controller
 {
@@ -23,11 +25,31 @@ class PayrollController extends Controller
             ->get();
 
         $selectedRun = $request->filled('run')
-            ? PayrollRun::query()->with(['generatedBy', 'records.employee'])->find($request->integer('run'))
+            ? PayrollRun::query()->with(['generatedBy'])->find($request->integer('run'))
             : PayrollRun::query()
-                ->with(['generatedBy', 'records.employee'])
+                ->with(['generatedBy'])
                 ->whereDate('pay_period_month', \Illuminate\Support\Carbon::createFromFormat('Y-m', $month)->startOfMonth()->toDateString())
                 ->first();
+
+        $previewRowsPagination = $this->paginateCollection(
+            $previewRows,
+            8,
+            'page',
+            $request->integer('page')
+        );
+
+        $selectedRunRecords = $selectedRun
+            ? $selectedRun->records()
+                ->with('employee')
+                ->whereHas('employee')
+                ->join('employees', 'employee_payroll_records.employee_id', '=', 'employees.id')
+                ->orderByRaw("CASE WHEN employees.employee_id IS NULL OR employees.employee_id = '' THEN 1 ELSE 0 END")
+                ->orderByRaw('LENGTH(employees.employee_id)')
+                ->orderBy('employees.employee_id')
+                ->select('employee_payroll_records.*')
+                ->paginate(8, ['*'], 'run_page')
+                ->withQueryString()
+            : null;
 
         $totals = [
             'gross_salary' => round($previewRows->sum('gross_salary'), 2),
@@ -35,7 +57,15 @@ class PayrollController extends Controller
             'net_salary' => round($previewRows->sum('net_salary'), 2),
         ];
 
-        return view('payroll.index', compact('month', 'previewRows', 'runs', 'selectedRun', 'totals'));
+        return view('payroll.index', compact(
+            'month',
+            'previewRows',
+            'previewRowsPagination',
+            'runs',
+            'selectedRun',
+            'selectedRunRecords',
+            'totals'
+        ));
     }
 
     public function updateAdjustments(Request $request, PayrollCalculationService $payrollCalculationService)
@@ -56,8 +86,22 @@ class PayrollController extends Controller
             $validated['adjustments'] ?? []
         );
 
+        $redirectParams = ['month' => $validated['month']];
+
+        if ($request->integer('page', 1) > 1) {
+            $redirectParams['page'] = $request->integer('page');
+        }
+
+        if ($request->integer('run_page', 1) > 1) {
+            $redirectParams['run_page'] = $request->integer('run_page');
+        }
+
+        if ($request->filled('run')) {
+            $redirectParams['run'] = $request->integer('run');
+        }
+
         return redirect()
-            ->route('payroll.index', ['month' => $validated['month']])
+            ->route('payroll.index', $redirectParams)
             ->with('success', 'Payroll adjustments saved successfully.');
     }
 
@@ -101,5 +145,23 @@ class PayrollController extends Controller
             ->firstOrFail();
 
         return $payslipPdfService->download($payrollRecord);
+    }
+
+    protected function paginateCollection(Collection $items, int $perPage, string $pageName, ?int $currentPage = null): LengthAwarePaginator
+    {
+        $currentPage = $currentPage ?: LengthAwarePaginator::resolveCurrentPage($pageName);
+        $currentItems = $items->forPage($currentPage, $perPage)->values();
+
+        return new LengthAwarePaginator(
+            $currentItems,
+            $items->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => request()->url(),
+                'pageName' => $pageName,
+                'query' => request()->query(),
+            ]
+        );
     }
 }

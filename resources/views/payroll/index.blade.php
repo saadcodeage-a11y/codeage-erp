@@ -15,6 +15,7 @@
             'net_salary' => round($selectedRun->records->sum('net_salary'), 2),
         ]
         : null;
+    $previewRowsOnPage = $previewRowsPagination->getCollection();
 @endphp
 
 <div class="page-header">
@@ -123,12 +124,12 @@
     </div>
 </div>
 
-<div class="two-column-layout payroll-layout">
-    <div class="table-card">
+<div class="payroll-section-stack">
+    <div class="card payroll-inputs-card">
         <div class="section-header" style="margin-bottom: 16px;">
             <div>
                 <h2>Monthly Payroll Inputs</h2>
-                <p>Review attendance and salary inputs for {{ $selectedMonthLabel }}. Save manual adjustments before generating payroll.</p>
+                <p>Review attendance and salary inputs for {{ $selectedMonthLabel }}. Employees are shown in compact cards so payroll stays readable without horizontal scrolling.</p>
             </div>
             <div class="section-badge-row">
                 <span class="summary-pill">{{ $previewRows->count() }} employees</span>
@@ -140,77 +141,86 @@
             <form method="POST" action="{{ route('payroll.adjustments.update') }}">
                 @csrf
                 <input type="hidden" name="month" value="{{ $month }}">
-                <div class="table-scroll">
-                    <table class="data-table payroll-input-table">
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Base</th>
-                                <th>Increment</th>
-                                <th>Absent</th>
-                                <th>Short Hours</th>
-                                <th>Security Balance</th>
-                                <th>Incentives</th>
-                                <th>Punctuality</th>
-                                <th>Penalty</th>
-                                <th>Arrears</th>
-                                <th>Other</th>
-                                <th>Projected Net</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($previewRows as $row)
-                                @php
-                                    $employee = $row['employee'];
-                                    $adjustment = $row['adjustment'];
-                                @endphp
-                                <tr>
-                                    <td>
-                                        <div style="display: flex; flex-direction: column;">
-                                            <strong>{{ $employee->full_name }}</strong>
-                                            <span style="font-size: 12px; color: #6b7280;">{{ $employee->employee_id }}</span>
-                                        </div>
-                                    </td>
-                                    <td>PKR {{ number_format($row['basic_salary'], 2) }}</td>
-                                    <td>PKR {{ number_format($row['last_increment'], 2) }}</td>
-                                    <td>{{ $row['days_absent'] }}</td>
-                                    <td>{{ $row['short_hours_days'] }}</td>
-                                    <td>PKR {{ number_format($row['security_balance'], 2) }}</td>
-                                    <td>
-                                        <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; flex-direction: column;">
-                                            <strong>PKR {{ number_format($row['net_salary'], 2) }}</strong>
-                                            <span style="font-size: 12px; color: #6b7280;">Tax {{ number_format($row['income_tax'], 2) }}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @if($canEditPayroll)
-                                    <tr class="remarks-row">
-                                        <td colspan="12">
-                                            <div class="form-group" style="margin: 0;">
-                                                <label style="font-size: 12px;">Remarks for {{ $employee->full_name }}</label>
-                                                <input type="text" name="adjustments[{{ $employee->id }}][remarks]" value="{{ old("adjustments.{$employee->id}.remarks", $adjustment?->remarks) }}" placeholder="Optional note for this month">
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
+                <input type="hidden" name="page" value="{{ $previewRowsPagination->currentPage() }}">
+                <input type="hidden" name="run_page" value="{{ request('run_page', 1) }}">
+                @if($selectedRun)
+                    <input type="hidden" name="run" value="{{ $selectedRun->id }}">
+                @endif
+
+                <div class="payroll-card-grid">
+                    @foreach($previewRowsOnPage as $row)
+                        @php
+                            $employee = $row['employee'];
+                            $adjustment = $row['adjustment'];
+                        @endphp
+                        <div class="payroll-employee-card">
+                            <div class="payroll-employee-header">
+                                <div>
+                                    <h3>{{ $employee->full_name }}</h3>
+                                    <p>{{ $employee->employee_id }} | {{ $employee->designation ?? 'Not specified' }}</p>
+                                </div>
+                                <div class="projected-pay-chip">
+                                    <span>Projected Net</span>
+                                    <strong>PKR {{ number_format($row['net_salary'], 2) }}</strong>
+                                    <small>Tax {{ number_format($row['income_tax'], 2) }}</small>
+                                </div>
+                            </div>
+
+                            <div class="payroll-summary-grid">
+                                <div class="summary-box">
+                                    <span>Base</span>
+                                    <strong>PKR {{ number_format($row['basic_salary'], 2) }}</strong>
+                                </div>
+                                <div class="summary-box">
+                                    <span>Increment</span>
+                                    <strong>PKR {{ number_format($row['last_increment'], 2) }}</strong>
+                                </div>
+                                <div class="summary-box">
+                                    <span>Absent Days</span>
+                                    <strong>{{ $row['days_absent'] }}</strong>
+                                </div>
+                                <div class="summary-box">
+                                    <span>Short Hours</span>
+                                    <strong>{{ $row['short_hours_days'] }}</strong>
+                                </div>
+                                <div class="summary-box">
+                                    <span>Security Balance</span>
+                                    <strong>PKR {{ number_format($row['security_balance'], 2) }}</strong>
+                                </div>
+                                <div class="summary-box">
+                                    <span>Gross</span>
+                                    <strong>PKR {{ number_format($row['gross_salary'], 2) }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="payroll-adjustment-grid">
+                                <div class="form-group" style="margin: 0;">
+                                    <label>Incentives</label>
+                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label>Punctuality</label>
+                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label>Penalty</label>
+                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label>Arrears</label>
+                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label>Other</label>
+                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                </div>
+                                <div class="form-group payroll-note-field" style="margin: 0;">
+                                    <label>Remarks</label>
+                                    <input type="text" name="adjustments[{{ $employee->id }}][remarks]" value="{{ old("adjustments.{$employee->id}.remarks", $adjustment?->remarks) }}" placeholder="Optional note for this month" @if(!$canEditPayroll) disabled @endif>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
 
                 @if($canEditPayroll)
@@ -220,6 +230,10 @@
                         </button>
                     </div>
                 @endif
+
+                <div class="pagination-wrapper" style="margin-top: 20px;">
+                    {{ $previewRowsPagination->links() }}
+                </div>
             </form>
         @else
             <div class="empty-state-panel">
@@ -228,7 +242,7 @@
         @endif
     </div>
 
-    <div class="side-panel-stack">
+    <div class="payroll-support-grid">
         <div class="card">
             <div class="section-header" style="margin-bottom: 16px;">
                 <div>
@@ -295,12 +309,16 @@
                 @endif
 
                 <div class="stacked-list" style="margin-top: 18px;">
-                    @foreach($selectedRun->records->sortBy('employee.employee_id') as $record)
+                    @foreach($selectedRunRecords as $record)
                         <div class="timeline-card" style="margin-bottom: 12px;">
                             <div class="timeline-header">
                                 <div>
                                     <h4>{{ $record->employee->full_name }}</h4>
                                     <p>{{ $record->employee->employee_id }} | Net PKR {{ number_format($record->net_salary, 2) }}</p>
+                                </div>
+                                <div class="timeline-date">
+                                    <strong>Gross PKR {{ number_format($record->gross_salary, 2) }}</strong>
+                                    <span>Tax PKR {{ number_format($record->income_tax, 2) }}</span>
                                 </div>
                             </div>
                             <div class="action-buttons" style="margin-top: 12px;">
@@ -310,6 +328,9 @@
                             </div>
                         </div>
                     @endforeach
+                </div>
+                <div class="pagination-wrapper" style="margin-top: 16px;">
+                    {{ $selectedRunRecords->links() }}
                 </div>
             @else
                 <div class="empty-state-panel">Select or generate a payroll run to review totals and download payslips.</div>
@@ -338,25 +359,124 @@
         grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
     }
 
-    .payroll-layout {
-        align-items: start;
+    .payroll-section-stack {
+        display: grid;
+        gap: 24px;
     }
 
-    .payroll-input-table input {
-        min-width: 110px;
+    .payroll-inputs-card {
+        overflow: hidden;
+    }
+
+    .payroll-card-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+    .payroll-employee-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 20px;
+        background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+    }
+
+    .payroll-employee-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+
+    .payroll-employee-header h3 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        color: #111827;
+    }
+
+    .payroll-employee-header p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+    }
+
+    .projected-pay-chip {
+        min-width: 180px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        text-align: right;
+    }
+
+    .projected-pay-chip span,
+    .projected-pay-chip small {
+        display: block;
+        color: #9a3412;
+    }
+
+    .projected-pay-chip strong {
+        display: block;
+        font-size: 18px;
+        color: #111827;
+        margin: 3px 0;
+    }
+
+    .payroll-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .summary-box {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #eef2f7;
+    }
+
+    .summary-box span {
+        display: block;
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 4px;
+    }
+
+    .summary-box strong {
+        font-size: 14px;
+        color: #111827;
+    }
+
+    .payroll-adjustment-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 14px;
+        align-items: end;
+    }
+
+    .payroll-adjustment-grid input {
+        width: 100%;
         padding: 10px 12px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         font-size: 13px;
     }
 
-    .payroll-input-table input:disabled {
+    .payroll-adjustment-grid input:disabled {
         background: #f9fafb;
         color: #6b7280;
     }
 
-    .remarks-row td {
-        background: #fafafa;
+    .payroll-note-field {
+        grid-column: span 1;
+    }
+
+    .payroll-support-grid {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.1fr);
+        gap: 24px;
     }
 
     .table-footer-actions {
@@ -382,12 +502,29 @@
         .payroll-toolbar-grid {
             grid-template-columns: 1fr;
         }
+
+        .payroll-summary-grid,
+        .payroll-adjustment-grid,
+        .payroll-support-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 768px) {
         .payroll-month-form,
         .payroll-generate-form {
             grid-template-columns: 1fr;
+        }
+
+        .payroll-summary-grid,
+        .payroll-adjustment-grid,
+        .payroll-support-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .projected-pay-chip {
+            width: 100%;
+            text-align: left;
         }
     }
 </style>
