@@ -39,9 +39,11 @@ class PayrollCalculationService
         $monthStart = $this->normalizeMonth($month);
 
         foreach ($adjustments as $employeeId => $row) {
+            $hasSecurityOverride = array_key_exists('security_deduction', $row);
             $payload = [
                 'incentives_bonus' => $this->decimalValue($row['incentives_bonus'] ?? null),
                 'punctuality_bonus' => $this->decimalValue($row['punctuality_bonus'] ?? null),
+                'security_deduction' => $hasSecurityOverride ? $this->decimalValue($row['security_deduction'] ?? null) : null,
                 'attendance_penalty' => $this->decimalValue($row['attendance_penalty'] ?? null),
                 'arrears_adjustment' => $this->decimalValue($row['arrears_adjustment'] ?? null),
                 'other_adjustment' => $this->decimalValue($row['other_adjustment'] ?? null),
@@ -54,7 +56,7 @@ class PayrollCalculationService
 
             $hasRemarks = $payload['remarks'] !== null;
 
-            if (! $hasMeaningfulValues && ! $hasRemarks) {
+            if (! $hasMeaningfulValues && ! $hasRemarks && ! $hasSecurityOverride) {
                 EmployeePayrollAdjustment::query()
                     ->where('employee_id', $employeeId)
                     ->whereDate('adjustment_month', $monthStart->toDateString())
@@ -187,6 +189,9 @@ class PayrollCalculationService
         $lastIncrement = $this->decimalValue($employee->last_increment);
         $incentivesBonus = $this->decimalValue($adjustment?->incentives_bonus);
         $punctualityBonus = $this->decimalValue($adjustment?->punctuality_bonus);
+        $securityDeduction = $adjustment && $adjustment->security_deduction !== null
+            ? $this->decimalValue($adjustment->security_deduction)
+            : $this->securityAmountForMonth($securitySnapshot, $monthStart);
         $attendancePenalty = $this->decimalValue($adjustment?->attendance_penalty);
 
         $arrearsAdjustment = $this->decimalValue($adjustment?->arrears_adjustment);
@@ -201,16 +206,15 @@ class PayrollCalculationService
             0,
             ($daysAbsent - $this->nonPaidLeaveGraceDays()) * $this->nonPaidLeaveDeductionPerDay()
         );
-        $securityDeduction = $this->securityAmountForMonth($securitySnapshot, $monthStart);
-        $securityTotalDeducted = $this->securityTotalDeducted($securitySnapshot);
+        $securityTotalDeducted = $this->securityTotalDeducted($securitySnapshot, $monthStart, $securityDeduction);
 
-        $grossSalary = round(
+        $taxableSalary = round(
             ($basicSalary + $lastIncrement + $incentivesBonus + $punctualityBonus + $positiveArrears + $positiveOther)
             - ($securityDeduction + $nonPaidLeaveDeduction + $attendancePenalty + $arrearsDeduction + $otherDeduction),
             2
         );
 
-        $grossSalary = max($grossSalary, 0.0);
+        $grossSalary = max($taxableSalary, 0.0);
         $incomeTax = $this->incomeTax($grossSalary);
         $netSalary = max(round($grossSalary - $incomeTax, 2), 0.0);
 
@@ -301,17 +305,19 @@ class PayrollCalculationService
             : Carbon::parse($month)->startOfMonth();
     }
 
-    protected function incomeTax(float $grossSalary): float
+    protected function incomeTax(float $taxableSalary): float
     {
-        if ($grossSalary <= 50000) {
+        $taxableSalary = max(round($taxableSalary, 2), 0.0);
+
+        if ($taxableSalary <= 50000) {
             return 0.0;
         }
 
-        if ($grossSalary <= 100000) {
-            return round(($grossSalary - 50000) * 0.01, 2);
+        if ($taxableSalary <= 100000) {
+            return round(($taxableSalary - 50000) * 0.01, 2);
         }
 
-        return round((($grossSalary - 50000) * 0.11) + 6000, 2);
+        return round((($taxableSalary - 50000) * 0.11) + 6000, 2);
     }
 
     protected function nonPaidLeaveGraceDays(): int
@@ -340,16 +346,17 @@ class PayrollCalculationService
         return $this->decimalValue(data_get($securitySnapshot, $field));
     }
 
-    protected function securityTotalDeducted($securitySnapshot): float
+    protected function securityTotalDeducted($securitySnapshot, Carbon $monthStart, float $resolvedMonthlyDeduction): float
     {
         if (! $securitySnapshot) {
             return 0.0;
         }
 
         $balanceInAccount = $this->decimalValue($securitySnapshot->balance_in_account);
+        $defaultMonthlyAmount = $this->securityAmountForMonth($securitySnapshot, $monthStart);
 
         if ($balanceInAccount > 0) {
-            return $balanceInAccount;
+            return max(round($balanceInAccount - $defaultMonthlyAmount + $resolvedMonthlyDeduction, 2), 0.0);
         }
 
         $monthFields = [
@@ -375,7 +382,7 @@ class PayrollCalculationService
 
         $total -= $this->decimalValue($securitySnapshot->paid_amount);
 
-        return max(round($total, 2), 0.0);
+        return max(round($total - $defaultMonthlyAmount + $resolvedMonthlyDeduction, 2), 0.0);
     }
 
     protected function shortHoursThresholdMinutes(): int

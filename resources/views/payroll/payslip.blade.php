@@ -1,3 +1,48 @@
+@php
+    use App\Models\Setting;
+
+    $settings = Setting::query()
+        ->whereIn('key', [
+            'company_ntn',
+            'company_corp_number',
+            'company_website',
+            'accounts_email',
+            'company_phone',
+            'office_location',
+        ])
+        ->pluck('value', 'key');
+
+    $companyName = strtoupper(config('app.name'));
+    $corpNumber = $settings['company_corp_number'] ?? '0135020';
+    $ntnNumber = $settings['company_ntn'] ?? '5428797';
+    $companyWebsite = $settings['company_website'] ?? 'codeagepk.com';
+    $accountsEmail = $settings['accounts_email'] ?? 'accounts@codeagepk.com';
+    $companyPhone = $settings['company_phone'] ?? '0518743211';
+    $companyAddress = $settings['office_location'] ?? 'Office 1&2 , 2nd Floor Plaza 56 Spring North Commercial Bahria Town Phase 7 Islamabad';
+    $bankName = $employee->bank?->name ?? $employee->bank_name ?? 'Not specified';
+    $paymentMode = $employee->payment_mode ?? 'Bank Transfer';
+    $paymentDate = optional($payrollRun->payment_date)->format('d-m-Y') ?? 'Not specified';
+    $earningsSubtotal = $record->basic_salary
+        + $record->last_increment
+        + $record->incentives_bonus
+        + $record->punctuality_bonus
+        + $record->positive_arrears
+        + $record->positive_other;
+    $deductionsSubtotal = $record->security_deduction
+        + $record->non_paid_leave_deduction
+        + $record->attendance_penalty
+        + $record->arrears_deduction
+        + $record->other_deduction;
+    $money = function ($value, bool $showZero = false) {
+        $value = round((float) $value, 2);
+
+        if (! $showZero && $value == 0.0) {
+            return '';
+        }
+
+        return 'PKR ' . number_format($value, 2);
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,232 +52,375 @@
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #111827;
-            font-size: 12px;
+            font-size: 11px;
             margin: 0;
-            padding: 28px;
+            padding: 26px 30px 18px;
+            line-height: 1.35;
         }
 
-        .header {
-            display: table;
-            width: 100%;
-            margin-bottom: 24px;
-        }
-
-        .header-left,
-        .header-right {
-            display: table-cell;
-            vertical-align: top;
-        }
-
-        .header-right {
-            text-align: right;
-        }
-
-        h1 {
-            margin: 0 0 8px;
-            font-size: 26px;
-        }
-
-        h2 {
-            margin: 0 0 10px;
-            font-size: 16px;
-        }
-
-        .muted {
-            color: #6b7280;
-        }
-
-        .card {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 18px;
-        }
-
-        .two-col {
-            display: table;
-            width: 100%;
-        }
-
-        .col {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-            padding-right: 10px;
-        }
-
-        .meta-row {
+        .company-header {
+            text-align: left;
             margin-bottom: 8px;
         }
 
-        .meta-label {
-            display: inline-block;
-            min-width: 120px;
-            color: #6b7280;
+        .company-name {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
         }
 
-        table {
+        .company-meta {
+            color: #4b5563;
+            font-size: 10.5px;
+            margin-bottom: 2px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 12px 0 20px;
+        }
+
+        .top-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+
+        .top-grid td {
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .left-panel {
+            width: 58%;
+            padding-right: 18px;
+        }
+
+        .right-panel {
+            width: 42%;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 0 12px;
+        }
+
+        .field-row {
+            margin-bottom: 7px;
+        }
+
+        .field-label {
+            display: inline-block;
+            min-width: 118px;
+            color: #4b5563;
+        }
+
+        .net-pay-box {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        .net-pay-label {
+            color: #4b5563;
+            font-size: 11px;
+        }
+
+        .net-pay-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+
+        .details-table td {
+            padding: 0 0 7px;
+            vertical-align: top;
+        }
+
+        .split-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .split-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .split-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .split-card.left {
+            margin-right: 10px;
+        }
+
+        .split-card.right {
+            margin-left: 10px;
+        }
+
+        .split-heading {
+            padding: 10px 12px;
+            background: #f9fafb;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .line-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        th, td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e5e7eb;
-            text-align: left;
+        .line-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #eef2f7;
+            vertical-align: top;
         }
 
-        th:last-child,
-        td:last-child {
-            text-align: right;
-        }
-
-        .totals {
-            margin-top: 16px;
-            width: 280px;
-            margin-left: auto;
-        }
-
-        .totals td {
+        .line-table tr:last-child td {
             border-bottom: none;
-            padding: 6px 0;
         }
 
-        .totals tr:last-child td {
-            font-weight: bold;
-            font-size: 14px;
-            padding-top: 10px;
+        .line-table td:last-child {
+            text-align: right;
+            white-space: nowrap;
         }
 
-        .footer-note {
-            margin-top: 24px;
-            color: #6b7280;
-            font-size: 11px;
-            line-height: 1.6;
+        .subtotal-row td {
+            font-weight: 700;
+            background: #fcfcfd;
+        }
+
+        .summary-box {
+            width: 320px;
+            margin-left: auto;
+            margin-top: 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .summary-row {
+            display: table;
+            width: 100%;
+        }
+
+        .summary-row > div {
+            display: table-cell;
+            padding: 10px 12px;
+            border-bottom: 1px solid #eef2f7;
+        }
+
+        .summary-row > div:last-child {
+            text-align: right;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .summary-row:last-child > div {
+            border-bottom: none;
+        }
+
+        .summary-row.highlight > div {
+            background: #fff7ed;
+            font-weight: 700;
+        }
+
+        .remarks-box {
+            margin-top: 16px;
+        }
+
+        .remarks-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .remarks-list {
+            margin: 0;
+            padding-left: 14px;
+            color: #374151;
+        }
+
+        .remarks-list li {
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            margin-top: 18px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #4b5563;
+            font-size: 10px;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-left">
-            <h1>Pay Slip</h1>
-            <div class="muted">{{ config('app.name') }}</div>
-            <div class="muted">Salary Slip for {{ $payrollRun->pay_period_month->format('F Y') }}</div>
+    <div class="company-header">
+        <div class="company-name">{{ $companyName }}</div>
+        <div class="company-meta">Corp / NTN : {{ $corpNumber }} / {{ $ntnNumber }}</div>
+        <div class="company-meta">{{ $companyWebsite }}</div>
+    </div>
+
+    <div class="title">Pay Slip</div>
+
+    <table class="top-grid">
+        <tr>
+            <td class="left-panel">
+                <div class="section-title">Employee Details</div>
+                <table class="details-table">
+                    <tr>
+                        <td><span class="field-label">Employee name:</span> {{ $employee->full_name }}</td>
+                    </tr>
+                    <tr>
+                        <td><span class="field-label">Employee id:</span> {{ $employee->employee_id }}</td>
+                    </tr>
+                    <tr>
+                        <td><span class="field-label">Designation</span> {{ $employee->designation ?? 'Not specified' }}</td>
+                    </tr>
+                    <tr>
+                        <td><span class="field-label">Email id:</span> {{ $employee->email }}</td>
+                    </tr>
+                </table>
+            </td>
+            <td class="right-panel">
+                <div class="net-pay-box">
+                    <div class="net-pay-label">Net Pay:</div>
+                    <div class="net-pay-value">PKR {{ number_format($record->net_salary, 0) }}</div>
+                </div>
+
+                <table class="details-table">
+                    <tr>
+                        <td><span class="field-label">Pay Period:</span> {{ $payrollRun->pay_period_month->format('F Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td><span class="field-label">Payment Mode:</span> {{ $paymentMode }}</td>
+                    </tr>
+                    <tr>
+                        <td><span class="field-label">Bank name:</span> {{ $bankName }}</td>
+                    </tr>
+                    <tr>
+                        <td><span class="field-label">IBAN /Account:</span> {{ $record->beneficiary_account_no ?? 'Not specified' }}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table class="split-table">
+        <tr>
+            <td>
+                <div class="split-card left">
+                    <div class="split-heading">EARNINGS</div>
+                    <table class="line-table">
+                        <tr>
+                            <td>Basic Salary</td>
+                            <td>{{ $money($record->basic_salary, true) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Last Increment</td>
+                            <td>{{ $money($record->last_increment) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Incentives / Bouns</td>
+                            <td>{{ $money($record->incentives_bonus) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Punctuality Bonus</td>
+                            <td>{{ $money($record->punctuality_bonus) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Arrears</td>
+                            <td>{{ $money($record->positive_arrears) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Other</td>
+                            <td>{{ $money($record->positive_other) }}</td>
+                        </tr>
+                        <tr class="subtotal-row">
+                            <td>Sub Total</td>
+                            <td>{{ $money($earningsSubtotal, true) }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+            <td>
+                <div class="split-card right">
+                    <div class="split-heading">DEDUCTIONS</div>
+                    <table class="line-table">
+                        <tr>
+                            <td>Security</td>
+                            <td>{{ $money($record->security_deduction) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Non-Paid Leave</td>
+                            <td>{{ $money($record->non_paid_leave_deduction) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Attendance Penalty</td>
+                            <td>{{ $money($record->attendance_penalty) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Arrears</td>
+                            <td>{{ $money($record->arrears_deduction) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Other</td>
+                            <td>{{ $money($record->other_deduction) }}</td>
+                        </tr>
+                        <tr class="subtotal-row">
+                            <td>Sub Total</td>
+                            <td>{{ $money($deductionsSubtotal, true) }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="summary-box">
+        <div class="summary-row">
+            <div>Gross Salary</div>
+            <div>{{ $money($record->gross_salary, true) }}</div>
         </div>
-        <div class="header-right">
-            <div><strong>Payment Date</strong></div>
-            <div>{{ optional($payrollRun->payment_date)->format('d F, Y') ?? 'Not specified' }}</div>
+        <div class="summary-row">
+            <div>Income Tax</div>
+            <div>{{ $money($record->income_tax) }}</div>
+        </div>
+        <div class="summary-row highlight">
+            <div>Net Salary Payable</div>
+            <div>{{ $money($record->net_salary, true) }}</div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="two-col">
-            <div class="col">
-                <h2>Employee Details</h2>
-                <div class="meta-row"><span class="meta-label">Employee</span>{{ $employee->full_name }}</div>
-                <div class="meta-row"><span class="meta-label">Employee ID</span>{{ $employee->employee_id }}</div>
-                <div class="meta-row"><span class="meta-label">Position</span>{{ $employee->designation ?? 'Not specified' }}</div>
-                <div class="meta-row"><span class="meta-label">Department</span>{{ $employee->department?->name ?? 'Not assigned' }}</div>
-                <div class="meta-row"><span class="meta-label">Email</span>{{ $employee->email }}</div>
-            </div>
-            <div class="col">
-                <h2>Bank / Payment</h2>
-                <div class="meta-row"><span class="meta-label">Payment Mode</span>{{ $employee->payment_mode ?? 'Not specified' }}</div>
-                <div class="meta-row"><span class="meta-label">Beneficiary</span>{{ $record->beneficiary_name ?? 'Not specified' }}</div>
-                <div class="meta-row"><span class="meta-label">Account</span>{{ $record->beneficiary_account_no ?? 'Not specified' }}</div>
-                <div class="meta-row"><span class="meta-label">Bank Code</span>{{ $record->bank_code ?? 'Not specified' }}</div>
-                <div class="meta-row"><span class="meta-label">Security This Month</span>PKR {{ number_format($record->security_deduction, 2) }}</div>
-                <div class="meta-row"><span class="meta-label">Security Total</span>PKR {{ number_format($record->security_total_deducted ?? 0, 2) }}</div>
-            </div>
-        </div>
+    <div class="remarks-box">
+        <div class="remarks-title">Remarks :</div>
+        <ul class="remarks-list">
+            <li>Payment was deposited on {{ $paymentDate }} via {{ $paymentMode }}</li>
+            <li>If you have any question email to {{ $accountsEmail }}</li>
+            <li>The total amount held as your security deposit is {{ $money($record->security_total_deducted ?? 0, true) }}.</li>
+            <li>This is a computer-generated statement. No signature is required.</li>
+        </ul>
     </div>
 
-    <div class="card">
-        <h2>Earnings and Deductions</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Earnings</th>
-                    <th>Amount</th>
-                    <th>Deductions</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Basic Salary</td>
-                    <td>PKR {{ number_format($record->basic_salary, 2) }}</td>
-                    <td>Security This Month</td>
-                    <td>PKR {{ number_format($record->security_deduction, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Last Increment</td>
-                    <td>PKR {{ number_format($record->last_increment, 2) }}</td>
-                    <td>Non-Paid Leave</td>
-                    <td>PKR {{ number_format($record->non_paid_leave_deduction, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Incentives / Bonus</td>
-                    <td>PKR {{ number_format($record->incentives_bonus, 2) }}</td>
-                    <td>Attendance Penalty</td>
-                    <td>PKR {{ number_format($record->attendance_penalty, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Punctuality Bonus</td>
-                    <td>PKR {{ number_format($record->punctuality_bonus, 2) }}</td>
-                    <td>Arrears Deduction</td>
-                    <td>PKR {{ number_format($record->arrears_deduction, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Positive Arrears</td>
-                    <td>PKR {{ number_format($record->positive_arrears, 2) }}</td>
-                    <td>Other Deduction</td>
-                    <td>PKR {{ number_format($record->other_deduction, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Other Additions</td>
-                    <td>PKR {{ number_format($record->positive_other, 2) }}</td>
-                    <td>Income Tax</td>
-                    <td>PKR {{ number_format($record->income_tax, 2) }}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <table class="totals">
-            <tr>
-                <td>Gross Salary</td>
-                <td>PKR {{ number_format($record->gross_salary, 2) }}</td>
-            </tr>
-            <tr>
-                <td>Total Security Deducted</td>
-                <td>PKR {{ number_format($record->security_total_deducted ?? 0, 2) }}</td>
-            </tr>
-            <tr>
-                <td>Net Salary</td>
-                <td>PKR {{ number_format($record->net_salary, 2) }}</td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="card">
-        <h2>Attendance Summary</h2>
-        <div class="two-col">
-            <div class="col">
-                <div class="meta-row"><span class="meta-label">Days Absent</span>{{ $record->days_absent }}</div>
-                <div class="meta-row"><span class="meta-label">Short Hours Days</span>{{ $record->short_hours_days }}</div>
-            </div>
-            <div class="col">
-                <div class="meta-row"><span class="meta-label">Payroll Run</span>{{ $payrollRun->name }}</div>
-                <div class="meta-row"><span class="meta-label">Status</span>{{ ucfirst($payrollRun->status) }}</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer-note">
-        This payslip was generated by {{ config('app.name') }} for {{ $payrollRun->pay_period_month->format('F Y') }}.
-        @if($payrollRun->notes)
-            <br><br><strong>Notes:</strong> {{ $payrollRun->notes }}
-        @endif
+    <div class="footer">
+        Email: {{ $accountsEmail }} | Phone: {{ $companyPhone }}<br>
+        Address: {{ $companyAddress }}
     </div>
 </body>
 </html>

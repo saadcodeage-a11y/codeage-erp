@@ -119,6 +119,7 @@ class PayrollManagementTest extends TestCase
                 $employee->id => [
                     'incentives_bonus' => 1000,
                     'punctuality_bonus' => 0,
+                    'security_deduction' => 1500,
                     'attendance_penalty' => 0,
                     'arrears_adjustment' => -500,
                     'other_adjustment' => 250,
@@ -132,6 +133,7 @@ class PayrollManagementTest extends TestCase
                 ->where('employee_id', $employee->id)
                 ->whereDate('adjustment_month', '2026-03-01')
                 ->where('incentives_bonus', 1000)
+                ->where('security_deduction', 1500)
                 ->where('arrears_adjustment', -500)
                 ->where('other_adjustment', 250)
                 ->exists()
@@ -151,17 +153,17 @@ class PayrollManagementTest extends TestCase
         $this->assertSame('draft', $payrollRun->status);
         $this->assertSame(3, $record->days_absent);
         $this->assertSame(1, $record->short_hours_days);
-        $this->assertSame('1000.00', $record->security_deduction);
-        $this->assertSame('5000.00', $record->security_total_deducted);
+        $this->assertSame('1500.00', $record->security_deduction);
+        $this->assertSame('5500.00', $record->security_total_deducted);
         $this->assertSame('500.00', $record->non_paid_leave_deduction);
         $this->assertSame('50000.00', $record->basic_salary);
         $this->assertSame('10000.00', $record->last_increment);
         $this->assertSame('1000.00', $record->incentives_bonus);
         $this->assertSame('250.00', $record->positive_other);
         $this->assertSame('500.00', $record->arrears_deduction);
-        $this->assertSame('59250.00', $record->gross_salary);
-        $this->assertSame('92.50', $record->income_tax);
-        $this->assertSame('59157.50', $record->net_salary);
+        $this->assertSame('58750.00', $record->gross_salary);
+        $this->assertSame('87.50', $record->income_tax);
+        $this->assertSame('58662.50', $record->net_salary);
     }
 
     public function test_can_autosave_single_employee_payroll_adjustment(): void
@@ -179,6 +181,7 @@ class PayrollManagementTest extends TestCase
             'adjustment' => [
                 'incentives_bonus' => 1500,
                 'punctuality_bonus' => 500,
+                'security_deduction' => 750,
                 'attendance_penalty' => 250,
                 'arrears_adjustment' => -100,
                 'other_adjustment' => 200,
@@ -197,6 +200,7 @@ class PayrollManagementTest extends TestCase
                 ->whereDate('adjustment_month', '2026-03-01')
                 ->where('incentives_bonus', 1500)
                 ->where('punctuality_bonus', 500)
+                ->where('security_deduction', 750)
                 ->where('attendance_penalty', 250)
                 ->where('arrears_adjustment', -100)
                 ->where('other_adjustment', 200)

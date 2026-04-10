@@ -22,6 +22,7 @@
                     <th>Penalty</th>
                     <th>Arrears</th>
                     <th>Other</th>
+                    <th>Projected Tax</th>
                     <th>Projected Net</th>
                     <th>Remarks</th>
                 </tr>
@@ -58,7 +59,9 @@
                         <td>PKR {{ number_format($row['last_increment'], 2) }}</td>
                         <td>{{ $row['days_absent'] }}</td>
                         <td>{{ $row['short_hours_days'] }}</td>
-                        <td>PKR {{ number_format($row['security_deduction'], 2) }}</td>
+                        <td>
+                            <input type="number" step="0.01" min="0" name="adjustments[{{ $employee->id }}][security_deduction]" value="{{ $adjustment?->security_deduction ?? $row['security_deduction'] }}" @if(!$canEditPayroll) disabled @endif>
+                        </td>
                         <td>
                             <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ $adjustment?->incentives_bonus ?? 0 }}" @if(!$canEditPayroll) disabled @endif>
                         </td>
@@ -74,6 +77,7 @@
                         <td>
                             <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ $adjustment?->other_adjustment ?? 0 }}" @if(!$canEditPayroll) disabled @endif>
                         </td>
+                        <td class="payout-net-cell">PKR {{ number_format($row['income_tax'], 2) }}</td>
                         <td class="payout-net-cell">PKR {{ number_format($row['net_salary'], 2) }}</td>
                         <td>
                             <input type="text" name="adjustments[{{ $employee->id }}][remarks]" value="{{ $adjustment?->remarks }}" placeholder="Optional note" @if(!$canEditPayroll) disabled @endif>
