@@ -98,6 +98,11 @@ class Employee extends Model
         return $this->hasMany(EmployeePayrollRecord::class)->latest();
     }
 
+    public function payrollAdjustments()
+    {
+        return $this->hasMany(EmployeePayrollAdjustment::class)->latest('adjustment_month');
+    }
+
     public function securityFundSnapshots()
     {
         return $this->hasMany(EmployeeSecurityFundSnapshot::class)->latest('snapshot_month');

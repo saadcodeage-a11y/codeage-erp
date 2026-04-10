@@ -48,6 +48,12 @@
                         <span>Attendance</span>
                     </a>
                 @endif
+                @if(Auth::user()->canAccessModule('payroll_management'))
+                    <a href="{{ route('payroll.index') }}" class="nav-item {{ request()->routeIs('payroll.*') ? 'active' : '' }}">
+                        <i data-lucide="wallet-cards"></i>
+                        <span>Payroll</span>
+                    </a>
+                @endif
                 @if(Auth::user()->canAccessModule('templates'))
                     <a href="{{ route('templates.index') }}" class="nav-item {{ request()->routeIs('templates.*') ? 'active' : '' }}">
                         <i data-lucide="mail"></i>

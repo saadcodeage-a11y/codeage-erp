@@ -11,6 +11,7 @@ class Role extends Model
         'employees' => 'Employees',
         'leave_management' => 'Leave Management',
         'attendance_management' => 'Attendance Management',
+        'payroll_management' => 'Payroll',
         'user_management' => 'User Management',
         'settings' => 'Settings',
         'templates' => 'Templates',

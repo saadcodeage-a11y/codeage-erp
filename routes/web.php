@@ -84,6 +84,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\PayrollController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
@@ -139,6 +140,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/attendance/settings', [AttendanceController::class, 'updateSettings'])->name('attendance.settings.update');
         Route::post('/attendance/holidays', [AttendanceController::class, 'storeHoliday'])->name('attendance.holidays.store');
         Route::delete('/attendance/holidays/{holiday}', [AttendanceController::class, 'destroyHoliday'])->name('attendance.holidays.destroy');
+    });
+
+    // Payroll Management
+    Route::middleware('module:payroll_management,read')->group(function () {
+        Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::get('/payroll/{payrollRun}/employees/{employee}/payslip', [PayrollController::class, 'downloadPayslip'])->name('payroll.payslip.download');
+    });
+    Route::middleware('module:payroll_management,create')->group(function () {
+        Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
+    });
+    Route::middleware('module:payroll_management,edit')->group(function () {
+        Route::post('/payroll/adjustments', [PayrollController::class, 'updateAdjustments'])->name('payroll.adjustments.update');
+        Route::post('/payroll/{payrollRun}/finalize', [PayrollController::class, 'finalize'])->name('payroll.finalize');
     });
 
     // Settings
