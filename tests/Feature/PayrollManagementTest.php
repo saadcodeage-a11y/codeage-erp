@@ -162,6 +162,46 @@ class PayrollManagementTest extends TestCase
         $this->assertSame('59157.50', $record->net_salary);
     }
 
+    public function test_can_autosave_single_employee_payroll_adjustment(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-304',
+            'current_salary' => 45000,
+            'last_increment' => 5000,
+        ]);
+
+        $response = $this->actingAs($accountsUser)->postJson(route('payroll.adjustments.autosave'), [
+            'month' => '2026-03',
+            'employee_id' => $employee->id,
+            'adjustment' => [
+                'incentives_bonus' => 1500,
+                'punctuality_bonus' => 500,
+                'attendance_penalty' => 250,
+                'arrears_adjustment' => -100,
+                'other_adjustment' => 200,
+                'remarks' => 'Autosaved from payroll card',
+            ],
+        ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $this->assertTrue(
+            EmployeePayrollAdjustment::query()
+                ->where('employee_id', $employee->id)
+                ->whereDate('adjustment_month', '2026-03-01')
+                ->where('incentives_bonus', 1500)
+                ->where('punctuality_bonus', 500)
+                ->where('attendance_penalty', 250)
+                ->where('arrears_adjustment', -100)
+                ->where('other_adjustment', 200)
+                ->exists()
+        );
+    }
+
     public function test_can_finalize_payroll_run_and_download_pdf_payslip(): void
     {
         $accountsUser = $this->createUser('Accounts Manager');

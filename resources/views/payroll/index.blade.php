@@ -138,7 +138,7 @@
         </div>
 
         @if($previewRows->isNotEmpty())
-            <form method="POST" action="{{ route('payroll.adjustments.update') }}">
+            <form method="POST" action="{{ route('payroll.adjustments.update') }}" id="payrollAdjustmentsForm">
                 @csrf
                 <input type="hidden" name="month" value="{{ $month }}">
                 <input type="hidden" name="page" value="{{ $previewRowsPagination->currentPage() }}">
@@ -153,7 +153,7 @@
                             $employee = $row['employee'];
                             $adjustment = $row['adjustment'];
                         @endphp
-                        <div class="payroll-employee-card">
+                        <div class="payroll-employee-card" data-employee-id="{{ $employee->id }}">
                             <div class="payroll-employee-header">
                                 <div>
                                     <h3>{{ $employee->full_name }}</h3>
@@ -161,8 +161,12 @@
                                 </div>
                                 <div class="projected-pay-chip">
                                     <span>Projected Net</span>
-                                    <strong>PKR {{ number_format($row['net_salary'], 2) }}</strong>
-                                    <small>Tax {{ number_format($row['income_tax'], 2) }}</small>
+                                    <strong data-summary="net_salary">PKR {{ number_format($row['net_salary'], 2) }}</strong>
+                                    <small data-summary="income_tax">Tax {{ number_format($row['income_tax'], 2) }}</small>
+                                </div>
+                                <div class="autosave-indicator" data-autosave-indicator>
+                                    <span class="autosave-dot"></span>
+                                    <span data-autosave-text>Saved</span>
                                 </div>
                             </div>
 
@@ -189,34 +193,34 @@
                                 </div>
                                 <div class="summary-box">
                                     <span>Gross</span>
-                                    <strong>PKR {{ number_format($row['gross_salary'], 2) }}</strong>
+                                    <strong data-summary="gross_salary">PKR {{ number_format($row['gross_salary'], 2) }}</strong>
                                 </div>
                             </div>
 
                             <div class="payroll-adjustment-grid">
                                 <div class="form-group" style="margin: 0;">
                                     <label>Incentives</label>
-                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    <input type="number" step="0.01" data-adjustment-field="incentives_bonus" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
                                 </div>
                                 <div class="form-group" style="margin: 0;">
                                     <label>Punctuality</label>
-                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    <input type="number" step="0.01" data-adjustment-field="punctuality_bonus" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
                                 </div>
                                 <div class="form-group" style="margin: 0;">
                                     <label>Penalty</label>
-                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    <input type="number" step="0.01" data-adjustment-field="attendance_penalty" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
                                 </div>
                                 <div class="form-group" style="margin: 0;">
                                     <label>Arrears</label>
-                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    <input type="number" step="0.01" data-adjustment-field="arrears_adjustment" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
                                 </div>
                                 <div class="form-group" style="margin: 0;">
                                     <label>Other</label>
-                                    <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    <input type="number" step="0.01" data-adjustment-field="other_adjustment" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
                                 </div>
                                 <div class="form-group payroll-note-field" style="margin: 0;">
                                     <label>Remarks</label>
-                                    <input type="text" name="adjustments[{{ $employee->id }}][remarks]" value="{{ old("adjustments.{$employee->id}.remarks", $adjustment?->remarks) }}" placeholder="Optional note for this month" @if(!$canEditPayroll) disabled @endif>
+                                    <input type="text" data-adjustment-field="remarks" name="adjustments[{{ $employee->id }}][remarks]" value="{{ old("adjustments.{$employee->id}.remarks", $adjustment?->remarks) }}" placeholder="Optional note for this month" @if(!$canEditPayroll) disabled @endif>
                                 </div>
                             </div>
                         </div>
@@ -226,7 +230,7 @@
                 @if($canEditPayroll)
                     <div class="table-footer-actions">
                         <button type="submit" class="btn btn-primary">
-                            <i data-lucide="save"></i> Save Adjustments
+                            <i data-lucide="save"></i> Save All Adjustments
                         </button>
                     </div>
                 @endif
@@ -423,6 +427,45 @@
         margin: 3px 0;
     }
 
+    .autosave-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .autosave-indicator.saving {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+    }
+
+    .autosave-indicator.unsaved {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #c2410c;
+    }
+
+    .autosave-indicator.error {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #b91c1c;
+    }
+
+    .autosave-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.85;
+    }
+
     .payroll-summary-grid {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -528,4 +571,195 @@
         }
     }
 </style>
+
+@if($canEditPayroll)
+<script>
+    (() => {
+        const autosaveUrl = @json(route('payroll.adjustments.autosave'));
+        const csrfToken = @json(csrf_token());
+        const month = @json($month);
+        const pendingSaves = new Map();
+        const dirtyCards = new Set();
+
+        function setIndicator(card, state, text) {
+            const indicator = card.querySelector('[data-autosave-indicator]');
+            const label = card.querySelector('[data-autosave-text]');
+
+            if (!indicator || !label) {
+                return;
+            }
+
+            indicator.classList.remove('saving', 'unsaved', 'error');
+
+            if (state) {
+                indicator.classList.add(state);
+            }
+
+            label.textContent = text;
+        }
+
+        function collectCardPayload(card) {
+            const payload = {};
+
+            card.querySelectorAll('[data-adjustment-field]').forEach((input) => {
+                payload[input.dataset.adjustmentField] = input.value;
+            });
+
+            return payload;
+        }
+
+        async function saveCard(card) {
+            const employeeId = card.dataset.employeeId;
+
+            if (!employeeId) {
+                return;
+            }
+
+            setIndicator(card, 'saving', 'Saving...');
+
+            try {
+                const response = await fetch(autosaveUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        month,
+                        employee_id: employeeId,
+                        adjustment: collectCardPayload(card),
+                    }),
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(payload.message || 'Payroll adjustment could not be saved.');
+                }
+
+                const grossNode = card.querySelector('[data-summary="gross_salary"]');
+                const taxNode = card.querySelector('[data-summary="income_tax"]');
+                const netNode = card.querySelector('[data-summary="net_salary"]');
+
+                if (grossNode && payload.summary?.gross_salary) {
+                    grossNode.textContent = `PKR ${Number(payload.summary.gross_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+
+                if (taxNode && payload.summary?.income_tax) {
+                    taxNode.textContent = `Tax ${Number(payload.summary.income_tax).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+
+                if (netNode && payload.summary?.net_salary) {
+                    netNode.textContent = `PKR ${Number(payload.summary.net_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+
+                dirtyCards.delete(card);
+                setIndicator(card, '', 'Saved');
+            } catch (error) {
+                setIndicator(card, 'error', 'Save failed');
+                throw error;
+            }
+        }
+
+        function queueSave(card, immediate = false) {
+            const existingTimer = pendingSaves.get(card);
+
+            if (existingTimer) {
+                clearTimeout(existingTimer);
+            }
+
+            dirtyCards.add(card);
+            setIndicator(card, 'unsaved', immediate ? 'Saving...' : 'Unsaved changes');
+
+            const trigger = () => {
+                pendingSaves.delete(card);
+                saveCard(card).catch(() => {});
+            };
+
+            if (immediate) {
+                trigger();
+                return;
+            }
+
+            const timer = setTimeout(trigger, 500);
+            pendingSaves.set(card, timer);
+        }
+
+        async function flushDirtyCards() {
+            const cards = Array.from(dirtyCards);
+
+            for (const card of cards) {
+                const timer = pendingSaves.get(card);
+
+                if (timer) {
+                    clearTimeout(timer);
+                    pendingSaves.delete(card);
+                }
+
+                await saveCard(card);
+            }
+        }
+
+        document.querySelectorAll('.payroll-employee-card').forEach((card) => {
+            card.querySelectorAll('[data-adjustment-field]').forEach((input) => {
+                input.addEventListener('input', () => queueSave(card));
+                input.addEventListener('change', () => queueSave(card, true));
+                input.addEventListener('blur', () => {
+                    if (dirtyCards.has(card)) {
+                        queueSave(card, true);
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.pagination-wrapper a, .import-card, .nav-item, .btn, a[href]').forEach((link) => {
+            if (link.closest('form') || link.getAttribute('href') === '#') {
+                return;
+            }
+
+            link.addEventListener('click', async (event) => {
+                if (dirtyCards.size === 0) {
+                    return;
+                }
+
+                const href = link.getAttribute('href');
+
+                if (!href || href.startsWith('javascript:')) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                try {
+                    await flushDirtyCards();
+                    window.location.href = href;
+                } catch (error) {
+                    alert('Some payroll adjustments could not be saved. Please wait and try again.');
+                }
+            });
+        });
+
+        const adjustmentsForm = document.getElementById('payrollAdjustmentsForm');
+
+        if (adjustmentsForm) {
+            adjustmentsForm.addEventListener('submit', async (event) => {
+                if (dirtyCards.size === 0) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                try {
+                    await flushDirtyCards();
+                    adjustmentsForm.submit();
+                } catch (error) {
+                    alert('Some payroll adjustments could not be saved. Please wait and try again.');
+                }
+            });
+        }
+    })();
+</script>
+@endif
 @endsection

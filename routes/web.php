@@ -152,6 +152,7 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware('module:payroll_management,edit')->group(function () {
         Route::post('/payroll/adjustments', [PayrollController::class, 'updateAdjustments'])->name('payroll.adjustments.update');
+        Route::post('/payroll/adjustments/autosave', [PayrollController::class, 'autosaveAdjustment'])->name('payroll.adjustments.autosave');
         Route::post('/payroll/{payrollRun}/finalize', [PayrollController::class, 'finalize'])->name('payroll.finalize');
     });
 

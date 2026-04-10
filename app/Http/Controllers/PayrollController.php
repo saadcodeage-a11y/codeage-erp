@@ -105,6 +105,41 @@ class PayrollController extends Controller
             ->with('success', 'Payroll adjustments saved successfully.');
     }
 
+    public function autosaveAdjustment(Request $request, PayrollCalculationService $payrollCalculationService)
+    {
+        $validated = $request->validate([
+            'month' => 'required|date_format:Y-m',
+            'employee_id' => 'required|exists:employees,id',
+            'adjustment.incentives_bonus' => 'nullable|numeric',
+            'adjustment.punctuality_bonus' => 'nullable|numeric',
+            'adjustment.attendance_penalty' => 'nullable|numeric',
+            'adjustment.arrears_adjustment' => 'nullable|numeric',
+            'adjustment.other_adjustment' => 'nullable|numeric',
+            'adjustment.remarks' => 'nullable|string|max:1000',
+        ]);
+
+        $employeeId = (int) $validated['employee_id'];
+
+        $payrollCalculationService->saveAdjustments(
+            $validated['month'],
+            [$employeeId => $validated['adjustment'] ?? []]
+        );
+
+        $employee = Employee::query()->findOrFail($employeeId);
+        $row = $payrollCalculationService->calculateEmployeePayroll($employee, $validated['month']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payroll adjustment saved.',
+            'saved_at' => now()->toIso8601String(),
+            'summary' => [
+                'gross_salary' => number_format($row['gross_salary'], 2, '.', ''),
+                'income_tax' => number_format($row['income_tax'], 2, '.', ''),
+                'net_salary' => number_format($row['net_salary'], 2, '.', ''),
+            ],
+        ]);
+    }
+
     public function generate(Request $request, PayrollCalculationService $payrollCalculationService)
     {
         $validated = $request->validate([
