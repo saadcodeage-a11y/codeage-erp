@@ -155,70 +155,74 @@
                         @endphp
                         <div class="payroll-employee-card" data-employee-id="{{ $employee->id }}">
                             <div class="payroll-employee-header">
-                                <div>
-                                    <h3>{{ $employee->full_name }}</h3>
-                                    <p>{{ $employee->employee_id }} | {{ $employee->designation ?? 'Not specified' }}</p>
+                                <div class="payroll-employee-identity">
+                                    <div>
+                                        <h3>{{ $employee->full_name }}</h3>
+                                        <p>{{ $employee->employee_id }} | {{ $employee->designation ?? 'Not specified' }}</p>
+                                    </div>
+                                    <div class="autosave-indicator" data-autosave-indicator>
+                                        <span class="autosave-dot"></span>
+                                        <span data-autosave-text>Saved</span>
+                                    </div>
                                 </div>
                                 <div class="projected-pay-chip">
                                     <span>Projected Net</span>
                                     <strong data-summary="net_salary">PKR {{ number_format($row['net_salary'], 2) }}</strong>
                                     <small data-summary="income_tax">Tax {{ number_format($row['income_tax'], 2) }}</small>
                                 </div>
-                                <div class="autosave-indicator" data-autosave-indicator>
-                                    <span class="autosave-dot"></span>
-                                    <span data-autosave-text>Saved</span>
+                            </div>
+
+                            <div class="payroll-overview-grid">
+                                <div class="payroll-overview-panel">
+                                    <div class="payroll-overview-label">Base</div>
+                                    <div class="payroll-overview-value">PKR {{ number_format($row['basic_salary'], 2) }}</div>
+                                </div>
+                                <div class="payroll-overview-panel">
+                                    <div class="payroll-overview-label">Increment</div>
+                                    <div class="payroll-overview-value">PKR {{ number_format($row['last_increment'], 2) }}</div>
+                                </div>
+                                <div class="payroll-overview-panel">
+                                    <div class="payroll-overview-label">Absent Days</div>
+                                    <div class="payroll-overview-value">{{ $row['days_absent'] }}</div>
+                                </div>
+                                <div class="payroll-overview-panel">
+                                    <div class="payroll-overview-label">Short Hours</div>
+                                    <div class="payroll-overview-value">{{ $row['short_hours_days'] }}</div>
+                                </div>
+                                <div class="payroll-overview-panel">
+                                    <div class="payroll-overview-label">Security Balance</div>
+                                    <div class="payroll-overview-value">PKR {{ number_format($row['security_balance'], 2) }}</div>
+                                </div>
+                                <div class="payroll-overview-panel emphasized">
+                                    <div class="payroll-overview-label">Projected Gross</div>
+                                    <div class="payroll-overview-value" data-summary="gross_salary">PKR {{ number_format($row['gross_salary'], 2) }}</div>
                                 </div>
                             </div>
 
-                            <div class="payroll-summary-grid">
-                                <div class="summary-box">
-                                    <span>Base</span>
-                                    <strong>PKR {{ number_format($row['basic_salary'], 2) }}</strong>
+                            <div class="payroll-adjustment-shell">
+                                <div class="payroll-adjustment-grid">
+                                    <div class="form-group compact" style="margin: 0;">
+                                        <label>Incentives</label>
+                                        <input type="number" step="0.01" data-adjustment-field="incentives_bonus" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    </div>
+                                    <div class="form-group compact" style="margin: 0;">
+                                        <label>Punctuality</label>
+                                        <input type="number" step="0.01" data-adjustment-field="punctuality_bonus" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    </div>
+                                    <div class="form-group compact" style="margin: 0;">
+                                        <label>Penalty</label>
+                                        <input type="number" step="0.01" data-adjustment-field="attendance_penalty" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    </div>
+                                    <div class="form-group compact" style="margin: 0;">
+                                        <label>Arrears</label>
+                                        <input type="number" step="0.01" data-adjustment-field="arrears_adjustment" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    </div>
+                                    <div class="form-group compact" style="margin: 0;">
+                                        <label>Other</label>
+                                        <input type="number" step="0.01" data-adjustment-field="other_adjustment" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
+                                    </div>
                                 </div>
-                                <div class="summary-box">
-                                    <span>Increment</span>
-                                    <strong>PKR {{ number_format($row['last_increment'], 2) }}</strong>
-                                </div>
-                                <div class="summary-box">
-                                    <span>Absent Days</span>
-                                    <strong>{{ $row['days_absent'] }}</strong>
-                                </div>
-                                <div class="summary-box">
-                                    <span>Short Hours</span>
-                                    <strong>{{ $row['short_hours_days'] }}</strong>
-                                </div>
-                                <div class="summary-box">
-                                    <span>Security Balance</span>
-                                    <strong>PKR {{ number_format($row['security_balance'], 2) }}</strong>
-                                </div>
-                                <div class="summary-box">
-                                    <span>Gross</span>
-                                    <strong data-summary="gross_salary">PKR {{ number_format($row['gross_salary'], 2) }}</strong>
-                                </div>
-                            </div>
-
-                            <div class="payroll-adjustment-grid">
-                                <div class="form-group" style="margin: 0;">
-                                    <label>Incentives</label>
-                                    <input type="number" step="0.01" data-adjustment-field="incentives_bonus" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label>Punctuality</label>
-                                    <input type="number" step="0.01" data-adjustment-field="punctuality_bonus" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label>Penalty</label>
-                                    <input type="number" step="0.01" data-adjustment-field="attendance_penalty" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label>Arrears</label>
-                                    <input type="number" step="0.01" data-adjustment-field="arrears_adjustment" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label>Other</label>
-                                    <input type="number" step="0.01" data-adjustment-field="other_adjustment" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                </div>
-                                <div class="form-group payroll-note-field" style="margin: 0;">
+                                <div class="form-group payroll-note-field compact" style="margin: 0;">
                                     <label>Remarks</label>
                                     <input type="text" data-adjustment-field="remarks" name="adjustments[{{ $employee->id }}][remarks]" value="{{ old("adjustments.{$employee->id}.remarks", $adjustment?->remarks) }}" placeholder="Optional note for this month" @if(!$canEditPayroll) disabled @endif>
                                 </div>
@@ -380,17 +384,26 @@
     .payroll-employee-card {
         border: 1px solid #e5e7eb;
         border-radius: 18px;
-        padding: 20px;
+        padding: 18px 20px;
         background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
     }
 
     .payroll-employee-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 18px;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 14px;
         flex-wrap: wrap;
+    }
+
+    .payroll-employee-identity {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex: 1 1 340px;
+        min-width: 0;
     }
 
     .payroll-employee-header h3 {
@@ -406,8 +419,8 @@
     }
 
     .projected-pay-chip {
-        min-width: 180px;
-        padding: 12px 14px;
+        min-width: 190px;
+        padding: 10px 14px;
         border-radius: 14px;
         background: #fff7ed;
         border: 1px solid #fed7aa;
@@ -422,7 +435,7 @@
 
     .projected-pay-chip strong {
         display: block;
-        font-size: 18px;
+        font-size: 17px;
         color: #111827;
         margin: 3px 0;
     }
@@ -466,54 +479,73 @@
         opacity: 0.85;
     }
 
-    .payroll-summary-grid {
+    .payroll-overview-grid {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 18px;
+        gap: 10px;
+        margin-bottom: 14px;
     }
 
-    .summary-box {
-        padding: 12px 14px;
-        border-radius: 14px;
+    .payroll-overview-panel {
+        padding: 10px 12px;
+        border-radius: 12px;
         background: #f9fafb;
         border: 1px solid #eef2f7;
     }
 
-    .summary-box span {
-        display: block;
+    .payroll-overview-panel.emphasized {
+        background: #fff7ed;
+        border-color: #fed7aa;
+    }
+
+    .payroll-overview-label {
         font-size: 12px;
         color: #6b7280;
         margin-bottom: 4px;
     }
 
-    .summary-box strong {
+    .payroll-overview-value {
         font-size: 14px;
+        font-weight: 700;
         color: #111827;
+    }
+
+    .payroll-adjustment-shell {
+        display: grid;
+        gap: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #eef2f7;
     }
 
     .payroll-adjustment-grid {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
         align-items: end;
     }
 
-    .payroll-adjustment-grid input {
+    .payroll-adjustment-grid input,
+    .payroll-note-field input {
         width: 100%;
-        padding: 10px 12px;
+        padding: 9px 12px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         font-size: 13px;
     }
 
-    .payroll-adjustment-grid input:disabled {
+    .payroll-adjustment-grid input:disabled,
+    .payroll-note-field input:disabled {
         background: #f9fafb;
         color: #6b7280;
     }
 
+    .form-group.compact label {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
     .payroll-note-field {
-        grid-column: span 1;
+        max-width: 420px;
     }
 
     .payroll-support-grid {
@@ -546,7 +578,7 @@
             grid-template-columns: 1fr;
         }
 
-        .payroll-summary-grid,
+        .payroll-overview-grid,
         .payroll-adjustment-grid,
         .payroll-support-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -559,15 +591,25 @@
             grid-template-columns: 1fr;
         }
 
-        .payroll-summary-grid,
+        .payroll-employee-identity,
+        .payroll-overview-grid,
         .payroll-adjustment-grid,
         .payroll-support-grid {
             grid-template-columns: 1fr;
         }
 
+        .payroll-employee-identity {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
         .projected-pay-chip {
             width: 100%;
             text-align: left;
+        }
+
+        .payroll-note-field {
+            max-width: 100%;
         }
     }
 </style>
