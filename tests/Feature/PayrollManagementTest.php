@@ -152,6 +152,7 @@ class PayrollManagementTest extends TestCase
         $this->assertSame(3, $record->days_absent);
         $this->assertSame(1, $record->short_hours_days);
         $this->assertSame('1000.00', $record->security_deduction);
+        $this->assertSame('5000.00', $record->security_total_deducted);
         $this->assertSame('500.00', $record->non_paid_leave_deduction);
         $this->assertSame('50000.00', $record->basic_salary);
         $this->assertSame('10000.00', $record->last_increment);
@@ -240,6 +241,7 @@ class PayrollManagementTest extends TestCase
             'positive_arrears' => 0,
             'positive_other' => 0,
             'security_deduction' => 0,
+            'security_total_deducted' => 0,
             'non_paid_leave_deduction' => 0,
             'attendance_penalty' => 0,
             'arrears_deduction' => 0,
@@ -315,6 +317,7 @@ class PayrollManagementTest extends TestCase
             'positive_arrears' => 0,
             'positive_other' => 0,
             'security_deduction' => 1000,
+            'security_total_deducted' => 1000,
             'non_paid_leave_deduction' => 0,
             'attendance_penalty' => 0,
             'arrears_deduction' => 0,
@@ -389,6 +392,7 @@ class PayrollManagementTest extends TestCase
             'positive_arrears' => 0,
             'positive_other' => 0,
             'security_deduction' => 1000,
+            'security_total_deducted' => 1000,
             'non_paid_leave_deduction' => 0,
             'attendance_penalty' => 0,
             'arrears_deduction' => 0,
@@ -415,6 +419,7 @@ class PayrollManagementTest extends TestCase
             'positive_arrears' => 0,
             'positive_other' => 0,
             'security_deduction' => 1000,
+            'security_total_deducted' => 1000,
             'non_paid_leave_deduction' => 0,
             'attendance_penalty' => 0,
             'arrears_deduction' => 0,

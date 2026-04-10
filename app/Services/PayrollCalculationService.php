@@ -134,6 +134,7 @@ class PayrollCalculationService
                     'positive_arrears' => $row['positive_arrears'],
                     'positive_other' => $row['positive_other'],
                     'security_deduction' => $row['security_deduction'],
+                    'security_total_deducted' => $row['security_total_deducted'],
                     'non_paid_leave_deduction' => $row['non_paid_leave_deduction'],
                     'attendance_penalty' => $row['attendance_penalty'],
                     'arrears_deduction' => $row['arrears_deduction'],
@@ -200,9 +201,8 @@ class PayrollCalculationService
             0,
             ($daysAbsent - $this->nonPaidLeaveGraceDays()) * $this->nonPaidLeaveDeductionPerDay()
         );
-        $securityDeduction = $securitySnapshot && $this->decimalValue($securitySnapshot->balance_in_account) > 0
-            ? $this->securityDeductionAmount()
-            : 0.0;
+        $securityDeduction = $this->securityAmountForMonth($securitySnapshot, $monthStart);
+        $securityTotalDeducted = $this->securityTotalDeducted($securitySnapshot);
 
         $grossSalary = round(
             ($basicSalary + $lastIncrement + $incentivesBonus + $punctualityBonus + $positiveArrears + $positiveOther)
@@ -247,6 +247,7 @@ class PayrollCalculationService
             'positive_arrears' => $positiveArrears,
             'positive_other' => $positiveOther,
             'security_deduction' => round($securityDeduction, 2),
+            'security_total_deducted' => round($securityTotalDeducted, 2),
             'non_paid_leave_deduction' => round($nonPaidLeaveDeduction, 2),
             'attendance_penalty' => $attendancePenalty,
             'arrears_deduction' => round($arrearsDeduction, 2),
@@ -326,6 +327,55 @@ class PayrollCalculationService
     protected function securityDeductionAmount(): float
     {
         return (float) (Setting::query()->where('key', 'payroll_security_deduction_amount')->value('value') ?? self::DEFAULT_SECURITY_DEDUCTION_AMOUNT);
+    }
+
+    protected function securityAmountForMonth($securitySnapshot, Carbon $monthStart): float
+    {
+        if (! $securitySnapshot) {
+            return 0.0;
+        }
+
+        $field = strtolower($monthStart->format('F')) . '_amount';
+
+        return $this->decimalValue(data_get($securitySnapshot, $field));
+    }
+
+    protected function securityTotalDeducted($securitySnapshot): float
+    {
+        if (! $securitySnapshot) {
+            return 0.0;
+        }
+
+        $balanceInAccount = $this->decimalValue($securitySnapshot->balance_in_account);
+
+        if ($balanceInAccount > 0) {
+            return $balanceInAccount;
+        }
+
+        $monthFields = [
+            'july_amount',
+            'august_amount',
+            'september_amount',
+            'october_amount',
+            'november_amount',
+            'december_amount',
+            'january_amount',
+            'february_amount',
+            'march_amount',
+            'april_amount',
+            'may_amount',
+            'june_amount',
+        ];
+
+        $total = $this->decimalValue($securitySnapshot->opening_arrears);
+
+        foreach ($monthFields as $field) {
+            $total += $this->decimalValue(data_get($securitySnapshot, $field));
+        }
+
+        $total -= $this->decimalValue($securitySnapshot->paid_amount);
+
+        return max(round($total, 2), 0.0);
     }
 
     protected function shortHoursThresholdMinutes(): int

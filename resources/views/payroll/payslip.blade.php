@@ -141,6 +141,8 @@
                 <div class="meta-row"><span class="meta-label">Beneficiary</span>{{ $record->beneficiary_name ?? 'Not specified' }}</div>
                 <div class="meta-row"><span class="meta-label">Account</span>{{ $record->beneficiary_account_no ?? 'Not specified' }}</div>
                 <div class="meta-row"><span class="meta-label">Bank Code</span>{{ $record->bank_code ?? 'Not specified' }}</div>
+                <div class="meta-row"><span class="meta-label">Security This Month</span>PKR {{ number_format($record->security_deduction, 2) }}</div>
+                <div class="meta-row"><span class="meta-label">Security Total</span>PKR {{ number_format($record->security_total_deducted ?? 0, 2) }}</div>
             </div>
         </div>
     </div>
@@ -160,7 +162,7 @@
                 <tr>
                     <td>Basic Salary</td>
                     <td>PKR {{ number_format($record->basic_salary, 2) }}</td>
-                    <td>Security</td>
+                    <td>Security This Month</td>
                     <td>PKR {{ number_format($record->security_deduction, 2) }}</td>
                 </tr>
                 <tr>
@@ -200,6 +202,10 @@
             <tr>
                 <td>Gross Salary</td>
                 <td>PKR {{ number_format($record->gross_salary, 2) }}</td>
+            </tr>
+            <tr>
+                <td>Total Security Deducted</td>
+                <td>PKR {{ number_format($record->security_total_deducted ?? 0, 2) }}</td>
             </tr>
             <tr>
                 <td>Net Salary</td>

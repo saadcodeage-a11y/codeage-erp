@@ -16,7 +16,7 @@
                     <th>Increment</th>
                     <th>Absent</th>
                     <th>Short</th>
-                    <th>Security</th>
+                    <th>Security (Month)</th>
                     <th>Incentives</th>
                     <th>Punctuality</th>
                     <th>Penalty</th>
@@ -58,7 +58,7 @@
                         <td>PKR {{ number_format($row['last_increment'], 2) }}</td>
                         <td>{{ $row['days_absent'] }}</td>
                         <td>{{ $row['short_hours_days'] }}</td>
-                        <td>PKR {{ number_format($row['security_balance'], 2) }}</td>
+                        <td>PKR {{ number_format($row['security_deduction'], 2) }}</td>
                         <td>
                             <input type="number" step="0.01" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ $adjustment?->incentives_bonus ?? 0 }}" @if(!$canEditPayroll) disabled @endif>
                         </td>
