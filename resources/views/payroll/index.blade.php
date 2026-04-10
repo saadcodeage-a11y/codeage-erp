@@ -6,8 +6,7 @@
 @php
     $canGeneratePayroll = Auth::user()->canAccessModule('payroll_management', 'create');
     $canEditPayroll = Auth::user()->canAccessModule('payroll_management', 'edit');
-    $selectedMonth = \Illuminate\Support\Carbon::createFromFormat('Y-m', $month);
-    $selectedMonthLabel = $selectedMonth->format('F Y');
+    $selectedMonthLabel = \Illuminate\Support\Carbon::createFromFormat('Y-m', $month)->format('F Y');
     $selectedRunTotals = $selectedRun
         ? [
             'gross_salary' => round($selectedRun->records->sum('gross_salary'), 2),
@@ -15,45 +14,18 @@
             'net_salary' => round($selectedRun->records->sum('net_salary'), 2),
         ]
         : null;
-    $previewRowsOnPage = $previewRowsPagination->getCollection();
 @endphp
 
-<div class="page-header">
+<div class="page-header payroll-page-header">
     <div class="header-left">
-        <h1>Payroll</h1>
-        <p>Generate month-wise payroll from employee salary setup, attendance records, security balances, and manual monthly adjustments.</p>
+        <h1>Payroll Payouts</h1>
+        <p>Review past payout months, open month details, and create a new payout pack with payslips and bank transfer files.</p>
     </div>
-</div>
-
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-label">Eligible Employees</span>
-            <span class="stat-value">{{ $previewRows->count() }}</span>
-        </div>
-        <div class="stat-icon-wrapper orange"><i data-lucide="users-round"></i></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-label">Projected Gross</span>
-            <span class="stat-value">PKR {{ number_format($totals['gross_salary'], 2) }}</span>
-        </div>
-        <div class="stat-icon-wrapper yellow"><i data-lucide="landmark"></i></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-label">Projected Tax</span>
-            <span class="stat-value">PKR {{ number_format($totals['income_tax'], 2) }}</span>
-        </div>
-        <div class="stat-icon-wrapper red"><i data-lucide="receipt-text"></i></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-label">Projected Net</span>
-            <span class="stat-value">PKR {{ number_format($totals['net_salary'], 2) }}</span>
-        </div>
-        <div class="stat-icon-wrapper green"><i data-lucide="wallet"></i></div>
-    </div>
+    @if($canGeneratePayroll)
+        <button type="button" class="btn btn-primary" onclick="openPayoutModal()">
+            <i data-lucide="wallet-cards"></i> Create Payouts
+        </button>
+    @endif
 </div>
 
 @if(session('success') || $errors->any())
@@ -76,732 +48,625 @@
     </div>
 @endif
 
-<div class="payroll-toolbar-grid">
-    <div class="card">
-        <div class="section-header" style="margin-bottom: 16px;">
-            <div>
-                <h2>Payroll Month</h2>
-                <p>Choose the month to review inputs, save adjustments, and generate payroll.</p>
-            </div>
+<div class="payroll-overview-stats">
+    <div class="stat-card compact">
+        <div class="stat-content">
+            <span class="stat-label">Preview Month</span>
+            <span class="stat-value">{{ $selectedMonthLabel }}</span>
         </div>
-        <form method="GET" action="{{ route('payroll.index') }}" class="payroll-month-form">
-            <div class="form-group" style="margin: 0;">
-                <label>Selected Month</label>
-                <input type="month" name="month" value="{{ $month }}">
-            </div>
-            <button type="submit" class="btn btn-outline">
-                <i data-lucide="calendar-search"></i> Load Month
-            </button>
-        </form>
     </div>
-
-    <div class="card">
-        <div class="section-header" style="margin-bottom: 16px;">
-            <div>
-                <h2>Payroll Run</h2>
-                <p>Generate a draft payroll run for {{ $selectedMonthLabel }} and finalize it when reviewed.</p>
-            </div>
+    <div class="stat-card compact">
+        <div class="stat-content">
+            <span class="stat-label">Projected Gross</span>
+            <span class="stat-value">PKR {{ number_format($totals['gross_salary'], 2) }}</span>
         </div>
-        @if($canGeneratePayroll)
-            <form method="POST" action="{{ route('payroll.generate') }}" class="payroll-generate-form">
-                @csrf
-                <input type="hidden" name="month" value="{{ $month }}">
-                <div class="form-group" style="margin: 0;">
-                    <label>Payment Date</label>
-                    <input type="date" name="payment_date" value="{{ old('payment_date', $selectedMonth->copy()->addMonth()->startOfMonth()->toDateString()) }}">
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label>Notes</label>
-                    <input type="text" name="notes" value="{{ old('notes') }}" placeholder="Optional payroll notes">
-                </div>
-                <button type="submit" class="btn btn-primary">
-                    <i data-lucide="play"></i> Generate Payroll
-                </button>
-            </form>
-        @else
-            <div class="empty-state-panel">You can review payroll, but only payroll creators can generate a run.</div>
-        @endif
+    </div>
+    <div class="stat-card compact">
+        <div class="stat-content">
+            <span class="stat-label">Projected Tax</span>
+            <span class="stat-value">PKR {{ number_format($totals['income_tax'], 2) }}</span>
+        </div>
+    </div>
+    <div class="stat-card compact">
+        <div class="stat-content">
+            <span class="stat-label">Projected Net</span>
+            <span class="stat-value">PKR {{ number_format($totals['net_salary'], 2) }}</span>
+        </div>
     </div>
 </div>
 
-<div class="payroll-section-stack">
-    <div class="card payroll-inputs-card">
+<div class="payroll-workspace">
+    <aside class="card payroll-history-panel">
         <div class="section-header" style="margin-bottom: 16px;">
             <div>
-                <h2>Monthly Payroll Inputs</h2>
-                <p>Review attendance and salary inputs for {{ $selectedMonthLabel }}. Employees are shown in compact cards so payroll stays readable without horizontal scrolling.</p>
-            </div>
-            <div class="section-badge-row">
-                <span class="summary-pill">{{ $previewRows->count() }} employees</span>
-                <span class="summary-pill muted">{{ $selectedMonthLabel }}</span>
+                <h2>Payout Months</h2>
+                <p>Open any historical month to review payout details and outputs.</p>
             </div>
         </div>
 
-        @if($previewRows->isNotEmpty())
-            <form method="POST" action="{{ route('payroll.adjustments.update') }}" id="payrollAdjustmentsForm">
-                @csrf
-                <input type="hidden" name="month" value="{{ $month }}">
-                <input type="hidden" name="page" value="{{ $previewRowsPagination->currentPage() }}">
-                <input type="hidden" name="run_page" value="{{ request('run_page', 1) }}">
-                @if($selectedRun)
-                    <input type="hidden" name="run" value="{{ $selectedRun->id }}">
-                @endif
-
-                <div class="payroll-card-grid">
-                    @foreach($previewRowsOnPage as $row)
-                        @php
-                            $employee = $row['employee'];
-                            $adjustment = $row['adjustment'];
-                        @endphp
-                        <div class="payroll-employee-card" data-employee-id="{{ $employee->id }}">
-                            <div class="payroll-employee-header">
-                                <div class="payroll-employee-identity">
-                                    <div>
-                                        <h3>{{ $employee->full_name }}</h3>
-                                        <p>{{ $employee->employee_id }} | {{ $employee->designation ?? 'Not specified' }}</p>
-                                    </div>
-                                    <div class="autosave-indicator" data-autosave-indicator>
-                                        <span class="autosave-dot"></span>
-                                        <span data-autosave-text>Saved</span>
-                                    </div>
-                                </div>
-                                <div class="projected-pay-chip">
-                                    <span>Projected Net</span>
-                                    <strong data-summary="net_salary">PKR {{ number_format($row['net_salary'], 2) }}</strong>
-                                    <small data-summary="income_tax">Tax {{ number_format($row['income_tax'], 2) }}</small>
-                                </div>
-                            </div>
-
-                            <div class="payroll-overview-grid">
-                                <div class="payroll-overview-panel">
-                                    <div class="payroll-overview-label">Base</div>
-                                    <div class="payroll-overview-value">PKR {{ number_format($row['basic_salary'], 2) }}</div>
-                                </div>
-                                <div class="payroll-overview-panel">
-                                    <div class="payroll-overview-label">Increment</div>
-                                    <div class="payroll-overview-value">PKR {{ number_format($row['last_increment'], 2) }}</div>
-                                </div>
-                                <div class="payroll-overview-panel">
-                                    <div class="payroll-overview-label">Absent Days</div>
-                                    <div class="payroll-overview-value">{{ $row['days_absent'] }}</div>
-                                </div>
-                                <div class="payroll-overview-panel">
-                                    <div class="payroll-overview-label">Short Hours</div>
-                                    <div class="payroll-overview-value">{{ $row['short_hours_days'] }}</div>
-                                </div>
-                                <div class="payroll-overview-panel">
-                                    <div class="payroll-overview-label">Security Balance</div>
-                                    <div class="payroll-overview-value">PKR {{ number_format($row['security_balance'], 2) }}</div>
-                                </div>
-                                <div class="payroll-overview-panel emphasized">
-                                    <div class="payroll-overview-label">Projected Gross</div>
-                                    <div class="payroll-overview-value" data-summary="gross_salary">PKR {{ number_format($row['gross_salary'], 2) }}</div>
-                                </div>
-                            </div>
-
-                            <div class="payroll-adjustment-shell">
-                                <div class="payroll-adjustment-grid">
-                                    <div class="form-group compact" style="margin: 0;">
-                                        <label>Incentives</label>
-                                        <input type="number" step="0.01" data-adjustment-field="incentives_bonus" name="adjustments[{{ $employee->id }}][incentives_bonus]" value="{{ old("adjustments.{$employee->id}.incentives_bonus", $adjustment?->incentives_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </div>
-                                    <div class="form-group compact" style="margin: 0;">
-                                        <label>Punctuality</label>
-                                        <input type="number" step="0.01" data-adjustment-field="punctuality_bonus" name="adjustments[{{ $employee->id }}][punctuality_bonus]" value="{{ old("adjustments.{$employee->id}.punctuality_bonus", $adjustment?->punctuality_bonus ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </div>
-                                    <div class="form-group compact" style="margin: 0;">
-                                        <label>Penalty</label>
-                                        <input type="number" step="0.01" data-adjustment-field="attendance_penalty" name="adjustments[{{ $employee->id }}][attendance_penalty]" value="{{ old("adjustments.{$employee->id}.attendance_penalty", $adjustment?->attendance_penalty ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </div>
-                                    <div class="form-group compact" style="margin: 0;">
-                                        <label>Arrears</label>
-                                        <input type="number" step="0.01" data-adjustment-field="arrears_adjustment" name="adjustments[{{ $employee->id }}][arrears_adjustment]" value="{{ old("adjustments.{$employee->id}.arrears_adjustment", $adjustment?->arrears_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </div>
-                                    <div class="form-group compact" style="margin: 0;">
-                                        <label>Other</label>
-                                        <input type="number" step="0.01" data-adjustment-field="other_adjustment" name="adjustments[{{ $employee->id }}][other_adjustment]" value="{{ old("adjustments.{$employee->id}.other_adjustment", $adjustment?->other_adjustment ?? 0) }}" @if(!$canEditPayroll) disabled @endif>
-                                    </div>
-                                </div>
-                                <div class="form-group payroll-note-field compact" style="margin: 0;">
-                                    <label>Remarks</label>
-                                    <input type="text" data-adjustment-field="remarks" name="adjustments[{{ $employee->id }}][remarks]" value="{{ old("adjustments.{$employee->id}.remarks", $adjustment?->remarks) }}" placeholder="Optional note for this month" @if(!$canEditPayroll) disabled @endif>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                @if($canEditPayroll)
-                    <div class="table-footer-actions">
-                        <button type="submit" class="btn btn-primary">
-                            <i data-lucide="save"></i> Save All Adjustments
-                        </button>
+        <div class="payroll-history-list">
+            @forelse($runs as $run)
+                <a href="{{ route('payroll.index', ['month' => $run->pay_period_month->format('Y-m'), 'run' => $run->id]) }}" class="payroll-history-item {{ $selectedRun?->id === $run->id ? 'active' : '' }}">
+                    <div>
+                        <strong>{{ $run->pay_period_month->format('F Y') }}</strong>
+                        <p>{{ $run->records_count }} employees | {{ optional($run->payment_date)->format('d M, Y') ?? 'No payment date' }}</p>
                     </div>
-                @endif
-
-                <div class="pagination-wrapper" style="margin-top: 20px;">
-                    {{ $previewRowsPagination->links() }}
+                    <span class="history-status {{ $run->status }}">{{ ucfirst($run->status) }}</span>
+                </a>
+            @empty
+                <div class="empty-state-panel small">
+                    No payout months have been created yet.
                 </div>
-            </form>
-        @else
-            <div class="empty-state-panel">
-                No payroll-eligible employees were found for {{ $selectedMonthLabel }}. Make sure employee salary data and attendance exist before generating payroll.
-            </div>
-        @endif
-    </div>
-
-    <div class="payroll-support-grid">
-        <div class="card">
-            <div class="section-header" style="margin-bottom: 16px;">
-                <div>
-                    <h2>Recent Payroll Runs</h2>
-                    <p>Draft and finalized runs saved in the system.</p>
-                </div>
-            </div>
-            <div class="import-list">
-                @forelse($runs as $run)
-                    <a href="{{ route('payroll.index', ['month' => $run->pay_period_month->format('Y-m'), 'run' => $run->id]) }}" class="import-card {{ $selectedRun?->id === $run->id ? 'active' : '' }}">
-                        <div>
-                            <strong>{{ $run->name }}</strong>
-                            <p>{{ $run->pay_period_month->format('F Y') }} | {{ ucfirst($run->status) }}</p>
-                        </div>
-                        <div class="import-card-metrics">
-                            <span>{{ $run->records_count }} records</span>
-                            <span>{{ optional($run->generatedBy)->name ?? 'System' }}</span>
-                        </div>
-                    </a>
-                @empty
-                    <div class="empty-state-panel">No payroll runs have been generated yet.</div>
-                @endforelse
-            </div>
+            @endforelse
         </div>
+    </aside>
 
-        <div class="card">
-            <div class="section-header" style="margin-bottom: 16px;">
-                <div>
-                    <h2>Selected Run</h2>
-                    <p>Review the generated payroll run and download payslips.</p>
+    <section class="payroll-detail-panel">
+        @if($selectedRun)
+            <div class="card">
+                <div class="section-header" style="margin-bottom: 16px;">
+                    <div>
+                        <h2>{{ $selectedRun->pay_period_month->format('F Y') }} Details</h2>
+                        <p>{{ $selectedRun->name }} | Generated {{ optional($selectedRun->generated_at)->format('d M, Y h:i A') ?? 'Not recorded' }}</p>
+                    </div>
+                    <span class="history-status {{ $selectedRun->status }}">{{ ucfirst($selectedRun->status) }}</span>
                 </div>
-            </div>
-            @if($selectedRun)
-                <div class="run-summary">
-                    <div class="run-summary-row">
-                        <span>Run</span>
-                        <strong>{{ $selectedRun->name }}</strong>
+
+                <div class="payroll-detail-metrics">
+                    <div class="detail-metric">
+                        <span>Employees</span>
+                        <strong>{{ $selectedRun->records_count ?? $selectedRun->records->count() }}</strong>
                     </div>
-                    <div class="run-summary-row">
-                        <span>Status</span>
-                        <strong>{{ ucfirst($selectedRun->status) }}</strong>
-                    </div>
-                    <div class="run-summary-row">
+                    <div class="detail-metric">
                         <span>Gross</span>
                         <strong>PKR {{ number_format($selectedRunTotals['gross_salary'], 2) }}</strong>
                     </div>
-                    <div class="run-summary-row">
+                    <div class="detail-metric">
                         <span>Tax</span>
                         <strong>PKR {{ number_format($selectedRunTotals['income_tax'], 2) }}</strong>
                     </div>
-                    <div class="run-summary-row">
+                    <div class="detail-metric">
                         <span>Net</span>
                         <strong>PKR {{ number_format($selectedRunTotals['net_salary'], 2) }}</strong>
                     </div>
                 </div>
 
-                @if($canEditPayroll && $selectedRun->status !== 'finalized')
-                    <form method="POST" action="{{ route('payroll.finalize', $selectedRun) }}" style="margin-top: 16px;">
-                        @csrf
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">
-                            <i data-lucide="badge-check"></i> Finalize Payroll Run
-                        </button>
-                    </form>
-                @endif
-
-                <div class="stacked-list" style="margin-top: 18px;">
-                    @foreach($selectedRunRecords as $record)
-                        <div class="timeline-card" style="margin-bottom: 12px;">
-                            <div class="timeline-header">
-                                <div>
-                                    <h4>{{ $record->employee->full_name }}</h4>
-                                    <p>{{ $record->employee->employee_id }} | Net PKR {{ number_format($record->net_salary, 2) }}</p>
-                                </div>
-                                <div class="timeline-date">
-                                    <strong>Gross PKR {{ number_format($record->gross_salary, 2) }}</strong>
-                                    <span>Tax PKR {{ number_format($record->income_tax, 2) }}</span>
-                                </div>
-                            </div>
-                            <div class="action-buttons" style="margin-top: 12px;">
-                                <a href="{{ route('payroll.payslip.download', [$selectedRun, $record->employee]) }}" class="btn btn-outline" style="text-decoration: none;">
-                                    <i data-lucide="file-down"></i> Download Payslip
-                                </a>
-                            </div>
-                        </div>
-                    @endforeach
+                <div class="payroll-action-row">
+                    <a href="{{ route('payroll.payslips.zip.download', $selectedRun) }}" class="btn btn-primary">
+                        <i data-lucide="file-archive"></i> Download Payslips ZIP
+                    </a>
+                    <a href="{{ route('payroll.ift.download', $selectedRun) }}" class="btn btn-outline">
+                        <i data-lucide="sheet"></i> Download IFT
+                        <span class="button-count">{{ $selectedRunExportCounts['ift'] }}</span>
+                    </a>
+                    <a href="{{ route('payroll.ibft.download', $selectedRun) }}" class="btn btn-outline">
+                        <i data-lucide="sheet"></i> Download IBFT
+                        <span class="button-count">{{ $selectedRunExportCounts['ibft'] }}</span>
+                    </a>
+                    @if($canEditPayroll && $selectedRun->status !== 'finalized')
+                        <form method="POST" action="{{ route('payroll.finalize', $selectedRun) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-outline">
+                                <i data-lucide="badge-check"></i> Finalize Payout
+                            </button>
+                        </form>
+                    @endif
                 </div>
-                <div class="pagination-wrapper" style="margin-top: 16px;">
+            </div>
+
+            <div class="card">
+                <div class="section-header" style="margin-bottom: 16px;">
+                    <div>
+                        <h2>Payout Employees</h2>
+                        <p>Month-level payout details, bank references, and downloadable payslips.</p>
+                    </div>
+                </div>
+
+                <div class="payout-records-table-wrap">
+                    <table class="payout-records-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Bank / Account</th>
+                                <th>Absent</th>
+                                <th>Short</th>
+                                <th>Gross</th>
+                                <th>Tax</th>
+                                <th>Net</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($selectedRunRecords as $record)
+                                <tr>
+                                    <td>
+                                        <div class="payout-employee-cell">
+                                            <strong>{{ $record->employee->full_name }}</strong>
+                                            <span>{{ $record->employee->employee_id }} | {{ $record->employee->designation ?? 'Not specified' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="payout-bank-cell">
+                                            <strong>{{ $record->employee->bank?->name ?? ($record->bank_code ?: 'No linked bank') }}</strong>
+                                            <span>{{ $record->beneficiary_account_no ?: 'No account number' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ $record->days_absent }}</td>
+                                    <td>{{ $record->short_hours_days }}</td>
+                                    <td>PKR {{ number_format($record->gross_salary, 2) }}</td>
+                                    <td>PKR {{ number_format($record->income_tax, 2) }}</td>
+                                    <td class="net-highlight">PKR {{ number_format($record->net_salary, 2) }}</td>
+                                    <td class="table-action-cell">
+                                        <a href="{{ route('payroll.payslip.download', [$selectedRun, $record->employee]) }}" class="btn btn-outline small" style="text-decoration: none;">
+                                            <i data-lucide="file-down"></i> Payslip
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-wrapper" style="margin-top: 18px;">
                     {{ $selectedRunRecords->links() }}
                 </div>
-            @else
-                <div class="empty-state-panel">Select or generate a payroll run to review totals and download payslips.</div>
-            @endif
-        </div>
-    </div>
+            </div>
+        @else
+            <div class="card">
+                <div class="empty-state-panel">
+                    No payout exists for {{ $selectedMonthLabel }} yet. Use <strong>Create Payouts</strong> to prepare that month and generate the batch outputs.
+                </div>
+            </div>
+        @endif
+    </section>
 </div>
 
+@if($canGeneratePayroll)
+    <div id="createPayoutModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container payout-modal">
+            <div class="modal-header">
+                <div>
+                    <h2>Create Payouts</h2>
+                    <p class="modal-desc">Select a month, review all active payroll rows in one table, then save and create the payout pack.</p>
+                </div>
+                <button type="button" onclick="closePayoutModal()" class="close-btn"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <form method="POST" action="{{ route('payroll.generate') }}" id="createPayoutForm">
+                    @csrf
+                    <input type="hidden" name="download_pack" value="1">
+
+                    <div class="payout-modal-controls">
+                        <div class="form-group" style="margin: 0;">
+                            <label>Payout Month</label>
+                            <input type="month" name="month" id="payoutMonthInput" value="{{ $payoutMonth }}">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Payment Date</label>
+                            <input type="date" name="payment_date" value="{{ old('payment_date', \Illuminate\Support\Carbon::createFromFormat('Y-m', $payoutMonth)->copy()->addMonth()->startOfMonth()->toDateString()) }}">
+                        </div>
+                        <div class="form-group payout-notes-field" style="margin: 0;">
+                            <label>Notes</label>
+                            <input type="text" name="notes" value="{{ old('notes') }}" placeholder="Optional payout notes">
+                        </div>
+                    </div>
+
+                    <div class="payout-preview-header">
+                        <div>
+                            <h3 id="payoutPreviewTitle">{{ $payoutMonthLabel }} Preview</h3>
+                            <p id="payoutPreviewCaption">{{ $payoutPreviewRows->count() }} employees ready for payout processing.</p>
+                        </div>
+                    </div>
+
+                    <div id="payoutPreviewContainer">
+                        @include('payroll.partials.payout-preview-table', [
+                            'rows' => $payoutPreviewRows,
+                            'canEditPayroll' => $canEditPayroll,
+                        ])
+                    </div>
+
+                    <div class="modal-footer payout-modal-footer">
+                        <button type="button" onclick="closePayoutModal()" class="btn btn-outline">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="wallet-cards"></i> Save & Create Payout Pack
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endif
+
 <style>
-    .payroll-toolbar-grid {
+    .payroll-page-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .payroll-overview-stats {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
         margin-bottom: 24px;
     }
 
-    .payroll-month-form,
-    .payroll-generate-form {
-        display: grid;
-        grid-template-columns: minmax(180px, 1fr) auto;
-        gap: 16px;
-        align-items: end;
+    .stat-card.compact {
+        min-height: auto;
     }
 
-    .payroll-generate-form {
-        grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
-    }
-
-    .payroll-section-stack {
+    .payroll-workspace {
         display: grid;
+        grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
         gap: 24px;
+        align-items: start;
     }
 
-    .payroll-inputs-card {
-        overflow: hidden;
+    .payroll-history-panel {
+        position: sticky;
+        top: 24px;
     }
 
-    .payroll-card-grid {
+    .payroll-history-list {
         display: grid;
-        gap: 18px;
+        gap: 12px;
+        max-height: 72vh;
+        overflow-y: auto;
+        padding-right: 4px;
     }
 
-    .payroll-employee-card {
+    .payroll-history-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 15px;
+        border-radius: 14px;
         border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        padding: 18px 20px;
-        background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+        text-decoration: none;
+        color: inherit;
+        background: #fff;
     }
 
-    .payroll-employee-header {
-        display: flex;
-        justify-content: space-between;
+    .payroll-history-item.active {
+        border-color: #fed7aa;
+        background: #fff7ed;
+    }
+
+    .payroll-history-item strong {
+        display: block;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+
+    .payroll-history-item p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .history-status {
+        display: inline-flex;
         align-items: center;
-        gap: 14px;
-        margin-bottom: 14px;
+        justify-content: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .history-status.draft {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .history-status.finalized {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .payroll-detail-panel {
+        display: grid;
+        gap: 20px;
+    }
+
+    .payroll-detail-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .detail-metric {
+        padding: 14px 16px;
+        border: 1px solid #edf2f7;
+        border-radius: 14px;
+        background: #f9fafb;
+    }
+
+    .detail-metric span {
+        display: block;
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }
+
+    .detail-metric strong {
+        color: #111827;
+        font-size: 15px;
+    }
+
+    .payroll-action-row {
+        display: flex;
         flex-wrap: wrap;
-    }
-
-    .payroll-employee-identity {
-        display: flex;
+        gap: 12px;
         align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        flex: 1 1 340px;
-        min-width: 0;
     }
 
-    .payroll-employee-header h3 {
-        margin: 0 0 4px;
-        font-size: 18px;
+    .button-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        margin-left: 8px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #f3f4f6;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .payout-records-table-wrap,
+    .payout-preview-table-wrap {
+        overflow: auto;
+        border: 1px solid #edf2f7;
+        border-radius: 16px;
+    }
+
+    .payout-records-table,
+    .payout-preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1180px;
+    }
+
+    .payout-records-table th,
+    .payout-records-table td,
+    .payout-preview-table th,
+    .payout-preview-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #edf2f7;
+        vertical-align: middle;
+        text-align: left;
+        font-size: 13px;
+    }
+
+    .payout-records-table th,
+    .payout-preview-table th {
+        background: #f9fafb;
+        color: #4b5563;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .payout-records-table tbody tr:last-child td,
+    .payout-preview-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .payout-preview-table input {
+        width: 100%;
+        min-width: 96px;
+        padding: 8px 10px;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    .payout-employee-cell,
+    .payout-bank-cell {
+        display: grid;
+        gap: 4px;
+    }
+
+    .payout-employee-cell strong,
+    .payout-bank-cell strong {
         color: #111827;
     }
 
-    .payroll-employee-header p {
+    .payout-employee-cell span,
+    .payout-bank-cell span {
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .net-highlight,
+    .payout-net-cell {
+        font-weight: 700;
+        color: #111827;
+        white-space: nowrap;
+    }
+
+    .table-action-cell {
+        white-space: nowrap;
+        text-align: right;
+    }
+
+    .btn.small {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .empty-state-panel.small {
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .payout-modal {
+        max-width: 1360px;
+        width: calc(100vw - 80px);
+    }
+
+    .payout-modal .modal-body {
+        padding: 20px 24px 24px;
+    }
+
+    .payout-modal-controls {
+        display: grid;
+        grid-template-columns: minmax(160px, 200px) minmax(180px, 220px) minmax(0, 1fr);
+        gap: 16px;
+        margin-bottom: 18px;
+        align-items: end;
+    }
+
+    .payout-preview-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .payout-preview-header h3 {
+        margin: 0 0 4px;
+        color: #111827;
+    }
+
+    .payout-preview-header p {
         margin: 0;
         color: #6b7280;
         font-size: 13px;
     }
 
-    .projected-pay-chip {
-        min-width: 190px;
-        padding: 10px 14px;
-        border-radius: 14px;
-        background: #fff7ed;
-        border: 1px solid #fed7aa;
-        text-align: right;
-    }
-
-    .projected-pay-chip span,
-    .projected-pay-chip small {
-        display: block;
-        color: #9a3412;
-    }
-
-    .projected-pay-chip strong {
-        display: block;
-        font-size: 17px;
-        color: #111827;
-        margin: 3px 0;
-    }
-
-    .autosave-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border-radius: 999px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        color: #6b7280;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .autosave-indicator.saving {
-        background: #eff6ff;
-        border-color: #bfdbfe;
-        color: #1d4ed8;
-    }
-
-    .autosave-indicator.unsaved {
-        background: #fff7ed;
-        border-color: #fed7aa;
-        color: #c2410c;
-    }
-
-    .autosave-indicator.error {
-        background: #fef2f2;
-        border-color: #fecaca;
-        color: #b91c1c;
-    }
-
-    .autosave-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: currentColor;
-        opacity: 0.85;
-    }
-
-    .payroll-overview-grid {
-        display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 14px;
-    }
-
-    .payroll-overview-panel {
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: #f9fafb;
-        border: 1px solid #eef2f7;
-    }
-
-    .payroll-overview-panel.emphasized {
-        background: #fff7ed;
-        border-color: #fed7aa;
-    }
-
-    .payroll-overview-label {
-        font-size: 12px;
-        color: #6b7280;
-        margin-bottom: 4px;
-    }
-
-    .payroll-overview-value {
-        font-size: 14px;
-        font-weight: 700;
-        color: #111827;
-    }
-
-    .payroll-adjustment-shell {
-        display: grid;
-        gap: 12px;
-        padding-top: 12px;
-        border-top: 1px solid #eef2f7;
-    }
-
-    .payroll-adjustment-grid {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 12px;
-        align-items: end;
-    }
-
-    .payroll-adjustment-grid input,
-    .payroll-note-field input {
-        width: 100%;
-        padding: 9px 12px;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 13px;
-    }
-
-    .payroll-adjustment-grid input:disabled,
-    .payroll-note-field input:disabled {
-        background: #f9fafb;
-        color: #6b7280;
-    }
-
-    .form-group.compact label {
-        font-size: 12px;
-        margin-bottom: 6px;
-    }
-
-    .payroll-note-field {
-        max-width: 420px;
-    }
-
-    .payroll-support-grid {
-        display: grid;
-        grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.1fr);
-        gap: 24px;
-    }
-
-    .table-footer-actions {
-        display: flex;
-        justify-content: flex-end;
-        padding-top: 18px;
-    }
-
-    .run-summary {
-        display: grid;
-        gap: 10px;
-    }
-
-    .run-summary-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        font-size: 14px;
-        color: #374151;
+    .payout-modal-footer {
+        padding: 18px 0 0;
+        margin-top: 18px;
+        border-top: 1px solid #edf2f7;
     }
 
     @media (max-width: 1200px) {
-        .payroll-toolbar-grid {
+        .payroll-overview-stats,
+        .payroll-detail-metrics {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .payroll-workspace {
             grid-template-columns: 1fr;
         }
 
-        .payroll-overview-grid,
-        .payroll-adjustment-grid,
-        .payroll-support-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+        .payroll-history-panel {
+            position: static;
         }
     }
 
     @media (max-width: 768px) {
-        .payroll-month-form,
-        .payroll-generate-form {
-            grid-template-columns: 1fr;
-        }
-
-        .payroll-employee-identity,
-        .payroll-overview-grid,
-        .payroll-adjustment-grid,
-        .payroll-support-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .payroll-employee-identity {
+        .payroll-page-header {
             flex-direction: column;
-            align-items: flex-start;
         }
 
-        .projected-pay-chip {
-            width: 100%;
-            text-align: left;
+        .payroll-overview-stats,
+        .payroll-detail-metrics,
+        .payout-modal-controls {
+            grid-template-columns: 1fr;
         }
 
-        .payroll-note-field {
-            max-width: 100%;
+        .payout-modal {
+            width: calc(100vw - 20px);
+        }
+
+        .payroll-action-row {
+            flex-direction: column;
+            align-items: stretch;
         }
     }
 </style>
 
-@if($canEditPayroll)
-<script>
-    (() => {
-        const autosaveUrl = @json(route('payroll.adjustments.autosave'));
-        const csrfToken = @json(csrf_token());
-        const month = @json($month);
-        const pendingSaves = new Map();
-        const dirtyCards = new Set();
+@if($canGeneratePayroll)
+    <script>
+        (() => {
+            const modal = document.getElementById('createPayoutModal');
+            const monthInput = document.getElementById('payoutMonthInput');
+            const previewContainer = document.getElementById('payoutPreviewContainer');
+            const previewTitle = document.getElementById('payoutPreviewTitle');
+            const previewCaption = document.getElementById('payoutPreviewCaption');
+            const previewUrl = @json(route('payroll.payout-preview'));
+            let previewController = null;
 
-        function setIndicator(card, state, text) {
-            const indicator = card.querySelector('[data-autosave-indicator]');
-            const label = card.querySelector('[data-autosave-text]');
-
-            if (!indicator || !label) {
-                return;
-            }
-
-            indicator.classList.remove('saving', 'unsaved', 'error');
-
-            if (state) {
-                indicator.classList.add(state);
-            }
-
-            label.textContent = text;
-        }
-
-        function collectCardPayload(card) {
-            const payload = {};
-
-            card.querySelectorAll('[data-adjustment-field]').forEach((input) => {
-                payload[input.dataset.adjustmentField] = input.value;
-            });
-
-            return payload;
-        }
-
-        async function saveCard(card) {
-            const employeeId = card.dataset.employeeId;
-
-            if (!employeeId) {
-                return;
-            }
-
-            setIndicator(card, 'saving', 'Saving...');
-
-            try {
-                const response = await fetch(autosaveUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({
-                        month,
-                        employee_id: employeeId,
-                        adjustment: collectCardPayload(card),
-                    }),
-                });
-
-                const payload = await response.json().catch(() => ({}));
-
-                if (!response.ok) {
-                    throw new Error(payload.message || 'Payroll adjustment could not be saved.');
-                }
-
-                const grossNode = card.querySelector('[data-summary="gross_salary"]');
-                const taxNode = card.querySelector('[data-summary="income_tax"]');
-                const netNode = card.querySelector('[data-summary="net_salary"]');
-
-                if (grossNode && payload.summary?.gross_salary) {
-                    grossNode.textContent = `PKR ${Number(payload.summary.gross_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-
-                if (taxNode && payload.summary?.income_tax) {
-                    taxNode.textContent = `Tax ${Number(payload.summary.income_tax).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-
-                if (netNode && payload.summary?.net_salary) {
-                    netNode.textContent = `PKR ${Number(payload.summary.net_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                }
-
-                dirtyCards.delete(card);
-                setIndicator(card, '', 'Saved');
-            } catch (error) {
-                setIndicator(card, 'error', 'Save failed');
-                throw error;
-            }
-        }
-
-        function queueSave(card, immediate = false) {
-            const existingTimer = pendingSaves.get(card);
-
-            if (existingTimer) {
-                clearTimeout(existingTimer);
-            }
-
-            dirtyCards.add(card);
-            setIndicator(card, 'unsaved', immediate ? 'Saving...' : 'Unsaved changes');
-
-            const trigger = () => {
-                pendingSaves.delete(card);
-                saveCard(card).catch(() => {});
+            window.openPayoutModal = function () {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                if (window.lucide) window.lucide.createIcons();
             };
 
-            if (immediate) {
-                trigger();
-                return;
-            }
+            window.closePayoutModal = function () {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            };
 
-            const timer = setTimeout(trigger, 500);
-            pendingSaves.set(card, timer);
-        }
-
-        async function flushDirtyCards() {
-            const cards = Array.from(dirtyCards);
-
-            for (const card of cards) {
-                const timer = pendingSaves.get(card);
-
-                if (timer) {
-                    clearTimeout(timer);
-                    pendingSaves.delete(card);
+            async function loadPreview(month) {
+                if (!month) {
+                    return;
                 }
 
-                await saveCard(card);
-            }
-        }
+                if (previewController) {
+                    previewController.abort();
+                }
 
-        document.querySelectorAll('.payroll-employee-card').forEach((card) => {
-            card.querySelectorAll('[data-adjustment-field]').forEach((input) => {
-                input.addEventListener('input', () => queueSave(card));
-                input.addEventListener('change', () => queueSave(card, true));
-                input.addEventListener('blur', () => {
-                    if (dirtyCards.has(card)) {
-                        queueSave(card, true);
+                previewController = new AbortController();
+                previewContainer.innerHTML = '<div class="empty-state-panel">Loading payout preview...</div>';
+
+                try {
+                    const response = await fetch(`${previewUrl}?month=${encodeURIComponent(month)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                        signal: previewController.signal,
+                    });
+
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Unable to load payout preview.');
                     }
-                });
-            });
-        });
 
-        document.querySelectorAll('.pagination-wrapper a, .import-card, .nav-item, .btn, a[href]').forEach((link) => {
-            if (link.closest('form') || link.getAttribute('href') === '#') {
-                return;
+                    previewContainer.innerHTML = payload.html;
+                    previewTitle.textContent = `${payload.month_label} Preview`;
+                    previewCaption.textContent = `${payload.row_count} employees ready for payout processing.`;
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+
+                    previewContainer.innerHTML = '<div class="empty-state-panel">Unable to load payout preview for the selected month.</div>';
+                }
             }
 
-            link.addEventListener('click', async (event) => {
-                if (dirtyCards.size === 0) {
-                    return;
-                }
+            monthInput?.addEventListener('change', (event) => {
+                loadPreview(event.target.value);
+            });
 
-                const href = link.getAttribute('href');
-
-                if (!href || href.startsWith('javascript:')) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                try {
-                    await flushDirtyCards();
-                    window.location.href = href;
-                } catch (error) {
-                    alert('Some payroll adjustments could not be saved. Please wait and try again.');
+            window.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closePayoutModal();
                 }
             });
+        })();
+    </script>
+@endif
+
+@if(session('auto_download_payslip_zip'))
+    <script>
+        window.addEventListener('load', () => {
+            window.location.href = @json(session('auto_download_payslip_zip'));
         });
-
-        const adjustmentsForm = document.getElementById('payrollAdjustmentsForm');
-
-        if (adjustmentsForm) {
-            adjustmentsForm.addEventListener('submit', async (event) => {
-                if (dirtyCards.size === 0) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                try {
-                    await flushDirtyCards();
-                    adjustmentsForm.submit();
-                } catch (error) {
-                    alert('Some payroll adjustments could not be saved. Please wait and try again.');
-                }
-            });
-        }
-    })();
-</script>
+    </script>
 @endif
 @endsection

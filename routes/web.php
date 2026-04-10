@@ -146,9 +146,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('module:payroll_management,read')->group(function () {
         Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
         Route::get('/payroll/{payrollRun}/employees/{employee}/payslip', [PayrollController::class, 'downloadPayslip'])->name('payroll.payslip.download');
+        Route::get('/payroll/{payrollRun}/payslips.zip', [PayrollController::class, 'downloadPayslipZip'])->name('payroll.payslips.zip.download');
+        Route::get('/payroll/{payrollRun}/ift.xlsx', [PayrollController::class, 'downloadIftWorkbook'])->name('payroll.ift.download');
+        Route::get('/payroll/{payrollRun}/ibft.xlsx', [PayrollController::class, 'downloadIbftWorkbook'])->name('payroll.ibft.download');
     });
     Route::middleware('module:payroll_management,create')->group(function () {
         Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
+        Route::get('/payroll/payout-preview', [PayrollController::class, 'payoutPreview'])->name('payroll.payout-preview');
     });
     Route::middleware('module:payroll_management,edit')->group(function () {
         Route::post('/payroll/adjustments', [PayrollController::class, 'updateAdjustments'])->name('payroll.adjustments.update');

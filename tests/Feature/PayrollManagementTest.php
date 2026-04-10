@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AttendanceRecord;
+use App\Models\Bank;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeePayrollAdjustment;
@@ -258,5 +259,108 @@ class PayrollManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_can_download_payslip_zip_and_bank_transfer_workbooks(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $faysalBank = Bank::create(['name' => 'Faysal Bank Limited', 'code' => 'FAYS']);
+        $meezanBank = Bank::create(['name' => 'Meezan Bank', 'code' => 'MBL']);
+
+        $iftEmployee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-401',
+            'full_name' => 'IFT Employee',
+            'bank_id' => $faysalBank->id,
+            'bank_code' => 'FAYS',
+            'iban' => 'PK93FAYS3062301000005500',
+        ]);
+
+        $ibftEmployee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-402',
+            'full_name' => 'IBFT Employee',
+            'bank_id' => $meezanBank->id,
+            'bank_code' => 'MBL',
+            'iban' => 'PK58MEZN0008140112027659',
+        ]);
+
+        $payrollRun = PayrollRun::create([
+            'name' => 'March 2026 Payroll',
+            'pay_period_month' => '2026-03-01',
+            'payment_date' => '2026-04-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'draft',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now(),
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $payrollRun->id,
+            'employee_id' => $iftEmployee->id,
+            'bank_code' => 'FAYS',
+            'beneficiary_name' => 'IFT Employee',
+            'beneficiary_account_no' => 'PK93FAYS3062301000005500',
+            'contact_number' => '03001234567',
+            'email_address' => $iftEmployee->email,
+            'days_absent' => 0,
+            'short_hours_days' => 0,
+            'basic_salary' => 50000,
+            'last_increment' => 10000,
+            'incentives_bonus' => 0,
+            'punctuality_bonus' => 0,
+            'positive_arrears' => 0,
+            'positive_other' => 0,
+            'security_deduction' => 1000,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 0,
+            'arrears_deduction' => 0,
+            'other_deduction' => 0,
+            'gross_salary' => 59000,
+            'income_tax' => 90,
+            'net_salary' => 58910,
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $payrollRun->id,
+            'employee_id' => $ibftEmployee->id,
+            'bank_code' => 'MBL',
+            'beneficiary_name' => 'IBFT Employee',
+            'beneficiary_account_no' => 'PK58MEZN0008140112027659',
+            'contact_number' => '03007654321',
+            'email_address' => $ibftEmployee->email,
+            'days_absent' => 0,
+            'short_hours_days' => 0,
+            'basic_salary' => 50000,
+            'last_increment' => 10000,
+            'incentives_bonus' => 0,
+            'punctuality_bonus' => 0,
+            'positive_arrears' => 0,
+            'positive_other' => 0,
+            'security_deduction' => 1000,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 0,
+            'arrears_deduction' => 0,
+            'other_deduction' => 0,
+            'gross_salary' => 59000,
+            'income_tax' => 90,
+            'net_salary' => 58910,
+        ]);
+
+        $zipResponse = $this->actingAs($accountsUser)
+            ->get(route('payroll.payslips.zip.download', $payrollRun));
+
+        $zipResponse->assertOk();
+        $zipResponse->assertHeader('content-disposition', 'attachment; filename=march-2026-payroll-payslips.zip');
+
+        $iftResponse = $this->actingAs($accountsUser)
+            ->get(route('payroll.ift.download', $payrollRun));
+
+        $iftResponse->assertOk();
+        $iftResponse->assertHeader('content-disposition', 'attachment; filename=ift-march-2026.xlsx');
+
+        $ibftResponse = $this->actingAs($accountsUser)
+            ->get(route('payroll.ibft.download', $payrollRun));
+
+        $ibftResponse->assertOk();
+        $ibftResponse->assertHeader('content-disposition', 'attachment; filename=ibft-march-2026.xlsx');
     }
 }

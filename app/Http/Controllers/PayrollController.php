@@ -3,26 +3,33 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\AttendanceRecord;
+use App\Models\EmployeePayrollAdjustment;
 use App\Models\PayrollRun;
+use App\Services\PayrollBatchExportService;
 use App\Services\PayrollCalculationService;
 use App\Services\PayslipPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class PayrollController extends Controller
 {
-    public function index(Request $request, PayrollCalculationService $payrollCalculationService)
+    public function index(Request $request, PayrollCalculationService $payrollCalculationService, PayrollBatchExportService $payrollBatchExportService)
     {
-        $month = $request->get('month', now()->format('Y-m'));
-        $previewRows = $payrollCalculationService->previewMonth($month);
-
         $runs = PayrollRun::query()
             ->with(['generatedBy'])
             ->withCount('records')
             ->orderByDesc('pay_period_month')
-            ->take(12)
             ->get();
+
+        $defaultPayoutMonth = $this->resolveDefaultPayoutMonth($payrollCalculationService);
+        $month = $request->get(
+            'month',
+            optional($runs->first()?->pay_period_month)->format('Y-m') ?? $defaultPayoutMonth->format('Y-m')
+        );
+        $previewRows = $payrollCalculationService->previewMonth($month);
 
         $selectedRun = $request->filled('run')
             ? PayrollRun::query()->with(['generatedBy'])->find($request->integer('run'))
@@ -31,25 +38,29 @@ class PayrollController extends Controller
                 ->whereDate('pay_period_month', \Illuminate\Support\Carbon::createFromFormat('Y-m', $month)->startOfMonth()->toDateString())
                 ->first();
 
-        $previewRowsPagination = $this->paginateCollection(
-            $previewRows,
-            8,
-            'page',
-            $request->integer('page')
-        );
-
         $selectedRunRecords = $selectedRun
             ? $selectedRun->records()
-                ->with('employee')
+                ->with('employee.bank')
                 ->whereHas('employee')
                 ->join('employees', 'employee_payroll_records.employee_id', '=', 'employees.id')
                 ->orderByRaw("CASE WHEN employees.employee_id IS NULL OR employees.employee_id = '' THEN 1 ELSE 0 END")
                 ->orderByRaw('LENGTH(employees.employee_id)')
                 ->orderBy('employees.employee_id')
                 ->select('employee_payroll_records.*')
-                ->paginate(8, ['*'], 'run_page')
+                ->paginate(12, ['*'], 'run_page')
                 ->withQueryString()
             : null;
+
+        $selectedRunExportCounts = $selectedRun
+            ? [
+                'ift' => $payrollBatchExportService->iftEligibleCount($selectedRun),
+                'ibft' => $payrollBatchExportService->ibftEligibleCount($selectedRun),
+            ]
+            : ['ift' => 0, 'ibft' => 0];
+
+        $payoutMonth = $request->get('payout_month', $defaultPayoutMonth->format('Y-m'));
+        $payoutMonthLabel = Carbon::createFromFormat('Y-m', $payoutMonth)->format('F Y');
+        $payoutPreviewRows = $payrollCalculationService->previewMonth($payoutMonth);
 
         $totals = [
             'gross_salary' => round($previewRows->sum('gross_salary'), 2),
@@ -60,12 +71,34 @@ class PayrollController extends Controller
         return view('payroll.index', compact(
             'month',
             'previewRows',
-            'previewRowsPagination',
             'runs',
             'selectedRun',
             'selectedRunRecords',
-            'totals'
+            'totals',
+            'defaultPayoutMonth',
+            'payoutMonth',
+            'payoutMonthLabel',
+            'payoutPreviewRows',
+            'selectedRunExportCounts'
         ));
+    }
+
+    public function payoutPreview(Request $request, PayrollCalculationService $payrollCalculationService)
+    {
+        $validated = $request->validate([
+            'month' => 'required|date_format:Y-m',
+        ]);
+
+        $rows = $payrollCalculationService->previewMonth($validated['month']);
+
+        return response()->json([
+            'html' => view('payroll.partials.payout-preview-table', [
+                'rows' => $rows,
+                'canEditPayroll' => $request->user()->canAccessModule('payroll_management', 'edit'),
+            ])->render(),
+            'month_label' => Carbon::createFromFormat('Y-m', $validated['month'])->format('F Y'),
+            'row_count' => $rows->count(),
+        ]);
     }
 
     public function updateAdjustments(Request $request, PayrollCalculationService $payrollCalculationService)
@@ -146,7 +179,22 @@ class PayrollController extends Controller
             'month' => 'required|date_format:Y-m',
             'payment_date' => 'nullable|date',
             'notes' => 'nullable|string|max:2000',
+            'download_pack' => 'nullable|boolean',
+            'adjustments' => 'nullable|array',
+            'adjustments.*.incentives_bonus' => 'nullable|numeric',
+            'adjustments.*.punctuality_bonus' => 'nullable|numeric',
+            'adjustments.*.attendance_penalty' => 'nullable|numeric',
+            'adjustments.*.arrears_adjustment' => 'nullable|numeric',
+            'adjustments.*.other_adjustment' => 'nullable|numeric',
+            'adjustments.*.remarks' => 'nullable|string|max:1000',
         ]);
+
+        if (! empty($validated['adjustments'])) {
+            $payrollCalculationService->saveAdjustments(
+                $validated['month'],
+                $validated['adjustments']
+            );
+        }
 
         $payrollRun = $payrollCalculationService->generateRun(
             $validated['month'],
@@ -155,9 +203,15 @@ class PayrollController extends Controller
             $validated['notes'] ?? null
         );
 
-        return redirect()
+        $redirect = redirect()
             ->route('payroll.index', ['month' => $validated['month'], 'run' => $payrollRun->id])
             ->with('success', 'Payroll run generated successfully.');
+
+        if ($request->boolean('download_pack')) {
+            $redirect->with('auto_download_payslip_zip', route('payroll.payslips.zip.download', $payrollRun));
+        }
+
+        return $redirect;
     }
 
     public function finalize(PayrollRun $payrollRun, Request $request, PayrollCalculationService $payrollCalculationService)
@@ -180,6 +234,46 @@ class PayrollController extends Controller
             ->firstOrFail();
 
         return $payslipPdfService->download($payrollRecord);
+    }
+
+    public function downloadPayslipZip(PayrollRun $payrollRun, PayrollBatchExportService $payrollBatchExportService)
+    {
+        return $payrollBatchExportService->downloadPayslipZip($payrollRun);
+    }
+
+    public function downloadIftWorkbook(PayrollRun $payrollRun, PayrollBatchExportService $payrollBatchExportService)
+    {
+        return $payrollBatchExportService->downloadIftWorkbook($payrollRun);
+    }
+
+    public function downloadIbftWorkbook(PayrollRun $payrollRun, PayrollBatchExportService $payrollBatchExportService)
+    {
+        return $payrollBatchExportService->downloadIbftWorkbook($payrollRun);
+    }
+
+    protected function resolveDefaultPayoutMonth(PayrollCalculationService $payrollCalculationService): Carbon
+    {
+        $months = collect([now()->startOfMonth()])
+            ->merge(PayrollRun::query()->pluck('pay_period_month')->map(fn ($date) => Carbon::parse($date)->startOfMonth()))
+            ->merge(AttendanceRecord::query()->pluck('attendance_date')->map(fn ($date) => Carbon::parse($date)->startOfMonth()))
+            ->merge(EmployeePayrollAdjustment::query()->pluck('adjustment_month')->map(fn ($date) => Carbon::parse($date)->startOfMonth()))
+            ->unique(fn (Carbon $month) => $month->format('Y-m'))
+            ->sortByDesc(fn (Carbon $month) => $month->timestamp)
+            ->values();
+
+        foreach ($months as $month) {
+            $hasRun = PayrollRun::query()->whereDate('pay_period_month', $month->toDateString())->exists();
+
+            if ($hasRun) {
+                continue;
+            }
+
+            if ($payrollCalculationService->previewMonth($month)->isNotEmpty()) {
+                return $month;
+            }
+        }
+
+        return $months->first() ?? now()->startOfMonth();
     }
 
     protected function paginateCollection(Collection $items, int $perPage, string $pageName, ?int $currentPage = null): LengthAwarePaginator
