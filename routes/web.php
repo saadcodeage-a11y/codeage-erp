@@ -85,6 +85,7 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\AnnouncementController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
@@ -159,6 +160,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/payroll/adjustments/autosave', [PayrollController::class, 'autosaveAdjustment'])->name('payroll.adjustments.autosave');
         Route::post('/payroll/{payrollRun}/finalize', [PayrollController::class, 'finalize'])->name('payroll.finalize');
         Route::delete('/payroll/{payrollRun}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
+    });
+
+    // Announcements
+    Route::middleware('module:announcements,read')->group(function () {
+        Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    });
+    Route::middleware('module:announcements,create')->group(function () {
+        Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    });
+    Route::middleware('module:announcements,edit')->group(function () {
+        Route::put('/announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
+        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
     });
 
     // Settings

@@ -54,6 +54,12 @@
                         <span>Payroll</span>
                     </a>
                 @endif
+                @if(Auth::user()->canAccessModule('announcements'))
+                    <a href="{{ route('announcements.index') }}" class="nav-item {{ request()->routeIs('announcements.*') ? 'active' : '' }}">
+                        <i data-lucide="megaphone"></i>
+                        <span>Announcements</span>
+                    </a>
+                @endif
                 @if(Auth::user()->canAccessModule('templates'))
                     <a href="{{ route('templates.index') }}" class="nav-item {{ request()->routeIs('templates.*') ? 'active' : '' }}">
                         <i data-lucide="mail"></i>
