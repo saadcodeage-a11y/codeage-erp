@@ -187,6 +187,7 @@
                                 <th>Bank / Account</th>
                                 <th>Absent</th>
                                 <th>Short</th>
+                                <th>Security</th>
                                 <th>Gross</th>
                                 <th>Tax</th>
                                 <th>Net</th>
@@ -210,6 +211,7 @@
                                     </td>
                                     <td>{{ $record->days_absent }}</td>
                                     <td>{{ $record->short_hours_days }}</td>
+                                    <td>PKR {{ number_format($record->security_deduction, 2) }}</td>
                                     <td>PKR {{ number_format($record->gross_salary, 2) }}</td>
                                     <td>PKR {{ number_format($record->income_tax, 2) }}</td>
                                     <td class="net-highlight">PKR {{ number_format($record->net_salary, 2) }}</td>

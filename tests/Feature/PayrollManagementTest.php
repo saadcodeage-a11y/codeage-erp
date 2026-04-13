@@ -344,6 +344,12 @@ class PayrollManagementTest extends TestCase
         ]);
 
         $this->actingAs($accountsUser)
+            ->get(route('payroll.index', ['month' => '2026-03', 'run' => $payrollRun->id]))
+            ->assertOk()
+            ->assertSee('Security')
+            ->assertSee('PKR 1,000.00');
+
+        $this->actingAs($accountsUser)
             ->post(route('payroll.finalize', $payrollRun))
             ->assertRedirect();
 
