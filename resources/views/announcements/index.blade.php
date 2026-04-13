@@ -41,6 +41,11 @@
                 <h2>Announcement Filters</h2>
                 <p>Refine the announcement list by audience, type, or current status.</p>
             </div>
+            @if(request()->filled('search') || request()->filled('type') || request()->filled('department') || request()->filled('status'))
+                <a href="{{ route('announcements.index') }}" class="btn btn-outline announcement-clear-btn">
+                    <i data-lucide="rotate-ccw"></i> Clear
+                </a>
+            @endif
         </div>
         <form method="GET" action="{{ route('announcements.index') }}" class="announcement-filter-form">
             <div class="form-group" style="margin: 0;">
@@ -74,9 +79,11 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="btn btn-outline">
-                <i data-lucide="filter"></i> Apply Filters
-            </button>
+            <div class="announcement-filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="filter"></i> Apply Filters
+                </button>
+            </div>
         </form>
     </div>
 
@@ -171,7 +178,18 @@
     <div class="pagination-wrapper">{{ $announcements->links() }}</div>
 @else
     <div class="card">
-        <div class="empty-state-panel">No announcements matched the current filters.</div>
+        <div class="announcement-empty-state">
+            <div class="announcement-empty-icon">
+                <i data-lucide="megaphone-off"></i>
+            </div>
+            <h3>No Announcements Found</h3>
+            <p>No announcements matched the current filters. Adjust the filters or create the first announcement for your teams.</p>
+            @if($canCreateAnnouncements)
+                <button class="btn btn-primary" type="button" onclick="openAnnouncementModal()">
+                    <i data-lucide="plus"></i> Create Announcement
+                </button>
+            @endif
+        </div>
     </div>
 @endif
 
@@ -191,20 +209,27 @@
                 <form id="announcementForm" class="modal-form">
                     @csrf
                     <input type="hidden" name="announcement_id" id="announcement_id">
+                    <div class="announcement-form-top">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" name="title" id="announcement_title" required maxlength="255" placeholder="Enter announcement title">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Announcement Message</label>
+                            <textarea name="message" id="announcement_message" rows="6" required maxlength="5000" placeholder="Write the full announcement here..."></textarea>
+                        </div>
+                    </div>
+
                     <div class="announcement-form-grid">
                         <div class="announcement-form-main">
-                            <div class="form-group">
-                                <label>Title</label>
-                                <input type="text" name="title" id="announcement_title" required maxlength="255" placeholder="Enter announcement title">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Announcement Message</label>
-                                <textarea name="message" id="announcement_message" rows="6" required maxlength="5000" placeholder="Write the full announcement here..."></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Announcement Type</label>
+                            <div class="announcement-side-card">
+                                <div class="section-header compact">
+                                    <div>
+                                        <h2>Announcement Type</h2>
+                                        <p>Select what kind of announcement you are publishing.</p>
+                                    </div>
+                                </div>
                                 <div class="type-selector-grid">
                                     @foreach($announcementTypes as $typeKey => $typeLabel)
                                         <label class="type-option-card" data-type-option="{{ $typeKey }}">
@@ -225,7 +250,7 @@
                             </div>
 
                             <div id="holidayAnnouncementFields" class="holiday-config-card" style="display: none;">
-                                <div class="section-header" style="margin-bottom: 14px;">
+                                <div class="section-header compact" style="margin-bottom: 14px;">
                                     <div>
                                         <h2>Holiday Dates</h2>
                                         <p>Select either a single holiday date or a date range for longer office closure periods.</p>
@@ -269,7 +294,12 @@
 
                         <div class="announcement-form-side">
                             <div class="announcement-side-card">
-                                <h3>Audience & Visibility</h3>
+                                <div class="section-header compact">
+                                    <div>
+                                        <h2>Audience & Visibility</h2>
+                                        <p>Control who can see this announcement once it is published.</p>
+                                    </div>
+                                </div>
                                 <div class="announcement-toggle-grid">
                                     <label class="checkbox-row checkbox-card">
                                         <input type="checkbox" name="is_global" id="announcement_is_global" value="1">
@@ -505,9 +535,17 @@
     }
     .announcement-filter-form {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(180px, 0.7fr)) auto;
         gap: 16px;
         align-items: end;
+    }
+    .announcement-filter-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+    }
+    .announcement-clear-btn {
+        white-space: nowrap;
     }
     .announcement-overview-card,
     .audience-helper-card {
@@ -610,6 +648,8 @@
     .announcement-modal-body {
         padding: 24px;
         background: #f8fafc;
+        max-height: calc(100vh - 190px);
+        overflow-y: auto;
     }
     .announcement-close-btn {
         width: 40px;
@@ -626,6 +666,11 @@
     .announcement-close-btn:hover {
         background: #f9fafb;
         border-color: #d1d5db;
+    }
+    .announcement-form-top {
+        display: grid;
+        gap: 18px;
+        margin-bottom: 18px;
     }
     .announcement-form-grid {
         display: grid;
@@ -644,6 +689,17 @@
         border: 1px solid #e5e7eb;
         border-radius: 18px;
         background: #ffffff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    }
+    .section-header.compact {
+        margin-bottom: 12px;
+    }
+    .section-header.compact h2 {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+    .section-header.compact p {
+        font-size: 13px;
     }
     .announcement-side-card h3 {
         margin: 0 0 14px;
@@ -674,10 +730,15 @@
         background: #fff7ed;
         box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
     }
+    .type-option-card input[type="radio"] {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
     .type-option-copy {
         display: flex;
         flex-direction: column;
         gap: 4px;
+        flex: 1;
     }
     .type-option-copy strong {
         font-size: 14px;
@@ -698,6 +759,10 @@
         border-radius: 16px;
         background: #fcfcfd;
         align-items: flex-start;
+        min-height: 88px;
+    }
+    .checkbox-card input[type="checkbox"] {
+        margin-top: 3px;
     }
     .checkbox-card span {
         display: flex;
@@ -730,6 +795,7 @@
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         background: #f9fafb;
+        min-height: 52px;
     }
     .holiday-date-fields {
         display: grid;
@@ -746,18 +812,63 @@
         border-radius: 12px;
         background: #ffffff;
         resize: vertical;
-        min-height: 140px;
+        min-height: 160px;
+    }
+    .announcement-empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 14px;
+        min-height: 260px;
+        padding: 36px 28px;
+    }
+    .announcement-empty-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #ffe4cf 0%, #fff2e7 100%);
+        color: #f97316;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .announcement-empty-icon i {
+        width: 32px;
+        height: 32px;
+    }
+    .announcement-empty-state h3 {
+        margin: 0;
+        font-size: 24px;
+        color: #111827;
+    }
+    .announcement-empty-state p {
+        margin: 0;
+        max-width: 560px;
+        color: #6b7280;
+        line-height: 1.7;
+        font-size: 14px;
     }
     @media (max-width: 1180px) {
         .announcement-overview-grid,
         .announcement-form-grid {
             grid-template-columns: 1fr;
         }
+        .announcement-filter-form {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
     @media (max-width: 900px) {
         .announcement-filter-form,
         .holiday-date-range {
             grid-template-columns: 1fr;
+        }
+        .announcement-filter-actions {
+            justify-content: stretch;
+        }
+        .announcement-filter-actions .btn {
+            width: 100%;
         }
         .announcement-card-header {
             flex-direction: column;
