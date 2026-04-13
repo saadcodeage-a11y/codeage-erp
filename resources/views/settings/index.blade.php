@@ -655,53 +655,84 @@
 
 <!-- System Values Tab -->
 <div id="system-values" class="settings-tab-content" style="display: none;">
-    <div class="card" style="max-width: 800px;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-            <div style="background: #eff6ff; padding: 10px; border-radius: 10px; color: #3b82f6;">
-                <i data-lucide="component" style="width: 20px; height: 20px;"></i>
+    <div class="card system-values-shell">
+        <div class="system-values-header">
+            <div class="system-values-title">
+                <div class="system-values-icon">
+                    <i data-lucide="component" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div>
+                    <h2>System Values</h2>
+                    <p>Manage reusable template values and attendance rules from one place.</p>
+                </div>
             </div>
-            <div>
-                <h2 style="font-size: 18px; font-weight: 600; margin: 0;">System Values</h2>
-                <p style="color: #6b7280; font-size: 13px; margin: 2px 0 0 0;">Configure dynamic values for email templates</p>
+            <div class="system-values-summary">
+                <div class="system-values-summary-card">
+                    <span>Weekend Rule</span>
+                    <strong>Saturday & Sunday</strong>
+                </div>
+                <div class="system-values-summary-card highlight">
+                    <span>Late Grace</span>
+                    <strong>{{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</strong>
+                </div>
             </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 24px;">
-            <div style="padding: 20px; border: 1px solid #e5e7eb; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap;">
+        <div class="system-values-grid">
+            <section class="system-values-card">
+                <div class="system-values-card-header">
                     <div>
-                        <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin: 0 0 6px 0;">Attendance Rules</h3>
-                        <p style="color: #6b7280; font-size: 13px; margin: 0;">Global rules for attendance marking. Individual working hours still stay on each employee profile.</p>
+                        <h3>Template Values</h3>
+                        <p>Reusable values injected into emails and system-generated communication.</p>
                     </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <span class="badge" style="background: #f8fafc; color: #475467; border: 1px solid #e2e8f0;">Weekends: Saturday & Sunday</span>
-                        <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">Late after: {{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</span>
+                    <span class="badge" style="background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe;">Email Tokens</span>
+                </div>
+
+                <div class="system-values-form-stack">
+                    <div class="form-group">
+                        <label class="system-values-label">Office Location</label>
+                        <input type="text" id="office_location" class="form-control system-values-input" value="{{ $officeLocation }}" placeholder="e.g. Office 101, Business Center, City">
+                        <small class="system-values-hint">Used for &#123;&#123;officeLocation&#125;&#125; in email templates and formal communication.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="system-values-label">HR Contact Person</label>
+                        <input type="text" id="hr_contact" class="form-control system-values-input" value="{{ $hrContact }}" placeholder="e.g. John Doe (HR Manager)">
+                        <small class="system-values-hint">Used for &#123;&#123;hrContact&#125;&#125; in email templates and onboarding communication.</small>
                     </div>
                 </div>
+            </section>
+
+            <section class="system-values-card attendance-rules-card">
+                <div class="system-values-card-header">
+                    <div>
+                        <h3>Attendance Rules</h3>
+                        <p>Global attendance settings. Employee-specific shift timings remain on each employee profile.</p>
+                    </div>
+                    <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">Attendance Logic</span>
+                </div>
+
+                <div class="attendance-rules-chip-row">
+                    <span class="badge attendance-chip muted">Weekends: Saturday & Sunday</span>
+                    <span class="badge attendance-chip warm">Late after: {{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</span>
+                </div>
+
                 <div class="form-group" style="margin: 0;">
-                    <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Late Grace Period (Minutes)</label>
-                    <input type="number" id="late_grace_minutes" class="form-control" value="{{ $lateGraceMinutes }}" min="0" max="240" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
-                    <small style="color: #6b7280; margin-top: 6px; display: block;">If an employee checks in after shift start time plus this grace period, the row is counted late.</small>
+                    <label class="system-values-label">Late Grace Period (Minutes)</label>
+                    <input type="number" id="late_grace_minutes" class="form-control system-values-input" value="{{ $lateGraceMinutes }}" min="0" max="240">
+                    <small class="system-values-hint">If an employee checks in after shift start time plus this grace period, the row is counted late.</small>
                 </div>
-            </div>
+            </section>
+        </div>
 
-            <div class="form-group">
-                <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Office Location</label>
-                <input type="text" id="office_location" class="form-control" value="{{ $officeLocation }}" placeholder="e.g. Office 101, Business Center, City" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
-                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace &#123;&#123;officeLocation&#125;&#125; in email templates.</small>
+        <div class="system-values-footer">
+            <div class="system-values-footer-copy">
+                <strong>Save all changes together</strong>
+                <span>The same action updates both template values and attendance rules.</span>
             </div>
-
-            <div class="form-group">
-                <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">HR Contact Person</label>
-                <input type="text" id="hr_contact" class="form-control" value="{{ $hrContact }}" placeholder="e.g. John Doe (HR Manager)" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
-                <small style="color: #6b7280; margin-top: 6px; display: block;">This will replace &#123;&#123;hrContact&#125;&#125; in email templates.</small>
-            </div>
-
-            <div style="margin-top: 8px; padding-top: 24px; border-top: 1px solid #f3f4f6;">
-                <button onclick="updateSystemValues()" class="btn btn-primary" style="background: #111827; border: none; height: 44px; padding: 0 24px;">
-                    <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save System Values
-                </button>
-            </div>
+            <button onclick="updateSystemValues()" class="btn btn-primary" style="background: #111827; border: none; height: 44px; padding: 0 24px;">
+                <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save System Values
+            </button>
         </div>
     </div>
 </div>
@@ -979,6 +1010,173 @@
     .settings-section-header h3 { font-size: 15px; font-weight: 600; margin: 0; color: #111827; }
     .section-desc { font-size: 13px; color: #6b7280; margin: -15px 0 20px 0; }
     .field-hint { font-size: 12px; color: #6b7280; margin-top: 6px; display: block; line-height: 1.5; }
+    .system-values-shell {
+        display: grid;
+        gap: 24px;
+    }
+    .system-values-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .system-values-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+    .system-values-icon {
+        background: #eff6ff;
+        padding: 10px;
+        border-radius: 12px;
+        color: #3b82f6;
+        border: 1px solid #dbeafe;
+        flex-shrink: 0;
+    }
+    .system-values-title h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        color: #111827;
+    }
+    .system-values-title p {
+        color: #6b7280;
+        font-size: 13px;
+        margin: 4px 0 0 0;
+        line-height: 1.6;
+    }
+    .system-values-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        min-width: min(100%, 320px);
+    }
+    .system-values-summary-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 14px 16px;
+        background: #fff;
+    }
+    .system-values-summary-card.highlight {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+        border-color: #fed7aa;
+    }
+    .system-values-summary-card span {
+        display: block;
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }
+    .system-values-summary-card strong {
+        display: block;
+        font-size: 15px;
+        color: #111827;
+        line-height: 1.4;
+    }
+    .system-values-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+        gap: 20px;
+        align-items: start;
+    }
+    .system-values-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 22px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+    .attendance-rules-card {
+        background: linear-gradient(180deg, #fffaf5 0%, #ffffff 100%);
+    }
+    .system-values-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+    .system-values-card-header h3 {
+        margin: 0 0 6px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+    }
+    .system-values-card-header p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .system-values-form-stack {
+        display: grid;
+        gap: 22px;
+    }
+    .system-values-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .system-values-input {
+        width: 100%;
+        border-radius: 10px;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+    .system-values-hint {
+        color: #6b7280;
+        margin-top: 6px;
+        display: block;
+        font-size: 12px;
+        line-height: 1.6;
+    }
+    .attendance-rules-chip-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .attendance-chip {
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 12px;
+    }
+    .attendance-chip.muted {
+        background: #f8fafc;
+        color: #475467;
+        border: 1px solid #e2e8f0;
+    }
+    .attendance-chip.warm {
+        background: #fff7ed;
+        color: #c2410c;
+        border: 1px solid #fed7aa;
+    }
+    .system-values-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding-top: 20px;
+        border-top: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+    }
+    .system-values-footer-copy {
+        display: grid;
+        gap: 4px;
+    }
+    .system-values-footer-copy strong {
+        color: #111827;
+        font-size: 14px;
+    }
+    .system-values-footer-copy span {
+        color: #6b7280;
+        font-size: 13px;
+    }
     .tax-formula-header {
         display: flex;
         justify-content: space-between;
@@ -1353,6 +1551,17 @@
     .modal-cancel-btn i { width: 14px; height: 14px; }
 
     @media (max-width: 900px) {
+        .system-values-summary,
+        .system-values-grid {
+            grid-template-columns: 1fr;
+        }
+        .system-values-footer {
+            align-items: stretch;
+        }
+        .system-values-footer .btn {
+            width: 100%;
+            justify-content: center;
+        }
         .tax-formula-summary,
         .tax-workflow-grid,
         .tax-meaning-grid,
