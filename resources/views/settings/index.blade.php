@@ -1025,6 +1025,43 @@
     .settings-tab-content { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
+    .settings-tab-content .btn.btn-primary {
+        background: #FF4A00 !important;
+        border: 1px solid #FF4A00 !important;
+        color: #ffffff !important;
+        border-radius: 10px;
+        min-height: 40px;
+        padding: 0 18px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: none;
+    }
+    .settings-tab-content .btn.btn-primary:hover {
+        background: #e64812 !important;
+        border-color: #e64812 !important;
+    }
+    .settings-tab-content .btn.btn-outline {
+        background: #ffffff !important;
+        border: 1px solid #dbe2ea !important;
+        color: #374151 !important;
+        border-radius: 10px;
+        min-height: 40px;
+        padding: 0 18px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: none;
+    }
+    .settings-tab-content .btn.btn-outline:hover {
+        border-color: #fdba74 !important;
+        background: #fff7ed !important;
+        color: #c2410c !important;
+    }
 
     .status-card { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; }
     .status-card.error { border-color: #fee2e2; background: #fff5f5; }
@@ -1850,24 +1887,37 @@
         document.getElementById('bank_name').value = name;
         document.getElementById('bank_code').value = code;
     }
-    document.getElementById('bankForm').onsubmit = function(e) {
+    document.getElementById('bankForm').onsubmit = async function(e) {
         e.preventDefault();
         const id = document.getElementById('bank_id').value;
         const url = id ? `/settings/banks/${id}` : '/settings/banks';
         const method = id ? 'PUT' : 'POST';
         const data = Object.fromEntries(new FormData(this).entries());
-        fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify(data)
-        }).then(res => res.json()).then(data => location.reload());
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify(data)
+            });
+            const payload = await parseJsonResponse(response, 'Failed to save bank.');
+            queueReloadToast(payload.message || 'Bank saved successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
-    function deleteBank(id) {
+    async function deleteBank(id) {
         if (!confirm('Are you sure you want to delete this bank?')) return;
-        fetch(`/settings/banks/${id}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-        }).then(res => res.json()).then(data => location.reload());
+        try {
+            const response = await fetch(`/settings/banks/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const payload = await parseJsonResponse(response, 'Failed to delete bank.');
+            queueReloadToast(payload.message || 'Bank deleted successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
     // SMTP Functions
@@ -1933,67 +1983,104 @@
         if (window.lucide) window.lucide.createIcons();
     }
 
-    document.getElementById('smtpForm').onsubmit = function(e) {
+    document.getElementById('smtpForm').onsubmit = async function(e) {
         e.preventDefault();
         const id = document.getElementById('smtp_id').value;
         const url = id ? `/settings/smtp/${id}` : '/settings/smtp';
         const data = Object.fromEntries(new FormData(this).entries());
         data.is_default = document.getElementById('smtp_is_default').checked ? 1 : 0;
-        fetch(url, {
-            method: id ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify(data)
-        }).then(res => res.json()).then(data => location.reload());
+
+        try {
+            const response = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify(data)
+            });
+            const payload = await parseJsonResponse(response, 'Failed to save SMTP configuration.');
+            queueReloadToast(payload.message || 'SMTP configuration saved successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
-    function deleteSmtp(id) {
+    async function deleteSmtp(id) {
         if (!confirm('Are you sure you want to delete this SMTP configuration?')) return;
-        fetch(`/settings/smtp/${id}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-        }).then(res => res.json()).then(data => location.reload());
+        try {
+            const response = await fetch(`/settings/smtp/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const payload = await parseJsonResponse(response, 'Failed to delete SMTP configuration.');
+            queueReloadToast(payload.message || 'SMTP configuration deleted successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
-    function setDefaultSmtp(id) {
-        fetch(`/settings/smtp/${id}/default`, {
-            method: 'PATCH',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-        }).then(res => res.json()).then(data => location.reload());
+    async function setDefaultSmtp(id) {
+        try {
+            const response = await fetch(`/settings/smtp/${id}/default`, {
+                method: 'PATCH',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const payload = await parseJsonResponse(response, 'Failed to update default SMTP.');
+            queueReloadToast(payload.message || 'Default SMTP updated successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
-    function testSmtp(id) {
+    async function testSmtp(id) {
         const email = prompt("Enter recipient email for testing:", "test@example.com");
         if (!email) return;
-        fetch('/settings/test-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ email: email, smtp_id: id })
-        }).then(res => res.json()).then(data => alert(data.message));
+        try {
+            const response = await fetch('/settings/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ email: email, smtp_id: id })
+            });
+            const payload = await parseJsonResponse(response, 'Failed to send SMTP test email.');
+            showToast('Success', payload.message, 'success');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
-    function testSmtpInModal() {
+    async function testSmtpInModal() {
         const email = document.getElementById('modal_test_email').value;
-        if (!email) return alert('Please enter a test recipient email');
+        if (!email) return showToast('Error', 'Please enter a test recipient email.', 'error');
         
         const id = document.getElementById('smtp_id').value;
         const formData = new FormData(document.getElementById('smtpForm'));
         const config = Object.fromEntries(formData.entries());
 
-        fetch('/settings/test-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ email: email, smtp_id: id, config: config })
-        }).then(res => res.json()).then(data => alert(data.message));
+        try {
+            const response = await fetch('/settings/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ email: email, smtp_id: id, config: config })
+            });
+            const payload = await parseJsonResponse(response, 'Failed to send SMTP test email.');
+            showToast('Success', payload.message, 'success');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
-    function sendTestEmail() {
+    async function sendTestEmail() {
         const email = document.getElementById('test_recipient').value;
-        if (!email) return alert('Please enter a recipient email');
-        fetch('/settings/test-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ email: email })
-        }).then(res => res.json()).then(data => alert(data.message));
+        if (!email) return showToast('Error', 'Please enter a recipient email.', 'error');
+        try {
+            const response = await fetch('/settings/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ email: email })
+            });
+            const payload = await parseJsonResponse(response, 'Failed to send test email.');
+            showToast('Success', payload.message, 'success');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
     // Initialize Quill Editor
@@ -2061,46 +2148,65 @@
         }
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
-    document.getElementById('policyForm').onsubmit = function(e) {
+    document.getElementById('policyForm').onsubmit = async function(e) {
         e.preventDefault();
         const id = document.getElementById('policy_id').value;
         const data = Object.fromEntries(new FormData(this).entries());
         data.is_visible = document.getElementById('policy_is_visible').checked ? 1 : 0;
         
-        // Populate hidden input with HTML content
         if (quill) {
             data.content = quill.root.innerHTML;
         }
 
-        fetch(id ? `/settings/policies/${id}` : '/settings/policies', {
-            method: id ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify(data)
-        }).then(res => res.json()).then(data => location.reload());
+        try {
+            const response = await fetch(id ? `/settings/policies/${id}` : '/settings/policies', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify(data)
+            });
+            const payload = await parseJsonResponse(response, 'Failed to save policy section.');
+            queueReloadToast(payload.message || 'Policy section saved successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
-    function deletePolicy(id) {
+    async function deletePolicy(id) {
         if (!confirm('Are you sure?')) return;
-        fetch(`/settings/policies/${id}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-        }).then(res => res.json()).then(data => location.reload());
+        try {
+            const response = await fetch(`/settings/policies/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const payload = await parseJsonResponse(response, 'Failed to delete policy section.');
+            queueReloadToast(payload.message || 'Policy section deleted successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
-    function togglePolicyVisibility(id) {
-        fetch(`/settings/policies/${id}/toggle`, {
-            method: 'PATCH',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-        }).then(res => res.json()).then(data => {
-            // No reload needed for toggle, but visibility classes might need update
-            // For now, reload for simplicity
-            location.reload();
-        });
+    async function togglePolicyVisibility(id) {
+        try {
+            const response = await fetch(`/settings/policies/${id}/toggle`, {
+                method: 'PATCH',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const payload = await parseJsonResponse(response, 'Failed to update policy visibility.');
+            queueReloadToast(payload.message || 'Policy visibility updated successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
-    function reorderPolicy(id, direction) {
-        fetch(`/settings/policies/${id}/reorder`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ direction: direction })
-        }).then(res => res.json()).then(data => location.reload());
+    async function reorderPolicy(id, direction) {
+        try {
+            const response = await fetch(`/settings/policies/${id}/reorder`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ direction: direction })
+            });
+            const payload = await parseJsonResponse(response, 'Failed to reorder policy section.');
+            queueReloadToast(payload.message || 'Policy order updated successfully.');
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        }
     }
 
     // General Settings
@@ -2113,11 +2219,11 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify(data)
-        }).then(res => res.json()).then(data => {
-            if (data.success) {
-                syncEmployeeIdPreview(data);
-                alert(data.message);
-            }
+        }).then(res => parseJsonResponse(res, 'Failed to save settings.')).then(data => {
+            syncEmployeeIdPreview(data);
+            showToast('Success', data.message, 'success');
+        }).catch(error => {
+            showToast('Error', error.message, 'error');
         });
     }
 
@@ -2128,11 +2234,11 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ reset_employee_id_counter: true })
-        }).then(res => res.json()).then(data => {
-            if (data.success) {
-                syncEmployeeIdPreview(data);
-                alert('Employee ID counter reset successfully.');
-            }
+        }).then(res => parseJsonResponse(res, 'Failed to reset employee ID counter.')).then(data => {
+            syncEmployeeIdPreview(data);
+            showToast('Success', 'Employee ID counter reset successfully.', 'success');
+        }).catch(error => {
+            showToast('Error', error.message, 'error');
         });
     }
 
@@ -2152,6 +2258,26 @@
         if (data.nextEmployeeId) {
             document.getElementById('employee_id_next').textContent = data.nextEmployeeId;
         }
+    }
+
+    async function parseJsonResponse(response, fallbackMessage) {
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok || payload.success === false) {
+            if (payload.errors) {
+                throw new Error(Object.values(payload.errors).flat().join('\n'));
+            }
+
+            throw new Error(payload.message || fallbackMessage);
+        }
+
+        return payload;
+    }
+
+    function queueReloadToast(message, type = 'success') {
+        sessionStorage.setItem('flash_message', message);
+        sessionStorage.setItem('flash_type', type);
+        location.reload();
     }
 
     function createTaxSlabRow(slab = {}) {
@@ -2203,7 +2329,7 @@
     function removeTaxSlabRow(button) {
         const list = document.getElementById('taxSlabsList');
         if (list.children.length === 1) {
-            return alert('At least one tax slab is required.');
+            return showToast('Error', 'At least one tax slab is required.', 'error');
         }
 
         button.closest('.tax-slab-row').remove();
@@ -2293,7 +2419,7 @@
         const employeeId = document.getElementById('taxExampleEmployeeId').value;
 
         if (!employeeId) {
-            return alert('Select an employee from the list to load example values.');
+            return showToast('Error', 'Select an employee from the list to load example values.', 'error');
         }
 
         fetch(`{{ route('settings.tax-formulas.example') }}?employee_id=${employeeId}`, {
