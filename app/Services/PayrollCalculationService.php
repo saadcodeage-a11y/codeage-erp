@@ -217,10 +217,9 @@ class PayrollCalculationService
         $nonPaidLeaveDeduction = round($dailyRate * $unpaidLeaveDays, 2);
         $securityTotalDeducted = $this->securityTotalDeducted($securitySnapshot, $monthStart, $securityDeduction);
 
-        $taxableSalary = round($dailyRateBase - $nonPaidLeaveDeduction, 2);
-
-        $grossSalary = max($taxableSalary, 0.0);
-        $incomeTax = $this->incomeTax($grossSalary);
+        $grossSalary = max(round($dailyRateBase - $nonPaidLeaveDeduction, 2), 0.0);
+        $taxableSalary = max(round($basicSalary + $lastIncrement, 2), 0.0);
+        $incomeTax = $this->incomeTax($taxableSalary);
         $annualTaxTotal = $this->cumulativeAnnualTaxTotal($employee, $monthStart, $incomeTax);
         $netSalary = max(round($grossSalary - $incomeTax, 2), 0.0);
 

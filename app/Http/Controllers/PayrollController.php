@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class PayrollController extends Controller
 {
@@ -227,6 +228,22 @@ class PayrollController extends Controller
                 'run' => $payrollRun->id,
             ])
             ->with('success', 'Payroll run finalized successfully.');
+    }
+
+    public function destroy(PayrollRun $payrollRun)
+    {
+        if ($payrollRun->status === 'finalized') {
+            throw ValidationException::withMessages([
+                'payroll' => 'Finalized payouts cannot be deleted.',
+            ]);
+        }
+
+        $month = optional($payrollRun->pay_period_month)->format('Y-m');
+        $payrollRun->delete();
+
+        return redirect()
+            ->route('payroll.index', ['month' => $month])
+            ->with('success', 'Draft payout deleted successfully.');
     }
 
     public function downloadPayslip(PayrollRun $payrollRun, Employee $employee, PayslipPdfService $payslipPdfService)

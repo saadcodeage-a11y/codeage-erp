@@ -165,9 +165,9 @@ class PayrollManagementTest extends TestCase
         $this->assertSame('250.00', $record->positive_other);
         $this->assertSame('500.00', $record->arrears_deduction);
         $this->assertSame('53325.00', $record->gross_salary);
-        $this->assertSame('83.13', $record->income_tax);
-        $this->assertSame('83.13', $record->annual_tax_total);
-        $this->assertSame('53241.87', $record->net_salary);
+        $this->assertSame('250.00', $record->income_tax);
+        $this->assertSame('250.00', $record->annual_tax_total);
+        $this->assertSame('53075.00', $record->net_salary);
     }
 
     public function test_can_autosave_single_employee_payroll_adjustment(): void
@@ -359,6 +359,79 @@ class PayrollManagementTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_can_delete_draft_payout_but_not_finalized_one(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-306',
+        ]);
+
+        $draftRun = PayrollRun::create([
+            'name' => 'April 2026 Payroll',
+            'pay_period_month' => '2026-04-01',
+            'payment_date' => '2026-05-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'draft',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now(),
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $draftRun->id,
+            'employee_id' => $employee->id,
+            'bank_code' => 'MBL',
+            'beneficiary_name' => $employee->full_name,
+            'beneficiary_account_no' => $employee->iban,
+            'contact_number' => $employee->phone,
+            'email_address' => $employee->email,
+            'days_absent' => 0,
+            'late_count' => 0,
+            'late_absent_equivalent' => 0,
+            'unpaid_leave_days' => 0,
+            'short_hours_days' => 0,
+            'basic_salary' => 50000,
+            'last_increment' => 10000,
+            'incentives_bonus' => 0,
+            'punctuality_bonus' => 0,
+            'positive_arrears' => 0,
+            'positive_other' => 0,
+            'security_deduction' => 0,
+            'security_total_deducted' => 0,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 0,
+            'arrears_deduction' => 0,
+            'other_deduction' => 0,
+            'gross_salary' => 60000,
+            'income_tax' => 100,
+            'annual_tax_total' => 100,
+            'net_salary' => 59900,
+        ]);
+
+        $this->actingAs($accountsUser)
+            ->delete(route('payroll.destroy', $draftRun))
+            ->assertRedirect(route('payroll.index', ['month' => '2026-04']));
+
+        $this->assertDatabaseMissing('payroll_runs', ['id' => $draftRun->id]);
+        $this->assertDatabaseMissing('employee_payroll_records', ['payroll_run_id' => $draftRun->id]);
+
+        $finalizedRun = PayrollRun::create([
+            'name' => 'May 2026 Payroll',
+            'pay_period_month' => '2026-05-01',
+            'payment_date' => '2026-06-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'finalized',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now(),
+            'finalized_at' => now(),
+        ]);
+
+        $this->actingAs($accountsUser)
+            ->delete(route('payroll.destroy', $finalizedRun))
+            ->assertSessionHasErrors('payroll');
+
+        $this->assertDatabaseHas('payroll_runs', ['id' => $finalizedRun->id]);
+    }
+
     public function test_can_download_payslip_zip_and_bank_transfer_workbooks(): void
     {
         $accountsUser = $this->createUser('Accounts Manager');
@@ -514,6 +587,8 @@ class PayrollManagementTest extends TestCase
         $this->assertSame(1, $record->unpaid_leave_days);
         $this->assertSame('2000.00', $record->non_paid_leave_deduction);
         $this->assertSame('58000.00', $record->gross_salary);
+        $this->assertSame('250.00', $record->income_tax);
+        $this->assertSame('57750.00', $record->net_salary);
     }
 
     public function test_cumulative_annual_tax_total_includes_prior_fiscal_year_months_only(): void

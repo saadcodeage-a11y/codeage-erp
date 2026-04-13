@@ -112,6 +112,11 @@
                     <span class="history-status {{ $selectedRun->status }}">{{ ucfirst($selectedRun->status) }}</span>
                 </div>
 
+                <div class="selected-run-status-row">
+                    <span class="detail-status-label">Payout Status</span>
+                    <span class="history-status {{ $selectedRun->status }}">{{ ucfirst($selectedRun->status) }}</span>
+                </div>
+
                 <div class="payroll-detail-metrics">
                     <div class="detail-metric">
                         <span>Employees</span>
@@ -153,6 +158,13 @@
                             @csrf
                             <button type="submit" class="btn btn-outline">
                                 <i data-lucide="badge-check"></i> Finalize Payout
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('payroll.destroy', $selectedRun) }}" onsubmit="return confirm('Delete this draft payout? This will remove all payout records for the month.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-outline danger-outline">
+                                <i data-lucide="trash-2"></i> Delete Payout
                             </button>
                         </form>
                     @endif
@@ -394,6 +406,21 @@
         margin-bottom: 18px;
     }
 
+    .selected-run-status-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+
+    .detail-status-label {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
     .detail-metric {
         padding: 14px 16px;
         border: 1px solid #edf2f7;
@@ -419,6 +446,17 @@
         gap: 12px;
         align-items: center;
         min-width: 0;
+    }
+
+    .danger-outline {
+        color: #b42318;
+        border-color: #fda29b;
+        background: #fff5f4;
+    }
+
+    .danger-outline:hover {
+        background: #ffe4e1;
+        border-color: #f97066;
     }
 
     .button-count {
