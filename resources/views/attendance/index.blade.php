@@ -5,10 +5,8 @@
 @section('content')
 @php
     $canImportAttendance = Auth::user()->canAccessModule('attendance_management', 'create');
-    $canManageAttendance = Auth::user()->canAccessModule('attendance_management', 'edit');
     $hasAttendanceRecords = $attendanceRecords->count() > 0;
     $selectedMonthLabel = \Illuminate\Support\Carbon::createFromFormat('Y-m', $month)->format('F Y');
-    $selectedYear = \Illuminate\Support\Carbon::createFromFormat('Y-m', $month)->format('Y');
 @endphp
 <div class="page-header">
     <div class="header-left">
@@ -29,60 +27,6 @@
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Present</span><span class="stat-value">{{ $stats['present'] }}</span></div><div class="stat-icon-wrapper green"><i data-lucide="badge-check"></i></div></div>
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Late</span><span class="stat-value">{{ $stats['late'] }}</span></div><div class="stat-icon-wrapper yellow"><i data-lucide="clock-3"></i></div></div>
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Absent / Incomplete</span><span class="stat-value">{{ $stats['absent'] + $stats['incomplete'] }}</span></div><div class="stat-icon-wrapper red"><i data-lucide="triangle-alert"></i></div></div>
-</div>
-
-<div class="attendance-policy-grid">
-    <div class="card">
-        <div class="section-header" style="margin-bottom: 16px;">
-            <div>
-                <h2>Official Holidays</h2>
-                <p>Working-day holidays for {{ $selectedYear }}. Weekends are already handled automatically.</p>
-            </div>
-        </div>
-        @if($canManageAttendance)
-            <form method="POST" action="{{ route('attendance.holidays.store') }}" class="holiday-form">
-                @csrf
-                <div class="form-group" style="margin: 0;">
-                    <label>Holiday Name</label>
-                    <input type="text" name="name" value="{{ old('name') }}" placeholder="e.g. Eid ul Fitr" required>
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label>Holiday Date</label>
-                    <input type="date" name="holiday_date" value="{{ old('holiday_date') }}" required>
-                </div>
-                <div class="form-group holiday-form-description" style="margin: 0;">
-                    <label>Description</label>
-                    <input type="text" name="description" value="{{ old('description') }}" placeholder="Optional note">
-                </div>
-                <div class="policy-form-actions">
-                    <button type="submit" class="btn btn-primary">Add Holiday</button>
-                </div>
-            </form>
-        @endif
-        <div class="holiday-list">
-            @forelse($officialHolidays as $holiday)
-                <div class="holiday-card">
-                    <div>
-                        <strong>{{ $holiday->name }}</strong>
-                        <p>{{ $holiday->holiday_date->format('d M Y') }} | {{ $holiday->holiday_date->format('l') }}</p>
-                        @if($holiday->description)
-                            <span>{{ $holiday->description }}</span>
-                        @endif
-                    </div>
-                    @if($canManageAttendance)
-                        <form method="POST" action="{{ route('attendance.holidays.destroy', $holiday) }}">
-                            @csrf
-                            @method('DELETE')
-                            <input type="hidden" name="month" value="{{ $month }}">
-                            <button type="submit" class="btn btn-outline">Remove</button>
-                        </form>
-                    @endif
-                </div>
-            @empty
-                <div class="empty-state-panel">No official working-day holidays have been added for {{ $selectedYear }}.</div>
-            @endforelse
-        </div>
-    </div>
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
@@ -308,58 +252,6 @@
 @endif
 
 <style>
-    .attendance-policy-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 24px;
-        margin-bottom: 24px;
-    }
-    .attendance-rule-notes {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 14px;
-    }
-    .attendance-rule-form,
-    .holiday-form {
-        display: grid;
-        gap: 16px;
-    }
-    .holiday-form {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        align-items: end;
-        margin-bottom: 18px;
-    }
-    .holiday-form-description,
-    .policy-form-actions {
-        grid-column: 1 / -1;
-    }
-    .holiday-list {
-        display: grid;
-        gap: 12px;
-    }
-    .holiday-card {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        align-items: flex-start;
-        padding: 14px 16px;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        background: #fff;
-    }
-    .holiday-card strong {
-        display: block;
-        margin-bottom: 4px;
-        color: #111827;
-    }
-    .holiday-card p,
-    .holiday-card span {
-        margin: 0;
-        color: #6b7280;
-        font-size: 13px;
-        line-height: 1.6;
-    }
     .two-column-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
@@ -590,7 +482,6 @@
         color: #0f766e;
     }
     @media (max-width: 1180px) {
-        .attendance-policy-grid,
         .two-column-layout {
             grid-template-columns: 1fr;
         }
@@ -600,11 +491,6 @@
         }
         .attendance-records-header {
             padding-bottom: 16px;
-        }
-    }
-    @media (max-width: 768px) {
-        .holiday-form {
-            grid-template-columns: 1fr;
         }
     }
 </style>

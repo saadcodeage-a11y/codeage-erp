@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Announcement;
 use App\Models\AttendanceImport;
 use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Employee;
-use App\Models\OfficialHoliday;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -294,48 +294,42 @@ class AttendanceManagementTest extends TestCase
         $this->actingAs($accountsUser)->get(route('attendance.index'))->assertForbidden();
     }
 
-    public function test_hr_can_update_attendance_rules_and_add_official_holiday(): void
+    public function test_import_marks_attendance_row_as_holiday_when_official_holiday_announcement_matches(): void
     {
+        $department = Department::firstOrCreate(['name' => 'Engineering']);
+        $employee = $this->createEmployee([
+            'employee_id' => 'CA-E-19',
+            'full_name' => 'Holiday Employee',
+            'department_id' => $department->id,
+        ]);
         $hrUser = $this->createUser('HR Manager');
 
-        $this->actingAs($hrUser)->post(route('attendance.settings.update'), [
-            'month' => '2026-03',
-            'late_grace_minutes' => 12,
-        ])->assertRedirect(route('attendance.index', ['month' => '2026-03']));
+        $announcement = Announcement::create([
+            'title' => 'Pakistan Day',
+            'message' => 'Office will remain closed.',
+            'announcement_type' => Announcement::TYPE_OFFICIAL_HOLIDAY,
+            'date_mode' => Announcement::DATE_MODE_SINGLE,
+            'event_date' => '2026-03-23',
+            'is_global' => false,
+            'is_active' => true,
+            'created_by' => $hrUser->id,
+            'published_at' => now(),
+        ]);
+        $announcement->departments()->sync([$department->id]);
 
-        $this->assertDatabaseHas('settings', [
-            'key' => 'attendance_late_grace_minutes',
-            'value' => '12',
+        $file = $this->createAttendanceFile([
+            ['CA-E-19', 'Holiday Employee', '23/03/2026', '', '', '', '', '', ''],
         ]);
 
-        $this->actingAs($hrUser)->post(route('attendance.holidays.store'), [
-            'name' => 'Pakistan Day',
-            'holiday_date' => '2026-03-23',
-            'description' => 'Public holiday',
-        ])->assertRedirect(route('attendance.index', ['month' => '2026-03']));
+        $this->actingAs($hrUser)->post(route('attendance.import'), [
+            'attendance_month' => '2026-03',
+            'attendance_file' => $file,
+        ])->assertRedirect();
 
-        $this->assertTrue(
-            OfficialHoliday::query()
-                ->where('name', 'Pakistan Day')
-                ->whereDate('holiday_date', '2026-03-23')
-                ->exists()
-        );
-    }
-
-    public function test_weekend_cannot_be_added_as_official_holiday(): void
-    {
-        $hrUser = $this->createUser('HR Manager');
-
-        $response = $this->actingAs($hrUser)->from(route('attendance.index', ['month' => '2026-03']))->post(route('attendance.holidays.store'), [
-            'name' => 'Weekend Test',
-            'holiday_date' => '2026-03-22',
-            'description' => 'Should fail because it is Sunday',
-        ]);
-
-        $response->assertRedirect(route('attendance.index', ['month' => '2026-03']));
-        $response->assertSessionHasErrors('holiday_date');
-        $this->assertDatabaseMissing('official_holidays', [
-            'name' => 'Weekend Test',
+        $this->assertDatabaseHas('attendance_records', [
+            'employee_id' => $employee->id,
+            'attendance_date' => '2026-03-23 00:00:00',
+            'status' => AttendanceRecord::STATUS_HOLIDAY,
         ]);
     }
 

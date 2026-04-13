@@ -137,11 +137,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware('module:attendance_management,create')->group(function () {
         Route::post('/attendance/import', [AttendanceController::class, 'import'])->name('attendance.import');
     });
-    Route::middleware('module:attendance_management,edit')->group(function () {
-        Route::post('/attendance/settings', [AttendanceController::class, 'updateSettings'])->name('attendance.settings.update');
-        Route::post('/attendance/holidays', [AttendanceController::class, 'storeHoliday'])->name('attendance.holidays.store');
-        Route::delete('/attendance/holidays/{holiday}', [AttendanceController::class, 'destroyHoliday'])->name('attendance.holidays.destroy');
-    });
 
     // Payroll Management
     Route::middleware('module:payroll_management,read')->group(function () {

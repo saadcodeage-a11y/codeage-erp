@@ -33,55 +33,36 @@
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Active</span><span class="stat-value">{{ $stats['active'] }}</span></div><div class="stat-icon-wrapper green"><i data-lucide="badge-check"></i></div></div>
 </div>
 
-<div class="card announcement-overview-card" style="margin-bottom: 24px;">
-    <div class="section-header">
-        <div>
-            <h2>Announcement Filters</h2>
-            <p>Refine the announcement list by audience, type, or current status.</p>
-        </div>
+<div class="search-container announcement-search-container">
+    <form method="GET" action="{{ route('announcements.index') }}" class="search-form announcement-search-form">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by title, message, department, or creator..." class="search-input">
+        <select name="type" class="announcement-inline-select">
+            <option value="">All types</option>
+            @foreach($announcementTypes as $typeKey => $typeLabel)
+                <option value="{{ $typeKey }}" @selected(request('type') === $typeKey)>{{ $typeLabel }}</option>
+            @endforeach
+        </select>
+        <select name="department" class="announcement-inline-select">
+            <option value="">All audiences</option>
+            @foreach($departments as $department)
+                <option value="{{ $department->id }}" @selected((string) request('department') === (string) $department->id)>{{ $department->name }}</option>
+            @endforeach
+        </select>
+        <select name="status" class="announcement-inline-select">
+            <option value="">All statuses</option>
+            @foreach($announcementStatuses as $statusKey => $statusLabel)
+                <option value="{{ $statusKey }}" @selected(request('status') === $statusKey)>{{ $statusLabel }}</option>
+            @endforeach
+        </select>
+        <button type="submit" class="btn btn-outline announcement-inline-action">
+            <i data-lucide="filter"></i> Filter
+        </button>
         @if(request()->filled('search') || request()->filled('type') || request()->filled('department') || request()->filled('status'))
-            <a href="{{ route('announcements.index') }}" class="btn btn-outline announcement-clear-btn">
+            <a href="{{ route('announcements.index') }}" class="btn btn-outline announcement-inline-action">
                 <i data-lucide="rotate-ccw"></i> Clear
             </a>
         @endif
-    </div>
-    <form method="GET" action="{{ route('announcements.index') }}" class="announcement-filter-form">
-        <div class="form-group" style="margin: 0;">
-            <label>Search</label>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by title, message, department, or creator">
-        </div>
-        <div class="form-group" style="margin: 0;">
-            <label>Type</label>
-            <select name="type">
-                <option value="">All types</option>
-                @foreach($announcementTypes as $typeKey => $typeLabel)
-                    <option value="{{ $typeKey }}" @selected(request('type') === $typeKey)>{{ $typeLabel }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="form-group" style="margin: 0;">
-            <label>Department</label>
-            <select name="department">
-                <option value="">All audiences</option>
-                @foreach($departments as $department)
-                    <option value="{{ $department->id }}" @selected((string) request('department') === (string) $department->id)>{{ $department->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="form-group" style="margin: 0;">
-            <label>Status</label>
-            <select name="status">
-                <option value="">All statuses</option>
-                @foreach($announcementStatuses as $statusKey => $statusLabel)
-                    <option value="{{ $statusKey }}" @selected(request('status') === $statusKey)>{{ $statusLabel }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="announcement-filter-actions">
-            <button type="submit" class="btn btn-primary">
-                <i data-lucide="filter"></i> Apply Filters
-            </button>
-        </div>
     </form>
 </div>
 
@@ -500,18 +481,29 @@
 @endif
 
 <style>
-    .announcement-filter-form {
+    .announcement-search-container {
+        margin-bottom: 24px;
+    }
+    .announcement-search-form {
         display: grid;
-        grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(180px, 0.7fr)) auto;
-        gap: 16px;
-        align-items: end;
+        grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(170px, 0.7fr)) auto auto;
+        gap: 12px;
+        align-items: center;
     }
-    .announcement-filter-actions {
-        display: flex;
-        justify-content: flex-end;
-        align-items: flex-end;
+    .announcement-search-form .search-icon {
+        top: 50%;
+        transform: translateY(-50%);
     }
-    .announcement-clear-btn {
+    .announcement-inline-select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #111827;
+        font-size: 14px;
+    }
+    .announcement-inline-action {
         white-space: nowrap;
     }
     .announcement-list {
@@ -801,19 +793,16 @@
         .announcement-form-grid {
             grid-template-columns: 1fr;
         }
-        .announcement-filter-form {
+        .announcement-search-form {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
     @media (max-width: 900px) {
-        .announcement-filter-form,
+        .announcement-search-form,
         .holiday-date-range {
             grid-template-columns: 1fr;
         }
-        .announcement-filter-actions {
-            justify-content: stretch;
-        }
-        .announcement-filter-actions .btn {
+        .announcement-inline-action {
             width: 100%;
         }
         .announcement-card-header {

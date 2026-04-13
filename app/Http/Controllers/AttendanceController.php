@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AttendanceImport;
-use App\Models\OfficialHoliday;
 use App\Models\AttendanceRecord;
-use App\Models\Setting;
 use App\Services\AttendanceImportService;
 use Illuminate\Http\Request;
 
@@ -53,20 +51,12 @@ class AttendanceController extends Controller
             ? AttendanceImport::with(['errors', 'importedBy'])->find($selectedImportId)
             : $recentImports->first();
 
-        $lateGraceMinutes = (int) (Setting::where('key', 'attendance_late_grace_minutes')->value('value') ?? 0);
-        $officialHolidays = OfficialHoliday::query()
-            ->whereYear('holiday_date', (int) $selectedMonth->format('Y'))
-            ->orderBy('holiday_date')
-            ->get();
-
         return view('attendance.index', compact(
             'attendanceRecords',
             'month',
             'stats',
             'recentImports',
-            'selectedImport',
-            'lateGraceMinutes',
-            'officialHolidays'
+            'selectedImport'
         ));
     }
 
@@ -97,55 +87,4 @@ class AttendanceController extends Controller
             ->with($attendanceImport->imported_rows > 0 ? 'success' : 'warning', $message);
     }
 
-    public function updateSettings(Request $request)
-    {
-        $validated = $request->validate([
-            'late_grace_minutes' => 'required|integer|min:0|max:240',
-        ]);
-
-        Setting::updateOrCreate(
-            ['key' => 'attendance_late_grace_minutes'],
-            ['value' => (string) $validated['late_grace_minutes']]
-        );
-
-        return redirect()
-            ->route('attendance.index', ['month' => $request->get('month', now()->format('Y-m'))])
-            ->with('success', 'Attendance rules updated successfully.');
-    }
-
-    public function storeHoliday(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'holiday_date' => 'required|date|unique:official_holidays,holiday_date',
-            'description' => 'nullable|string|max:1000',
-        ]);
-
-        $holidayDate = \Illuminate\Support\Carbon::parse($validated['holiday_date']);
-
-        if ($holidayDate->isWeekend()) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'holiday_date' => 'Saturday and Sunday are already treated as weekend holidays. Add only official holidays that fall on working days.',
-                ]);
-        }
-
-        OfficialHoliday::create($validated);
-
-        return redirect()
-            ->route('attendance.index', ['month' => $holidayDate->format('Y-m')])
-            ->with('success', 'Official holiday added successfully.');
-    }
-
-    public function destroyHoliday(Request $request, OfficialHoliday $holiday)
-    {
-        $month = $request->get('month', $holiday->holiday_date->format('Y-m'));
-
-        $holiday->delete();
-
-        return redirect()
-            ->route('attendance.index', ['month' => $month])
-            ->with('success', 'Official holiday removed successfully.');
-    }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Announcement;
 use App\Models\AttendanceImport;
-use App\Models\OfficialHoliday;
 use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Models\Setting;
@@ -167,6 +167,7 @@ class AttendanceImportService
                     'shift_start_time' => $this->parseTimeValue($employee->effective_shift_start_time),
                     'shift_end_time' => $this->parseTimeValue($employee->effective_shift_end_time),
                     'status' => $this->resolveStatus(
+                        $employee,
                         $parsedDate,
                         $clockIn,
                         $clockOut,
@@ -423,6 +424,7 @@ class AttendanceImportService
     }
 
     protected function resolveStatus(
+        Employee $employee,
         Carbon $attendanceDate,
         ?string $clockIn,
         ?string $clockOut,
@@ -435,7 +437,7 @@ class AttendanceImportService
             return AttendanceRecord::STATUS_WEEKEND;
         }
 
-        if ($this->isOfficialHoliday($attendanceDate) && ! $clockIn && ! $clockOut && ! $work) {
+        if ($this->isOfficialHoliday($attendanceDate, $employee) && ! $clockIn && ! $clockOut && ! $work) {
             return AttendanceRecord::STATUS_HOLIDAY;
         }
 
@@ -467,12 +469,37 @@ class AttendanceImportService
         return max(0, (int) (Setting::where('key', 'attendance_late_grace_minutes')->value('value') ?? 0));
     }
 
-    protected function isOfficialHoliday(Carbon $attendanceDate): bool
+    protected function isOfficialHoliday(Carbon $attendanceDate, ?Employee $employee = null): bool
     {
-        $dateKey = $attendanceDate->toDateString();
+        $departmentId = $employee?->department_id ?: 0;
+        $dateKey = $attendanceDate->toDateString() . '|' . $departmentId;
 
         if (! array_key_exists($dateKey, $this->officialHolidayCache)) {
-            $this->officialHolidayCache[$dateKey] = OfficialHoliday::whereDate('holiday_date', $dateKey)->exists();
+            $this->officialHolidayCache[$dateKey] = Announcement::query()
+                ->where('is_active', true)
+                ->where('announcement_type', Announcement::TYPE_OFFICIAL_HOLIDAY)
+                ->where(function ($query) use ($departmentId) {
+                    $query->where('is_global', true);
+
+                    if ($departmentId > 0) {
+                        $query->orWhereHas('departments', function ($departmentQuery) use ($departmentId) {
+                            $departmentQuery->where('departments.id', $departmentId);
+                        });
+                    }
+                })
+                ->where(function ($query) use ($attendanceDate) {
+                    $query->where(function ($singleDateQuery) use ($attendanceDate) {
+                        $singleDateQuery
+                            ->where('date_mode', Announcement::DATE_MODE_SINGLE)
+                            ->whereDate('event_date', $attendanceDate->toDateString());
+                    })->orWhere(function ($rangeQuery) use ($attendanceDate) {
+                        $rangeQuery
+                            ->where('date_mode', Announcement::DATE_MODE_RANGE)
+                            ->whereDate('event_start_date', '<=', $attendanceDate->toDateString())
+                            ->whereDate('event_end_date', '>=', $attendanceDate->toDateString());
+                    });
+                })
+                ->exists();
         }
 
         return $this->officialHolidayCache[$dateKey];
