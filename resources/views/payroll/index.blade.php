@@ -109,10 +109,6 @@
                         <h2>{{ $selectedRun->pay_period_month->format('F Y') }} Details</h2>
                         <p>{{ $selectedRun->name }} | Generated {{ optional($selectedRun->generated_at)->format('d M, Y h:i A') ?? 'Not recorded' }}</p>
                     </div>
-                </div>
-
-                <div class="selected-run-status-row">
-                    <span class="detail-status-label">Payout Status</span>
                     <span class="history-status {{ $selectedRun->status }}">{{ ucfirst($selectedRun->status) }}</span>
                 </div>
 
