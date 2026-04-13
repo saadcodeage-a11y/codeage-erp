@@ -701,20 +701,6 @@
                         <small class="system-values-hint">Used for &#123;&#123;hrContact&#125;&#125; in email templates and onboarding communication.</small>
                     </div>
 
-                    <div class="system-values-split-grid">
-                        <div class="form-group">
-                            <label class="system-values-label">Default Shift Start</label>
-                            <input type="time" id="default_shift_start_time" class="form-control system-values-input" value="{{ $defaultShiftStartTime }}">
-                            <small class="system-values-hint">Used when an employee does not have a custom shift start time.</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="system-values-label">Default Shift End</label>
-                            <input type="time" id="default_shift_end_time" class="form-control system-values-input" value="{{ $defaultShiftEndTime }}">
-                            <small class="system-values-hint">Used when an employee does not have a custom shift end time.</small>
-                        </div>
-                    </div>
-
                     <div class="form-group">
                         <label class="system-values-label">HR Employees</label>
                         <div class="hr-employee-multiselect" id="hrEmployeeMultiselect">
@@ -771,26 +757,52 @@
                 </div>
             </section>
 
-            <section class="system-values-card attendance-rules-card">
-                <div class="system-values-card-header">
-                    <div>
-                        <h3>Attendance Rules</h3>
-                        <p>Global attendance settings. Employee-specific shift timings remain on each employee profile.</p>
+            <div class="system-values-side-stack">
+                <section class="system-values-card attendance-rules-card">
+                    <div class="system-values-card-header">
+                        <div>
+                            <h3>Attendance Rules</h3>
+                            <p>Global attendance settings. Employee-specific shift timings remain on each employee profile.</p>
+                        </div>
+                        <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">Attendance Logic</span>
                     </div>
-                    <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">Attendance Logic</span>
-                </div>
 
-                <div class="attendance-rules-chip-row">
-                    <span class="badge attendance-chip muted">Weekends: Saturday & Sunday</span>
-                    <span class="badge attendance-chip warm">Late after: {{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</span>
-                </div>
+                    <div class="attendance-rules-chip-row">
+                        <span class="badge attendance-chip muted">Weekends: Saturday & Sunday</span>
+                        <span class="badge attendance-chip warm">Late after: {{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</span>
+                    </div>
 
-                <div class="form-group" style="margin: 0;">
-                    <label class="system-values-label">Late Grace Period (Minutes)</label>
-                    <input type="number" id="late_grace_minutes" class="form-control system-values-input" value="{{ $lateGraceMinutes }}" min="0" max="240">
-                    <small class="system-values-hint">If an employee checks in after shift start time plus this grace period, the row is counted late.</small>
-                </div>
-            </section>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="system-values-label">Late Grace Period (Minutes)</label>
+                        <input type="number" id="late_grace_minutes" class="form-control system-values-input" value="{{ $lateGraceMinutes }}" min="0" max="240">
+                        <small class="system-values-hint">If an employee checks in after shift start time plus this grace period, the row is counted late.</small>
+                    </div>
+                </section>
+
+                <section class="system-values-card">
+                    <div class="system-values-card-header">
+                        <div>
+                            <h3>Default Shift Hours</h3>
+                            <p>Fallback shift timings used for employees who do not have custom working hours assigned.</p>
+                        </div>
+                        <span class="badge" style="background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe;">Shift Defaults</span>
+                    </div>
+
+                    <div class="system-values-split-grid">
+                        <div class="form-group">
+                            <label class="system-values-label">Default Shift Start</label>
+                            <input type="time" id="default_shift_start_time" class="form-control system-values-input" value="{{ $defaultShiftStartTime }}">
+                            <small class="system-values-hint">Used when an employee does not have a custom shift start time.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="system-values-label">Default Shift End</label>
+                            <input type="time" id="default_shift_end_time" class="form-control system-values-input" value="{{ $defaultShiftEndTime }}">
+                            <small class="system-values-hint">Used when an employee does not have a custom shift end time.</small>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </div>
 
         <div class="system-values-footer">
@@ -1147,6 +1159,11 @@
         grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
         gap: 20px;
         align-items: start;
+    }
+    .system-values-side-stack {
+        display: grid;
+        gap: 20px;
+        align-self: start;
     }
     .system-values-card {
         border: 1px solid #e5e7eb;
