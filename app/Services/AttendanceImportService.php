@@ -164,8 +164,8 @@ class AttendanceImportService
                     'early_duration' => $earlyDuration,
                     'absent_duration' => $absentDuration,
                     'work_duration' => $workDuration,
-                    'shift_start_time' => $this->parseTimeValue($employee->shift_start_time),
-                    'shift_end_time' => $this->parseTimeValue($employee->shift_end_time),
+                    'shift_start_time' => $this->parseTimeValue($employee->effective_shift_start_time),
+                    'shift_end_time' => $this->parseTimeValue($employee->effective_shift_end_time),
                     'status' => $this->resolveStatus(
                         $parsedDate,
                         $clockIn,
@@ -404,7 +404,7 @@ class AttendanceImportService
             return $importedLateDuration;
         }
 
-        $shiftStart = $this->parseTimeValue($employee->shift_start_time);
+        $shiftStart = $this->parseTimeValue($employee->effective_shift_start_time);
 
         if (! $shiftStart) {
             return $importedLateDuration;

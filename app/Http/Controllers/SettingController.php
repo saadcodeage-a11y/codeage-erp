@@ -36,6 +36,8 @@ class SettingController extends Controller
         $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
         $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
         $lateGraceMinutes = (int) (Setting::where('key', 'attendance_late_grace_minutes')->value('value') ?? 0);
+        $defaultShiftStartTime = Setting::where('key', 'default_shift_start_time')->value('value') ?? '';
+        $defaultShiftEndTime = Setting::where('key', 'default_shift_end_time')->value('value') ?? '';
         $systemValueEmployees = Employee::query()
             ->whereNotNull('employee_id')
             ->where('employee_id', '!=', '')
@@ -65,6 +67,8 @@ class SettingController extends Controller
             'officeLocation',
             'hrContact',
             'lateGraceMinutes',
+            'defaultShiftStartTime',
+            'defaultShiftEndTime',
             'formulaExampleEmployees',
             'taxFormulaConfig',
             'taxFormulaVariables'
@@ -343,6 +347,20 @@ class SettingController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'attendance_late_grace_minutes'],
                 ['value' => (string) max(0, min(240, (int) $request->late_grace_minutes))]
+            );
+        }
+
+        if ($request->has('default_shift_start_time')) {
+            Setting::updateOrCreate(
+                ['key' => 'default_shift_start_time'],
+                ['value' => $request->input('default_shift_start_time') ?: '']
+            );
+        }
+
+        if ($request->has('default_shift_end_time')) {
+            Setting::updateOrCreate(
+                ['key' => 'default_shift_end_time'],
+                ['value' => $request->input('default_shift_end_time') ?: '']
             );
         }
 

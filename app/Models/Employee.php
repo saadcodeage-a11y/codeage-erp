@@ -12,6 +12,8 @@ class Employee extends Model
 {
     use HasFactory, LogsActivity;
 
+    protected static array $settingCache = [];
+
     protected static function booted(): void
     {
         static::created(function (Employee $employee) {
@@ -108,6 +110,16 @@ class Employee extends Model
         return $this->hasMany(EmployeeSecurityFundSnapshot::class)->latest('snapshot_month');
     }
 
+    public function getEffectiveShiftStartTimeAttribute(): ?string
+    {
+        return $this->shift_start_time ?: static::settingValue('default_shift_start_time');
+    }
+
+    public function getEffectiveShiftEndTimeAttribute(): ?string
+    {
+        return $this->shift_end_time ?: static::settingValue('default_shift_end_time');
+    }
+
     public static function employmentHistoryTrackedFields(): array
     {
         return ['designation', 'department_id', 'payroll_status', 'job_location', 'status'];
@@ -180,6 +192,15 @@ class Employee extends Model
         }
 
         return Carbon::parse($hiringDate)->startOfDay();
+    }
+
+    protected static function settingValue(string $key): ?string
+    {
+        if (! array_key_exists($key, static::$settingCache)) {
+            static::$settingCache[$key] = Setting::where('key', $key)->value('value');
+        }
+
+        return static::$settingCache[$key] ?: null;
     }
 
     protected function hasActiveEmploymentTimeline(): bool

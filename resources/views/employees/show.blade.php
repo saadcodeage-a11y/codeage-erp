@@ -240,9 +240,9 @@
             <div class="info-item">
                 <label>Shift Timing</label>
                 <p>
-                    {{ $employee->shift_start_time ? \Illuminate\Support\Carbon::parse($employee->shift_start_time)->format('H:i') : '--:--' }}
+                    {{ $employee->effective_shift_start_time ? \Illuminate\Support\Carbon::parse($employee->effective_shift_start_time)->format('H:i') : '--:--' }}
                     to
-                    {{ $employee->shift_end_time ? \Illuminate\Support\Carbon::parse($employee->shift_end_time)->format('H:i') : '--:--' }}
+                    {{ $employee->effective_shift_end_time ? \Illuminate\Support\Carbon::parse($employee->effective_shift_end_time)->format('H:i') : '--:--' }}
                 </p>
             </div>
         </div>

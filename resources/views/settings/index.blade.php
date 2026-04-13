@@ -701,6 +701,20 @@
                         <small class="system-values-hint">Used for &#123;&#123;hrContact&#125;&#125; in email templates and onboarding communication.</small>
                     </div>
 
+                    <div class="system-values-split-grid">
+                        <div class="form-group">
+                            <label class="system-values-label">Default Shift Start</label>
+                            <input type="time" id="default_shift_start_time" class="form-control system-values-input" value="{{ $defaultShiftStartTime }}">
+                            <small class="system-values-hint">Used when an employee does not have a custom shift start time.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="system-values-label">Default Shift End</label>
+                            <input type="time" id="default_shift_end_time" class="form-control system-values-input" value="{{ $defaultShiftEndTime }}">
+                            <small class="system-values-hint">Used when an employee does not have a custom shift end time.</small>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label class="system-values-label">HR Employees</label>
                         <div class="hr-employee-multiselect" id="hrEmployeeMultiselect">
@@ -1166,6 +1180,11 @@
     .system-values-form-stack {
         display: grid;
         gap: 22px;
+    }
+    .system-values-split-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
     }
     .system-values-label {
         font-size: 14px;
@@ -1758,7 +1777,8 @@
 
     @media (max-width: 900px) {
         .system-values-summary,
-        .system-values-grid {
+        .system-values-grid,
+        .system-values-split-grid {
             grid-template-columns: 1fr;
         }
         .system-values-footer {
@@ -2465,6 +2485,8 @@
         const officeLocation = document.getElementById('office_location').value;
         const hrContact = document.getElementById('hr_contact').value;
         const lateGraceMinutes = document.getElementById('late_grace_minutes').value;
+        const defaultShiftStartTime = document.getElementById('default_shift_start_time').value;
+        const defaultShiftEndTime = document.getElementById('default_shift_end_time').value;
         const hrEmployeeIds = getSelectedHrEmployeeIds();
         
         fetch('{{ route("settings.general.update") }}', {
@@ -2477,6 +2499,8 @@
                 office_location: officeLocation,
                 hr_contact: hrContact,
                 late_grace_minutes: lateGraceMinutes,
+                default_shift_start_time: defaultShiftStartTime,
+                default_shift_end_time: defaultShiftEndTime,
                 hr_employee_ids: hrEmployeeIds
             })
         })
@@ -2496,10 +2520,13 @@
 
     // Reuse existing toast functionality or implement a simple one if needed
     function showToast(title, message, type) {
-        if (window.toast) {
-            window.toast(title, message, type);
+        const resolvedMessage = message || title;
+        const resolvedType = type || 'success';
+
+        if (typeof window.showToast === 'function') {
+            window.showToast(resolvedMessage, resolvedType);
         } else {
-            alert(title + ': ' + message);
+            alert(`${title}: ${resolvedMessage}`);
         }
     }
 

@@ -126,11 +126,25 @@
             
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
+            const styles = type === 'success'
+                ? {
+                    border: '#10b981',
+                    icon: '#10b981',
+                    iconName: 'circle-check-big',
+                    background: '#ffffff',
+                  }
+                : {
+                    border: '#ef4444',
+                    icon: '#ef4444',
+                    iconName: 'alert-circle',
+                    background: '#ffffff',
+                  };
             toast.style.cssText = `
-                background: white;
-                border-left: 4px solid ${type === 'success' ? '#10b981' : '#ef4444'};
-                padding: 16px;
-                border-radius: 4px;
+                background: ${styles.background};
+                border-left: 4px solid ${styles.border};
+                padding: 16px 18px;
+                border-radius: 12px;
+                border: 1px solid #e5e7eb;
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                 display: flex;
                 align-items: center;
@@ -142,11 +156,8 @@
                 pointer-events: auto;
             `;
             
-            const iconColor = type === 'success' ? '#10b981' : '#ef4444';
-            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-            
             toast.innerHTML = `
-                <i data-lucide="${icon}" style="color: ${iconColor}; width: 20px; height: 20px;"></i>
+                <i data-lucide="${styles.iconName}" style="color: ${styles.icon}; width: 20px; height: 20px;"></i>
                 <span style="font-size: 14px; font-weight: 500; color: #1f2937;">${message}</span>
             `;
             
