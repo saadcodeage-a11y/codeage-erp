@@ -12,9 +12,13 @@
                 <tr>
                     <th>Employee</th>
                     <th>Bank / Account</th>
+                    <th>Late</th>
                     <th>Base</th>
                     <th>Increment</th>
                     <th>Absent</th>
+                    <th>Absent by 3 Late</th>
+                    <th>Unpaid Leave Days</th>
+                    <th>Unpaid Leave Deduction</th>
                     <th>Short</th>
                     <th>Security (Month)</th>
                     <th>Incentives</th>
@@ -55,9 +59,13 @@
                                 <span>{{ $accountLabel }}</span>
                             </div>
                         </td>
+                        <td>{{ $row['late_count'] }}</td>
                         <td>PKR {{ number_format($row['basic_salary'], 2) }}</td>
                         <td>PKR {{ number_format($row['last_increment'], 2) }}</td>
                         <td>{{ $row['days_absent'] }}</td>
+                        <td>{{ $row['late_absent_equivalent'] }}</td>
+                        <td>{{ $row['unpaid_leave_days'] }}</td>
+                        <td class="payout-net-cell">PKR {{ number_format($row['non_paid_leave_deduction'], 2) }}</td>
                         <td>{{ $row['short_hours_days'] }}</td>
                         <td>
                             <input type="number" step="0.01" min="0" name="adjustments[{{ $employee->id }}][security_deduction]" value="{{ $adjustment?->security_deduction ?? $row['security_deduction'] }}" @if(!$canEditPayroll) disabled @endif>

@@ -15,6 +15,9 @@ class EmployeePayrollRecord extends Model
         'contact_number',
         'email_address',
         'days_absent',
+        'late_count',
+        'late_absent_equivalent',
+        'unpaid_leave_days',
         'short_hours_days',
         'basic_salary',
         'last_increment',
@@ -30,10 +33,14 @@ class EmployeePayrollRecord extends Model
         'other_deduction',
         'gross_salary',
         'income_tax',
+        'annual_tax_total',
         'net_salary',
     ];
 
     protected $casts = [
+        'late_count' => 'integer',
+        'late_absent_equivalent' => 'integer',
+        'unpaid_leave_days' => 'integer',
         'basic_salary' => 'decimal:2',
         'last_increment' => 'decimal:2',
         'incentives_bonus' => 'decimal:2',
@@ -48,6 +55,7 @@ class EmployeePayrollRecord extends Model
         'other_deduction' => 'decimal:2',
         'gross_salary' => 'decimal:2',
         'income_tax' => 'decimal:2',
+        'annual_tax_total' => 'decimal:2',
         'net_salary' => 'decimal:2',
     ];
 

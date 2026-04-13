@@ -33,6 +33,9 @@
         + $record->attendance_penalty
         + $record->arrears_deduction
         + $record->other_deduction;
+    $lateDerivedLeaveNote = $record->late_absent_equivalent > 0
+        ? $record->late_absent_equivalent . ' unpaid leave day(s) came from every 3 late arrivals.'
+        : 'No unpaid leave was derived from repeated late arrivals this month.';
     $money = function ($value, bool $showZero = false) {
         $value = round((float) $value, 2);
 
@@ -337,7 +340,7 @@
                             <td>{{ $money($record->last_increment) }}</td>
                         </tr>
                         <tr>
-                            <td>Incentives / Bouns</td>
+                            <td>Incentives / Bonus</td>
                             <td>{{ $money($record->incentives_bonus) }}</td>
                         </tr>
                         <tr>
@@ -368,7 +371,7 @@
                             <td>{{ $money($record->security_deduction) }}</td>
                         </tr>
                         <tr>
-                            <td>Non-Paid Leave</td>
+                            <td>Non-Paid Leave ({{ $record->unpaid_leave_days }} day{{ $record->unpaid_leave_days === 1 ? '' : 's' }})</td>
                             <td>{{ $money($record->non_paid_leave_deduction) }}</td>
                         </tr>
                         <tr>
@@ -402,6 +405,10 @@
             <div>Income Tax</div>
             <div>{{ $money($record->income_tax) }}</div>
         </div>
+        <div class="summary-row">
+            <div>Annual Tax Total</div>
+            <div>{{ $money($record->annual_tax_total, true) }}</div>
+        </div>
         <div class="summary-row highlight">
             <div>Net Salary Payable</div>
             <div>{{ $money($record->net_salary, true) }}</div>
@@ -413,7 +420,10 @@
         <ul class="remarks-list">
             <li>Payment was deposited on {{ $paymentDate }} via {{ $paymentMode }}</li>
             <li>If you have any question email to {{ $accountsEmail }}</li>
-            <li>The total amount held as your security deposit is {{ $money($record->security_total_deducted ?? 0, true) }}.</li>
+            <li>Attendance summary: {{ $record->days_absent }} actual absent day(s), {{ $record->late_count }} late arrival(s), and {{ $record->late_absent_equivalent }} absent day(s) derived from every 3 late arrivals.</li>
+            <li>Total unpaid leave deducted this month: {{ $record->unpaid_leave_days }} day(s) for {{ $money($record->non_paid_leave_deduction, true) }}. {{ $lateDerivedLeaveNote }}</li>
+            <li>Security deducted this month: {{ $money($record->security_deduction, true) }}. Cumulative security held: {{ $money($record->security_total_deducted ?? 0, true) }}.</li>
+            <li>Monthly tax deducted: {{ $money($record->income_tax, true) }}. Fiscal-year tax deducted till this month: {{ $money($record->annual_tax_total ?? 0, true) }}.</li>
             <li>This is a computer-generated statement. No signature is required.</li>
         </ul>
     </div>

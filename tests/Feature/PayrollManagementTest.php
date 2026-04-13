@@ -152,18 +152,22 @@ class PayrollManagementTest extends TestCase
 
         $this->assertSame('draft', $payrollRun->status);
         $this->assertSame(3, $record->days_absent);
+        $this->assertSame(0, $record->late_count);
+        $this->assertSame(0, $record->late_absent_equivalent);
+        $this->assertSame(3, $record->unpaid_leave_days);
         $this->assertSame(1, $record->short_hours_days);
         $this->assertSame('1500.00', $record->security_deduction);
         $this->assertSame('5500.00', $record->security_total_deducted);
-        $this->assertSame('500.00', $record->non_paid_leave_deduction);
+        $this->assertSame('5925.00', $record->non_paid_leave_deduction);
         $this->assertSame('50000.00', $record->basic_salary);
         $this->assertSame('10000.00', $record->last_increment);
         $this->assertSame('1000.00', $record->incentives_bonus);
         $this->assertSame('250.00', $record->positive_other);
         $this->assertSame('500.00', $record->arrears_deduction);
-        $this->assertSame('58750.00', $record->gross_salary);
-        $this->assertSame('87.50', $record->income_tax);
-        $this->assertSame('58662.50', $record->net_salary);
+        $this->assertSame('53325.00', $record->gross_salary);
+        $this->assertSame('83.13', $record->income_tax);
+        $this->assertSame('83.13', $record->annual_tax_total);
+        $this->assertSame('53241.87', $record->net_salary);
     }
 
     public function test_can_autosave_single_employee_payroll_adjustment(): void
@@ -237,6 +241,9 @@ class PayrollManagementTest extends TestCase
             'contact_number' => '03001234567',
             'email_address' => $employee->email,
             'days_absent' => 0,
+            'late_count' => 0,
+            'late_absent_equivalent' => 0,
+            'unpaid_leave_days' => 0,
             'short_hours_days' => 0,
             'basic_salary' => 50000,
             'last_increment' => 10000,
@@ -252,6 +259,7 @@ class PayrollManagementTest extends TestCase
             'other_deduction' => 0,
             'gross_salary' => 60000,
             'income_tax' => 100,
+            'annual_tax_total' => 100,
             'net_salary' => 59900,
         ]);
 
@@ -313,6 +321,9 @@ class PayrollManagementTest extends TestCase
             'beneficiary_name' => 'Payslip Employee',
             'beneficiary_account_no' => 'PK00TEST1234567890',
             'days_absent' => 1,
+            'late_count' => 3,
+            'late_absent_equivalent' => 1,
+            'unpaid_leave_days' => 2,
             'short_hours_days' => 0,
             'basic_salary' => 50000,
             'last_increment' => 10000,
@@ -328,6 +339,7 @@ class PayrollManagementTest extends TestCase
             'other_deduction' => 0,
             'gross_salary' => 59000,
             'income_tax' => 90,
+            'annual_tax_total' => 400,
             'net_salary' => 58910,
         ]);
 
@@ -388,6 +400,9 @@ class PayrollManagementTest extends TestCase
             'contact_number' => '03001234567',
             'email_address' => $iftEmployee->email,
             'days_absent' => 0,
+            'late_count' => 0,
+            'late_absent_equivalent' => 0,
+            'unpaid_leave_days' => 0,
             'short_hours_days' => 0,
             'basic_salary' => 50000,
             'last_increment' => 10000,
@@ -403,6 +418,7 @@ class PayrollManagementTest extends TestCase
             'other_deduction' => 0,
             'gross_salary' => 59000,
             'income_tax' => 90,
+            'annual_tax_total' => 90,
             'net_salary' => 58910,
         ]);
 
@@ -415,6 +431,9 @@ class PayrollManagementTest extends TestCase
             'contact_number' => '03007654321',
             'email_address' => $ibftEmployee->email,
             'days_absent' => 0,
+            'late_count' => 0,
+            'late_absent_equivalent' => 0,
+            'unpaid_leave_days' => 0,
             'short_hours_days' => 0,
             'basic_salary' => 50000,
             'last_increment' => 10000,
@@ -430,6 +449,7 @@ class PayrollManagementTest extends TestCase
             'other_deduction' => 0,
             'gross_salary' => 59000,
             'income_tax' => 90,
+            'annual_tax_total' => 90,
             'net_salary' => 58910,
         ]);
 
@@ -450,5 +470,115 @@ class PayrollManagementTest extends TestCase
 
         $ibftResponse->assertOk();
         $ibftResponse->assertHeader('content-disposition', 'attachment; filename=ibft-march-2026.xlsx');
+    }
+
+    public function test_late_arrivals_convert_to_unpaid_leave_and_use_selected_month_only(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-499',
+            'current_salary' => 60000,
+            'last_increment' => 0,
+        ]);
+
+        foreach (['2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05'] as $date) {
+            AttendanceRecord::create([
+                'employee_id' => $employee->id,
+                'attendance_date' => $date,
+                'status' => 'late',
+                'clock_in' => '09:20:00',
+                'clock_out' => '18:00:00',
+                'work_duration' => '08:40',
+            ]);
+        }
+
+        AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'attendance_date' => '2026-02-15',
+            'status' => 'absent',
+        ]);
+
+        $this->actingAs($accountsUser)->post(route('payroll.generate'), [
+            'month' => '2026-03',
+            'payment_date' => '2026-04-01',
+        ])->assertRedirect();
+
+        $payrollRun = PayrollRun::whereDate('pay_period_month', '2026-03-01')->firstOrFail();
+        $record = EmployeePayrollRecord::where('payroll_run_id', $payrollRun->id)
+            ->where('employee_id', $employee->id)
+            ->firstOrFail();
+
+        $this->assertSame(0, $record->days_absent);
+        $this->assertSame(4, $record->late_count);
+        $this->assertSame(1, $record->late_absent_equivalent);
+        $this->assertSame(1, $record->unpaid_leave_days);
+        $this->assertSame('2000.00', $record->non_paid_leave_deduction);
+        $this->assertSame('58000.00', $record->gross_salary);
+    }
+
+    public function test_cumulative_annual_tax_total_includes_prior_fiscal_year_months_only(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-598',
+            'current_salary' => 250000,
+            'last_increment' => 0,
+        ]);
+
+        $previousRun = PayrollRun::create([
+            'name' => 'February 2026 Payroll',
+            'pay_period_month' => '2026-02-01',
+            'payment_date' => '2026-03-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'finalized',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now()->subMonth(),
+            'finalized_at' => now()->subMonth(),
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $previousRun->id,
+            'employee_id' => $employee->id,
+            'bank_code' => 'MBL',
+            'beneficiary_name' => $employee->full_name,
+            'beneficiary_account_no' => $employee->iban,
+            'contact_number' => $employee->phone,
+            'email_address' => $employee->email,
+            'days_absent' => 0,
+            'late_count' => 0,
+            'late_absent_equivalent' => 0,
+            'unpaid_leave_days' => 0,
+            'short_hours_days' => 0,
+            'basic_salary' => 250000,
+            'last_increment' => 0,
+            'incentives_bonus' => 0,
+            'punctuality_bonus' => 0,
+            'positive_arrears' => 0,
+            'positive_other' => 0,
+            'security_deduction' => 0,
+            'security_total_deducted' => 0,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 0,
+            'arrears_deduction' => 0,
+            'other_deduction' => 0,
+            'gross_salary' => 250000,
+            'income_tax' => 66000,
+            'annual_tax_total' => 66000,
+            'net_salary' => 184000,
+        ]);
+
+        $this->actingAs($accountsUser)->post(route('payroll.generate'), [
+            'month' => '2026-03',
+            'payment_date' => '2026-04-01',
+        ])->assertRedirect();
+
+        $payrollRun = PayrollRun::whereDate('pay_period_month', '2026-03-01')->firstOrFail();
+        $record = EmployeePayrollRecord::where('payroll_run_id', $payrollRun->id)
+            ->where('employee_id', $employee->id)
+            ->firstOrFail();
+
+        $this->assertSame('250000.00', $record->gross_salary);
+        $this->assertSame('25000.00', $record->income_tax);
+        $this->assertSame('91000.00', $record->annual_tax_total);
     }
 }

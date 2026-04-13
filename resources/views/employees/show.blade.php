@@ -456,19 +456,33 @@
                     </div>
                     <div class="timeline-meta" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
                         <span>Security: {{ $formatMoney($latestPayrollRecord->security_deduction) }}</span>
+                        <span>Security Total: {{ $formatMoney($latestPayrollRecord->security_total_deducted) }}</span>
                         <span>Non-Paid Leave: {{ $formatMoney($latestPayrollRecord->non_paid_leave_deduction) }}</span>
                         <span>Attendance Penalty: {{ $formatMoney($latestPayrollRecord->attendance_penalty) }}</span>
                         <span>Arrears: {{ $formatMoney($latestPayrollRecord->arrears_deduction) }}</span>
                         <span>Other: {{ $formatMoney($latestPayrollRecord->other_deduction) }}</span>
                         <span>Income Tax: {{ $formatMoney($latestPayrollRecord->income_tax) }}</span>
+                        <span>Annual Tax Total: {{ $formatMoney($latestPayrollRecord->annual_tax_total) }}</span>
                     </div>
                 </div>
             </div>
 
             <div class="info-grid two-col">
                 <div class="info-item">
-                    <label>Days Absent</label>
+                    <label>Actual Absent Days</label>
                     <p>{{ $latestPayrollRecord->days_absent }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Late Arrivals</label>
+                    <p>{{ $latestPayrollRecord->late_count }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Absent by 3 Late Arrivals</label>
+                    <p>{{ $latestPayrollRecord->late_absent_equivalent }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Total Unpaid Leave Days</label>
+                    <p>{{ $latestPayrollRecord->unpaid_leave_days }}</p>
                 </div>
                 <div class="info-item">
                     <label>Short Hours Days</label>
@@ -506,8 +520,12 @@
                     <div class="timeline-meta">
                         <span>Basic: {{ $formatMoney($payrollRecord->basic_salary) }}</span>
                         <span>Tax: {{ $formatMoney($payrollRecord->income_tax) }}</span>
+                        <span>Annual Tax Total: {{ $formatMoney($payrollRecord->annual_tax_total) }}</span>
                         <span>Security: {{ $formatMoney($payrollRecord->security_deduction) }}</span>
-                        <span>Absence Days: {{ $payrollRecord->days_absent }}</span>
+                        <span>Security Total: {{ $formatMoney($payrollRecord->security_total_deducted) }}</span>
+                        <span>Actual Absence Days: {{ $payrollRecord->days_absent }}</span>
+                        <span>Late Arrivals: {{ $payrollRecord->late_count }}</span>
+                        <span>Absent by 3 Late Arrivals: {{ $payrollRecord->late_absent_equivalent }}</span>
                     </div>
                 </div>
             @empty

@@ -20,6 +20,7 @@ class PayrollCalculationService
     protected const DEFAULT_NON_PAID_LEAVE_DEDUCTION_PER_DAY = 500.00;
     protected const DEFAULT_SECURITY_DEDUCTION_AMOUNT = 1000.00;
     protected const DEFAULT_SHORT_HOURS_THRESHOLD_MINUTES = 480;
+    protected const DEFAULT_PAYROLL_MONTH_DAY_BASIS = 30;
 
     public function previewMonth(string|Carbon $month): Collection
     {
@@ -128,6 +129,9 @@ class PayrollCalculationService
                     'contact_number' => $row['contact_number'],
                     'email_address' => $row['email_address'],
                     'days_absent' => $row['days_absent'],
+                    'late_count' => $row['late_count'],
+                    'late_absent_equivalent' => $row['late_absent_equivalent'],
+                    'unpaid_leave_days' => $row['unpaid_leave_days'],
                     'short_hours_days' => $row['short_hours_days'],
                     'basic_salary' => $row['basic_salary'],
                     'last_increment' => $row['last_increment'],
@@ -143,6 +147,7 @@ class PayrollCalculationService
                     'other_deduction' => $row['other_deduction'],
                     'gross_salary' => $row['gross_salary'],
                     'income_tax' => $row['income_tax'],
+                    'annual_tax_total' => $row['annual_tax_total'],
                     'net_salary' => $row['net_salary'],
                 ]);
             }
@@ -177,6 +182,9 @@ class PayrollCalculationService
             ->first();
 
         $daysAbsent = $attendanceRecords->where('status', 'absent')->count();
+        $lateCount = $attendanceRecords->where('status', 'late')->count();
+        $lateAbsentEquivalent = intdiv($lateCount, 3);
+        $unpaidLeaveDays = $daysAbsent + $lateAbsentEquivalent;
         $shortHoursDays = $attendanceRecords->filter(function ($record) {
             if (! $record->work_duration || in_array($record->status, ['absent', 'holiday', 'weekend'], true)) {
                 return false;
@@ -202,20 +210,18 @@ class PayrollCalculationService
         $positiveOther = $otherAdjustment > 0 ? $otherAdjustment : 0.0;
         $otherDeduction = $otherAdjustment < 0 ? abs($otherAdjustment) : 0.0;
 
-        $nonPaidLeaveDeduction = max(
-            0,
-            ($daysAbsent - $this->nonPaidLeaveGraceDays()) * $this->nonPaidLeaveDeductionPerDay()
-        );
+        $earningsSubtotal = $basicSalary + $lastIncrement + $incentivesBonus + $punctualityBonus + $positiveArrears + $positiveOther;
+        $deductionsBeforeLeave = $securityDeduction + $attendancePenalty + $arrearsDeduction + $otherDeduction;
+        $dailyRateBase = max(round($earningsSubtotal - $deductionsBeforeLeave, 2), 0.0);
+        $dailyRate = round($dailyRateBase / max($this->payrollMonthDayBasis(), 1), 2);
+        $nonPaidLeaveDeduction = round($dailyRate * $unpaidLeaveDays, 2);
         $securityTotalDeducted = $this->securityTotalDeducted($securitySnapshot, $monthStart, $securityDeduction);
 
-        $taxableSalary = round(
-            ($basicSalary + $lastIncrement + $incentivesBonus + $punctualityBonus + $positiveArrears + $positiveOther)
-            - ($securityDeduction + $nonPaidLeaveDeduction + $attendancePenalty + $arrearsDeduction + $otherDeduction),
-            2
-        );
+        $taxableSalary = round($dailyRateBase - $nonPaidLeaveDeduction, 2);
 
         $grossSalary = max($taxableSalary, 0.0);
         $incomeTax = $this->incomeTax($grossSalary);
+        $annualTaxTotal = $this->cumulativeAnnualTaxTotal($employee, $monthStart, $incomeTax);
         $netSalary = max(round($grossSalary - $incomeTax, 2), 0.0);
 
         $eligible = $this->hasAnyPayrollValue([
@@ -232,8 +238,12 @@ class PayrollCalculationService
             $otherDeduction,
             $grossSalary,
             $incomeTax,
+            $annualTaxTotal,
             $netSalary,
             $daysAbsent,
+            $lateCount,
+            $lateAbsentEquivalent,
+            $unpaidLeaveDays,
             $shortHoursDays,
         ]);
 
@@ -256,10 +266,15 @@ class PayrollCalculationService
             'attendance_penalty' => $attendancePenalty,
             'arrears_deduction' => round($arrearsDeduction, 2),
             'other_deduction' => round($otherDeduction, 2),
+            'daily_rate' => $dailyRate,
             'gross_salary' => $grossSalary,
             'income_tax' => $incomeTax,
+            'annual_tax_total' => $annualTaxTotal,
             'net_salary' => $netSalary,
             'days_absent' => $daysAbsent,
+            'late_count' => $lateCount,
+            'late_absent_equivalent' => $lateAbsentEquivalent,
+            'unpaid_leave_days' => $unpaidLeaveDays,
             'short_hours_days' => $shortHoursDays,
             'security_balance' => $this->decimalValue($securitySnapshot?->balance_in_account),
             'payment_mode' => $employee->payment_mode,
@@ -308,16 +323,10 @@ class PayrollCalculationService
     protected function incomeTax(float $taxableSalary): float
     {
         $taxableSalary = max(round($taxableSalary, 2), 0.0);
+        $annualizedTaxableIncome = $taxableSalary * 12;
+        $annualTax = $this->annualIncomeTaxFor2025_26($annualizedTaxableIncome);
 
-        if ($taxableSalary <= 50000) {
-            return 0.0;
-        }
-
-        if ($taxableSalary <= 100000) {
-            return round(($taxableSalary - 50000) * 0.01, 2);
-        }
-
-        return round((($taxableSalary - 50000) * 0.11) + 6000, 2);
+        return round($annualTax / 12, 2);
     }
 
     protected function nonPaidLeaveGraceDays(): int
@@ -388,6 +397,62 @@ class PayrollCalculationService
     protected function shortHoursThresholdMinutes(): int
     {
         return (int) (Setting::query()->where('key', 'payroll_short_hours_threshold_minutes')->value('value') ?? self::DEFAULT_SHORT_HOURS_THRESHOLD_MINUTES);
+    }
+
+    protected function payrollMonthDayBasis(): int
+    {
+        return (int) (Setting::query()->where('key', 'payroll_month_day_basis')->value('value') ?? self::DEFAULT_PAYROLL_MONTH_DAY_BASIS);
+    }
+
+    protected function annualIncomeTaxFor2025_26(float $annualizedTaxableIncome): float
+    {
+        $annualizedTaxableIncome = max(round($annualizedTaxableIncome, 2), 0.0);
+
+        if ($annualizedTaxableIncome <= 600000) {
+            return 0.0;
+        }
+
+        if ($annualizedTaxableIncome <= 1200000) {
+            return round(($annualizedTaxableIncome - 600000) * 0.025, 2);
+        }
+
+        if ($annualizedTaxableIncome <= 2200000) {
+            return round((($annualizedTaxableIncome - 1200000) * 0.11) + 6000, 2);
+        }
+
+        if ($annualizedTaxableIncome <= 3200000) {
+            return round((($annualizedTaxableIncome - 2200000) * 0.23) + 116000, 2);
+        }
+
+        if ($annualizedTaxableIncome <= 4100000) {
+            return round((($annualizedTaxableIncome - 3200000) * 0.30) + 346000, 2);
+        }
+
+        return round((($annualizedTaxableIncome - 4100000) * 0.35) + 616000, 2);
+    }
+
+    protected function cumulativeAnnualTaxTotal(Employee $employee, Carbon $monthStart, float $currentMonthTax): float
+    {
+        [$fiscalYearStart, $currentMonthEnd] = $this->fiscalYearBoundsForMonth($monthStart);
+
+        $priorTax = EmployeePayrollRecord::query()
+            ->where('employee_id', $employee->id)
+            ->whereHas('payrollRun', function ($query) use ($fiscalYearStart, $monthStart) {
+                $query->whereDate('pay_period_month', '>=', $fiscalYearStart->toDateString())
+                    ->whereDate('pay_period_month', '<', $monthStart->toDateString());
+            })
+            ->sum('income_tax');
+
+        return round($priorTax + $currentMonthTax, 2);
+    }
+
+    protected function fiscalYearBoundsForMonth(Carbon $monthStart): array
+    {
+        $fiscalYearStart = $monthStart->month >= 7
+            ? $monthStart->copy()->month(7)->startOfMonth()
+            : $monthStart->copy()->subYear()->month(7)->startOfMonth();
+
+        return [$fiscalYearStart, $fiscalYearStart->copy()->addYear()->subDay()->endOfDay()];
     }
 
     protected function defaultEmailBody(Carbon $monthStart, ?string $paymentDate): string
