@@ -211,13 +211,20 @@ class PayrollCalculationService
         $otherDeduction = $otherAdjustment < 0 ? abs($otherAdjustment) : 0.0;
 
         $earningsSubtotal = $basicSalary + $lastIncrement + $incentivesBonus + $punctualityBonus + $positiveArrears + $positiveOther;
-        $deductionsBeforeLeave = $securityDeduction + $attendancePenalty + $arrearsDeduction + $otherDeduction;
-        $dailyRateBase = max(round($earningsSubtotal - $deductionsBeforeLeave, 2), 0.0);
+        $dailyRateBase = max(round($earningsSubtotal - $attendancePenalty - $arrearsDeduction - $otherDeduction, 2), 0.0);
         $dailyRate = round($dailyRateBase / max($this->payrollMonthDayBasis(), 1), 2);
         $nonPaidLeaveDeduction = round($dailyRate * $unpaidLeaveDays, 2);
         $securityTotalDeducted = $this->securityTotalDeducted($securitySnapshot, $monthStart, $securityDeduction);
 
-        $grossSalary = max(round($dailyRateBase - $nonPaidLeaveDeduction, 2), 0.0);
+        $grossSalary = max(round(
+            $earningsSubtotal
+            - $nonPaidLeaveDeduction
+            - $securityDeduction
+            - $attendancePenalty
+            - $arrearsDeduction
+            - $otherDeduction,
+            2
+        ), 0.0);
         $taxableSalary = max(round($basicSalary + $lastIncrement, 2), 0.0);
         $incomeTax = $this->incomeTax($taxableSalary);
         $annualTaxTotal = $this->cumulativeAnnualTaxTotal($employee, $monthStart, $incomeTax);

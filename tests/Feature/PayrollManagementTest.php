@@ -158,16 +158,16 @@ class PayrollManagementTest extends TestCase
         $this->assertSame(1, $record->short_hours_days);
         $this->assertSame('1500.00', $record->security_deduction);
         $this->assertSame('5500.00', $record->security_total_deducted);
-        $this->assertSame('5925.00', $record->non_paid_leave_deduction);
+        $this->assertSame('6075.00', $record->non_paid_leave_deduction);
         $this->assertSame('50000.00', $record->basic_salary);
         $this->assertSame('10000.00', $record->last_increment);
         $this->assertSame('1000.00', $record->incentives_bonus);
         $this->assertSame('250.00', $record->positive_other);
         $this->assertSame('500.00', $record->arrears_deduction);
-        $this->assertSame('53325.00', $record->gross_salary);
+        $this->assertSame('53175.00', $record->gross_salary);
         $this->assertSame('250.00', $record->income_tax);
         $this->assertSame('250.00', $record->annual_tax_total);
-        $this->assertSame('53075.00', $record->net_salary);
+        $this->assertSame('52925.00', $record->net_salary);
     }
 
     public function test_can_autosave_single_employee_payroll_adjustment(): void
