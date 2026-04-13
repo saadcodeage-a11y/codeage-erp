@@ -11,6 +11,7 @@ use App\Models\Bank;
 use App\Models\PayrollRun;
 use App\Models\EmployeePayrollRecord;
 use App\Models\EmployeeSecurityFundSnapshot;
+use App\Models\AttendanceRecord;
 use App\Models\Setting;
 use App\Models\EmployeeEmploymentHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -704,6 +705,47 @@ class EmployeeManagementTest extends TestCase
         $response->assertSee('PKR 150,000.00');
         $response->assertSee('FY 2025-26');
         $response->assertSee('Imported from payroll workbook');
+    }
+
+    public function test_employee_detail_page_groups_attendance_by_month()
+    {
+        $user = $this->createHrUser();
+        $dept = Department::create(['name' => 'Operations']);
+
+        $employee = Employee::create([
+            'full_name' => 'Attendance User',
+            'email' => 'attendance-user@example.com',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'designation' => 'Coordinator',
+            'employee_id' => 'CA-E-801',
+            'shift_start_time' => '09:00:00',
+            'shift_end_time' => '17:00:00',
+        ]);
+
+        AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'attendance_date' => '2026-03-31',
+            'clock_in' => '09:12:00',
+            'clock_out' => '18:09:00',
+            'work_duration' => '08:47',
+            'status' => 'present',
+        ]);
+
+        AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'attendance_date' => '2026-02-27',
+            'status' => 'absent',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('employees.show', $employee));
+
+        $response->assertStatus(200);
+        $response->assertSee('Attendance History');
+        $response->assertSee('Months Loaded');
+        $response->assertSee('Rows Loaded');
+        $response->assertSee('March 2026');
+        $response->assertSee('February 2026');
     }
 
     public function test_employee_role_cannot_access_employee_management_pages()

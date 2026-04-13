@@ -7,6 +7,8 @@
     $canEditEmployees = Auth::user()->canAccessModule('employees', 'edit');
     $formatMoney = fn ($amount) => 'PKR ' . number_format((float) ($amount ?? 0), 2);
     $latestPayrollRecord = $employee->payrollRecords->first();
+    $attendanceMonthGroups = $employee->attendanceRecords
+        ->groupBy(fn ($record) => $record->attendance_date->format('Y-m'));
 @endphp
 <div class="page-header" style="margin-bottom: 24px;">
     <div style="display: flex; align-items: center; gap: 12px;">
@@ -333,8 +335,8 @@
     <div id="attendance" class="tab-content" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
             <div>
-                <h3 class="section-title" style="margin-bottom: 4px;">Recent Attendance</h3>
-                <p style="margin: 0; color: #6b7280; font-size: 13px;">Latest imported attendance rows for this employee, including the assigned shift timings and global late policy.</p>
+                <h3 class="section-title" style="margin-bottom: 4px;">Attendance History</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Attendance is grouped by month so repeated imports remain easy to review without turning this page into a flat log.</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 @if($canEditEmployees)
@@ -350,36 +352,90 @@
             </div>
         </div>
 
-        <div class="stacked-list">
-            @forelse($employee->attendanceRecords as $attendanceRecord)
-                <div class="timeline-card" style="margin-bottom: 14px;">
-                    <div class="timeline-header">
-                        <div>
-                            <h4>{{ $attendanceRecord->attendance_date->format('d M Y') }}</h4>
-                            <p>
-                                Shift
-                                {{ $attendanceRecord->shift_start_time ? \Illuminate\Support\Carbon::parse($attendanceRecord->shift_start_time)->format('H:i') : '--:--' }}
-                                to
-                                {{ $attendanceRecord->shift_end_time ? \Illuminate\Support\Carbon::parse($attendanceRecord->shift_end_time)->format('H:i') : '--:--' }}
-                            </p>
+        @if($attendanceMonthGroups->isNotEmpty())
+            <div class="attendance-summary-strip">
+                <div class="summary-chip-card">
+                    <span>Months Loaded</span>
+                    <strong>{{ $attendanceMonthGroups->count() }}</strong>
+                </div>
+                <div class="summary-chip-card">
+                    <span>Rows Loaded</span>
+                    <strong>{{ $employee->attendanceRecords->count() }}</strong>
+                </div>
+                <div class="summary-chip-card">
+                    <span>Latest Attendance</span>
+                    <strong>{{ optional($employee->attendanceRecords->first()?->attendance_date)->format('d M Y') ?? 'N/A' }}</strong>
+                </div>
+            </div>
+
+            <div class="attendance-month-list">
+                @foreach($attendanceMonthGroups as $monthKey => $monthRecords)
+                    @php
+                        $monthLabel = \Illuminate\Support\Carbon::createFromFormat('Y-m', $monthKey)->format('F Y');
+                        $presentCount = $monthRecords->where('status', 'present')->count();
+                        $lateCount = $monthRecords->where('status', 'late')->count();
+                        $absentCount = $monthRecords->where('status', 'absent')->count();
+                        $holidayCount = $monthRecords->whereIn('status', ['holiday', 'weekend'])->count();
+                    @endphp
+                    <details class="attendance-month-card" @if($loop->first) open @endif>
+                        <summary class="attendance-month-summary">
+                            <div>
+                                <h4>{{ $monthLabel }}</h4>
+                                <p>{{ $monthRecords->count() }} attendance row{{ $monthRecords->count() === 1 ? '' : 's' }}</p>
+                            </div>
+                            <div class="attendance-month-metrics">
+                                <span>Present {{ $presentCount }}</span>
+                                <span>Late {{ $lateCount }}</span>
+                                <span>Absent {{ $absentCount }}</span>
+                                <span>Holiday {{ $holidayCount }}</span>
+                            </div>
+                        </summary>
+                        <div class="attendance-month-body">
+                            <div class="attendance-records-table-wrap">
+                                <table class="attendance-records-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Shift</th>
+                                            <th>Clock In</th>
+                                            <th>Clock Out</th>
+                                            <th>Late</th>
+                                            <th>Early</th>
+                                            <th>Absent</th>
+                                            <th>Work Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($monthRecords as $attendanceRecord)
+                                            <tr>
+                                                <td>{{ $attendanceRecord->attendance_date->format('d M Y') }}</td>
+                                                <td><span class="status-badge {{ $attendanceRecord->status }}">{{ ucfirst(str_replace('_', ' ', $attendanceRecord->status)) }}</span></td>
+                                                <td>
+                                                    {{ $attendanceRecord->shift_start_time ? \Illuminate\Support\Carbon::parse($attendanceRecord->shift_start_time)->format('H:i') : '--:--' }}
+                                                    to
+                                                    {{ $attendanceRecord->shift_end_time ? \Illuminate\Support\Carbon::parse($attendanceRecord->shift_end_time)->format('H:i') : '--:--' }}
+                                                </td>
+                                                <td>{{ $attendanceRecord->clock_in ? \Illuminate\Support\Carbon::parse($attendanceRecord->clock_in)->format('H:i') : '--:--' }}</td>
+                                                <td>{{ $attendanceRecord->clock_out ? \Illuminate\Support\Carbon::parse($attendanceRecord->clock_out)->format('H:i') : '--:--' }}</td>
+                                                <td>{{ $attendanceRecord->late_duration ?? '--:--' }}</td>
+                                                <td>{{ $attendanceRecord->early_duration ?? '--:--' }}</td>
+                                                <td>{{ $attendanceRecord->absent_duration ?? '--:--' }}</td>
+                                                <td>{{ $attendanceRecord->work_duration ?? '--:--' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <span class="status-badge {{ $attendanceRecord->status }}">{{ ucfirst(str_replace('_', ' ', $attendanceRecord->status)) }}</span>
-                    </div>
-                    <div class="timeline-meta">
-                        <span>Clock In: {{ $attendanceRecord->clock_in ? \Illuminate\Support\Carbon::parse($attendanceRecord->clock_in)->format('H:i') : '--:--' }}</span>
-                        <span>Clock Out: {{ $attendanceRecord->clock_out ? \Illuminate\Support\Carbon::parse($attendanceRecord->clock_out)->format('H:i') : '--:--' }}</span>
-                        <span>Late: {{ $attendanceRecord->late_duration ?? '--:--' }}</span>
-                        <span>Early: {{ $attendanceRecord->early_duration ?? '--:--' }}</span>
-                        <span>Absent: {{ $attendanceRecord->absent_duration ?? '--:--' }}</span>
-                        <span>Work Time: {{ $attendanceRecord->work_duration ?? '--:--' }}</span>
-                    </div>
-                </div>
-            @empty
-                <div class="empty-state-panel">
-                    No attendance records have been imported for this employee yet.
-                </div>
-            @endforelse
-        </div>
+                    </details>
+                @endforeach
+            </div>
+        @else
+            <div class="empty-state-panel">
+                No attendance records have been imported for this employee yet.
+            </div>
+        @endif
     </div>
 
     <div id="payroll" class="tab-content" style="display: none;">
@@ -1512,6 +1568,128 @@
         font-style: italic;
     }
 
+    .attendance-summary-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .summary-chip-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 14px 16px;
+        background: #f9fafb;
+    }
+
+    .summary-chip-card span {
+        display: block;
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
+    .summary-chip-card strong {
+        color: #111827;
+        font-size: 18px;
+    }
+
+    .attendance-month-list {
+        display: grid;
+        gap: 14px;
+    }
+
+    .attendance-month-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .attendance-month-summary {
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 20px;
+        cursor: pointer;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    .attendance-month-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .attendance-month-summary h4 {
+        margin: 0 0 4px;
+        color: #111827;
+        font-size: 18px;
+    }
+
+    .attendance-month-summary p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+    }
+
+    .attendance-month-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .attendance-month-metrics span {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 11px;
+        white-space: nowrap;
+    }
+
+    .attendance-month-body {
+        padding: 0 20px 20px;
+    }
+
+    .attendance-records-table-wrap {
+        overflow: auto;
+        border: 1px solid #edf2f7;
+        border-radius: 14px;
+    }
+
+    .attendance-records-table {
+        width: 100%;
+        min-width: 920px;
+        border-collapse: collapse;
+        background: #fff;
+    }
+
+    .attendance-records-table th,
+    .attendance-records-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #edf2f7;
+        text-align: left;
+        font-size: 13px;
+        vertical-align: middle;
+    }
+
+    .attendance-records-table th {
+        background: #f9fafb;
+        color: #4b5563;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .attendance-records-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
     @media (max-width: 900px) {
         .timeline-header,
         .activity-log-header,
@@ -1524,6 +1702,19 @@
         .timeline-date {
             align-items: flex-start;
             white-space: normal;
+        }
+
+        .attendance-summary-strip {
+            grid-template-columns: 1fr;
+        }
+
+        .attendance-month-summary {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .attendance-month-metrics {
+            justify-content: flex-start;
         }
     }
 </style>

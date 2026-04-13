@@ -157,7 +157,7 @@ class EmployeeController extends Controller
             'hrLetters.generatedBy',
             'payrollRecords' => fn ($query) => $query->with('payrollRun')->latest()->limit(12),
             'securityFundSnapshots' => fn ($query) => $query->latest('snapshot_month')->limit(6),
-            'attendanceRecords' => fn ($query) => $query->latest('attendance_date')->limit(10),
+            'attendanceRecords' => fn ($query) => $query->latest('attendance_date')->limit(120),
         ]);
 
         $historyIds = $employee->employmentHistories->modelKeys();
