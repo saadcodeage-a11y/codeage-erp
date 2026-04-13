@@ -10,6 +10,7 @@ use App\Models\EmployeePayrollAdjustment;
 use App\Models\EmployeePayrollRecord;
 use App\Models\EmployeeSecurityFundSnapshot;
 use App\Models\PayrollRun;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -662,6 +663,47 @@ class PayrollManagementTest extends TestCase
         $this->assertSame('250000.00', $record->gross_salary);
         $this->assertSame('28000.00', $record->income_tax);
         $this->assertSame('94000.00', $record->annual_tax_total);
+    }
+
+    public function test_custom_tax_formula_rules_are_used_during_payroll_generation(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-611',
+            'current_salary' => 40000,
+            'last_increment' => 10000,
+        ]);
+
+        Setting::create([
+            'key' => 'tax_taxable_income_formula',
+            'value' => '(basic_salary + last_increment) * 0.5',
+        ]);
+
+        Setting::create([
+            'key' => 'tax_slab_rules',
+            'value' => json_encode([
+                [
+                    'label' => 'Flat Custom Rule',
+                    'min' => 0,
+                    'max' => null,
+                    'formula' => 'taxable_income + 125',
+                ],
+            ]),
+        ]);
+
+        $this->actingAs($accountsUser)->post(route('payroll.generate'), [
+            'month' => '2026-03',
+            'payment_date' => '2026-04-01',
+        ])->assertRedirect();
+
+        $payrollRun = PayrollRun::whereDate('pay_period_month', '2026-03-01')->firstOrFail();
+        $record = EmployeePayrollRecord::where('payroll_run_id', $payrollRun->id)
+            ->where('employee_id', $employee->id)
+            ->firstOrFail();
+
+        $this->assertSame('50000.00', $record->gross_salary);
+        $this->assertSame('25125.00', $record->income_tax);
+        $this->assertSame('24875.00', $record->net_salary);
     }
 
     public function test_inactive_employee_is_excluded_from_preview_and_generation_even_with_attendance_and_adjustments(): void

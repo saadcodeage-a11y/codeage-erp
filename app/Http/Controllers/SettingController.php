@@ -9,11 +9,12 @@ use App\Models\SmtpConfiguration;
 use App\Models\CompanyPolicy;
 use App\Models\Setting;
 use App\Services\EmployeeIdService;
+use App\Services\TaxFormulaService;
 use Illuminate\Support\Facades\Mail;
 
 class SettingController extends Controller
 {
-    public function index(EmployeeIdService $employeeIdService)
+    public function index(EmployeeIdService $employeeIdService, TaxFormulaService $taxFormulaService)
     {
         $banks = Bank::orderBy('name')->get();
         $smtpConfigs = SmtpConfiguration::all();
@@ -27,6 +28,8 @@ class SettingController extends Controller
         $hrEmails = Setting::where('key', 'hr_notification_emails')->value('value') ?? '';
         $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
         $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
+        $taxFormulaConfig = $taxFormulaService->configuration();
+        $taxFormulaVariables = $taxFormulaService->availableVariables();
         
         return view('settings.index', compact(
             'banks', 
@@ -38,7 +41,9 @@ class SettingController extends Controller
             'nextEmployeeId',
             'hrEmails',
             'officeLocation',
-            'hrContact'
+            'hrContact',
+            'taxFormulaConfig',
+            'taxFormulaVariables'
         ));
     }
 
@@ -293,6 +298,26 @@ class SettingController extends Controller
             'employeeIdPrefix' => $employeeIdService->employeeIdPrefix(),
             'employeeIdCounter' => $employeeIdService->currentCounter(),
             'nextEmployeeId' => $employeeIdService->nextEmployeeIdPreview(),
+        ]);
+    }
+
+    public function updateTaxFormulas(Request $request, TaxFormulaService $taxFormulaService)
+    {
+        $validated = $request->validate([
+            'taxable_income_formula' => 'required|string|max:1000',
+            'slabs' => 'required|array|min:1',
+            'slabs.*.label' => 'nullable|string|max:255',
+            'slabs.*.min' => 'required|numeric|min:0',
+            'slabs.*.max' => 'nullable|numeric|min:0',
+            'slabs.*.formula' => 'required|string|max:1000',
+        ]);
+
+        $savedConfig = $taxFormulaService->saveConfiguration($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tax calculation rules updated successfully.',
+            'configuration' => $savedConfig,
         ]);
     }
 }

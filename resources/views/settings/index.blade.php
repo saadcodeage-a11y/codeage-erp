@@ -31,6 +31,9 @@
     <button class="tab-item" onclick="switchTab('policies', this)">
         Company Policies
     </button>
+    <button class="tab-item" onclick="switchTab('tax-formulas', this)">
+        Tax Formulas
+    </button>
     <button class="tab-item" onclick="switchTab('system-values', this)">
         System Values
     </button>
@@ -326,6 +329,122 @@
             <p>No policy sections found. Add one to show in the onboarding form.</p>
         </div>
         @endif
+    </div>
+</div>
+
+<!-- Tax Formulas Tab -->
+<div id="tax-formulas" class="settings-tab-content" style="display: none;">
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="tax-formula-header">
+            <div>
+                <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Tax Calculation Formulas</h2>
+                <p style="color: #6b7280; font-size: 14px; margin: 4px 0 0 0;">Define the taxable-income expression and slab formulas used by payroll generation.</p>
+            </div>
+            <button onclick="saveTaxFormulas()" class="btn btn-primary" style="background: #111827;">
+                <i data-lucide="save"></i> Save Tax Rules
+            </button>
+        </div>
+
+        <div class="tax-formula-summary">
+            <div class="tax-formula-summary-card">
+                <span>Active Slabs</span>
+                <strong id="taxSlabCount">{{ count($taxFormulaConfig['slabs']) }}</strong>
+            </div>
+            <div class="tax-formula-summary-card wide">
+                <span>Current Taxable Income Formula</span>
+                <strong id="taxFormulaPreview">{{ $taxFormulaConfig['taxable_income_formula'] }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px;">
+            <div style="background: #eff6ff; padding: 10px; border-radius: 10px; color: #2563eb;">
+                <i data-lucide="function-square" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Taxable Income Formula</h3>
+                <p style="color: #6b7280; font-size: 13px; margin: 2px 0 0 0;">This formula is evaluated first. The resulting value is then matched against the slabs below.</p>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label>Formula</label>
+            <input type="text" id="taxable_income_formula" class="form-control formula-builder-target" value="{{ $taxFormulaConfig['taxable_income_formula'] }}" placeholder="e.g. gross_salary or basic_salary + last_increment" style="background: #f9fafb; font-family: monospace;">
+            <span class="field-hint">Use payroll variables, numbers, and arithmetic operators. Parentheses and `%`, `^`, `*`, `/`, `+`, `-` are supported.</span>
+        </div>
+
+        <div class="tax-builder-toolbar">
+            @foreach(['+', '-', '*', '/', '%', '^', '(', ')'] as $operator)
+                <button type="button" class="formula-token-btn operator" onclick="insertFormulaToken('{{ $operator }}')">{{ $operator }}</button>
+            @endforeach
+        </div>
+
+        <div class="tax-variable-panel">
+            <h4>Payroll Variables</h4>
+            <div class="tax-variable-grid">
+                @foreach($taxFormulaVariables as $variable => $description)
+                    <button type="button" class="formula-token-btn variable" onclick="insertFormulaToken('{{ $variable }}')" title="{{ $description }}">
+                        <strong>{{ $variable }}</strong>
+                        <span>{{ $description }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="tax-formula-header" style="margin-bottom: 20px;">
+            <div>
+                <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Tax Slabs</h3>
+                <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Each slab contains a min/max range and the formula used when taxable income falls within that range.</p>
+            </div>
+            <button type="button" class="btn btn-outline" onclick="addTaxSlabRow()">
+                <i data-lucide="plus"></i> Add Slab
+            </button>
+        </div>
+
+        <div class="info-banner" style="margin-bottom: 20px; background: #f8fafc; border-color: #dbeafe;">
+            <div style="display: flex; gap: 12px;">
+                <i data-lucide="info" style="color: #2563eb; flex-shrink: 0; width: 18px; height: 18px;"></i>
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #1d4ed8;">Slab Formula Variables</h4>
+                    <p style="margin: 0; font-size: 13px; color: #1d4ed8; line-height: 1.6;">
+                        Slab formulas can use all payroll variables plus <strong>taxable_income</strong>, <strong>slab_min</strong>, and <strong>slab_max</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div id="taxSlabsList" class="tax-slab-list">
+            @foreach($taxFormulaConfig['slabs'] as $slab)
+                <div class="tax-slab-row">
+                    <div class="tax-slab-grid">
+                        <div class="form-group" style="margin: 0;">
+                            <label>Label</label>
+                            <input type="text" class="form-control tax-slab-label" value="{{ $slab['label'] }}" placeholder="e.g. Above 100,000" style="background: #f9fafb;">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Min</label>
+                            <input type="number" step="0.01" class="form-control tax-slab-min" value="{{ $slab['min'] }}" style="background: #f9fafb;">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Max</label>
+                            <input type="number" step="0.01" class="form-control tax-slab-max" value="{{ $slab['max'] }}" placeholder="Leave blank for open ended" style="background: #f9fafb;">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>Tax Formula</label>
+                            <input type="text" class="form-control tax-slab-formula formula-builder-target" value="{{ $slab['formula'] }}" placeholder="e.g. (taxable_income - 50000) * 0.01" style="background: #f9fafb; font-family: monospace;">
+                        </div>
+                    </div>
+                    <div class="tax-slab-actions">
+                        <button type="button" class="btn btn-outline" onclick="removeTaxSlabRow(this)">
+                            <i data-lucide="trash-2"></i> Remove
+                        </button>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </div>
 </div>
 
@@ -724,6 +843,122 @@
     .settings-section-header h3 { font-size: 15px; font-weight: 600; margin: 0; color: #111827; }
     .section-desc { font-size: 13px; color: #6b7280; margin: -15px 0 20px 0; }
     .field-hint { font-size: 12px; color: #6b7280; margin-top: 6px; display: block; line-height: 1.5; }
+    .tax-formula-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .tax-formula-summary {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 14px;
+        margin-top: 18px;
+    }
+    .tax-formula-summary-card {
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #fff;
+    }
+    .tax-formula-summary-card.wide {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+        border-color: #fed7aa;
+    }
+    .tax-formula-summary-card span {
+        display: block;
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    .tax-formula-summary-card strong {
+        display: block;
+        color: #111827;
+        font-size: 22px;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+    .tax-builder-toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .formula-token-btn {
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        border-radius: 10px;
+        padding: 8px 12px;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .formula-token-btn:hover {
+        border-color: #fdba74;
+        background: #fff7ed;
+        color: #c2410c;
+    }
+    .formula-token-btn.operator {
+        min-width: 42px;
+        font-weight: 700;
+        font-family: monospace;
+    }
+    .tax-variable-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 16px;
+        background: #fcfcfd;
+    }
+    .tax-variable-panel h4 {
+        margin: 0 0 12px;
+        color: #111827;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .tax-variable-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+    }
+    .formula-token-btn.variable {
+        text-align: left;
+        padding: 12px;
+    }
+    .formula-token-btn.variable strong,
+    .formula-token-btn.variable span {
+        display: block;
+    }
+    .formula-token-btn.variable strong {
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+    .formula-token-btn.variable span {
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .tax-slab-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .tax-slab-row {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+    .tax-slab-grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 1.2fr) 120px 120px minmax(280px, 2fr);
+        gap: 12px;
+    }
+    .tax-slab-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+    }
     .input-with-icon { position: relative; display: flex; align-items: center; }
     .input-with-icon input { padding-right: 40px; }
     .input-icon-btn { position: absolute; right: 12px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; }
@@ -745,6 +980,14 @@
     }
     .modal-cancel-btn:hover { background: #f9fafb; border-color: #d1d5db; }
     .modal-cancel-btn i { width: 14px; height: 14px; }
+
+    @media (max-width: 900px) {
+        .tax-formula-summary,
+        .tax-slab-grid,
+        .tax-variable-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <script>
@@ -763,6 +1006,7 @@
         if (activeTab && document.getElementById(activeTab)) {
             switchTab(activeTab);
         }
+        syncTaxFormulaSummary();
     });
 
     // Bank Functions
@@ -1084,6 +1328,128 @@
         }
     }
 
+    function createTaxSlabRow(slab = {}) {
+        return `
+            <div class="tax-slab-row">
+                <div class="tax-slab-grid">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Label</label>
+                        <input type="text" class="form-control tax-slab-label" value="${slab.label || ''}" placeholder="e.g. Above 100,000" style="background: #f9fafb;">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Min</label>
+                        <input type="number" step="0.01" class="form-control tax-slab-min" value="${slab.min ?? 0}" style="background: #f9fafb;">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Max</label>
+                        <input type="number" step="0.01" class="form-control tax-slab-max" value="${slab.max ?? ''}" placeholder="Leave blank for open ended" style="background: #f9fafb;">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Tax Formula</label>
+                        <input type="text" class="form-control tax-slab-formula formula-builder-target" value="${slab.formula || ''}" placeholder="e.g. (taxable_income - 50000) * 0.01" style="background: #f9fafb; font-family: monospace;">
+                    </div>
+                </div>
+                <div class="tax-slab-actions">
+                    <button type="button" class="btn btn-outline" onclick="removeTaxSlabRow(this)">
+                        <i data-lucide="trash-2"></i> Remove
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function addTaxSlabRow(slab = null) {
+        const list = document.getElementById('taxSlabsList');
+        list.insertAdjacentHTML('beforeend', createTaxSlabRow(slab || {
+            label: `Slab ${list.children.length + 1}`,
+            min: 0,
+            max: '',
+            formula: '0'
+        }));
+        syncTaxFormulaSummary();
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    function removeTaxSlabRow(button) {
+        const list = document.getElementById('taxSlabsList');
+        if (list.children.length === 1) {
+            return alert('At least one tax slab is required.');
+        }
+
+        button.closest('.tax-slab-row').remove();
+        syncTaxFormulaSummary();
+    }
+
+    function insertFormulaToken(token) {
+        const focused = document.activeElement && document.activeElement.classList.contains('formula-builder-target')
+            ? document.activeElement
+            : document.getElementById('taxable_income_formula');
+
+        const start = focused.selectionStart ?? focused.value.length;
+        const end = focused.selectionEnd ?? focused.value.length;
+        const needsSpacing = /[a-zA-Z0-9_)]$/.test(focused.value.slice(0, start)) && /[a-zA-Z_(]/.test(token);
+        const insertion = needsSpacing ? ` ${token}` : token;
+
+        focused.value = focused.value.slice(0, start) + insertion + focused.value.slice(end);
+        const cursor = start + insertion.length;
+        focused.focus();
+        focused.setSelectionRange(cursor, cursor);
+
+        if (focused.id === 'taxable_income_formula') {
+            syncTaxFormulaSummary();
+        }
+    }
+
+    function syncTaxFormulaSummary() {
+        document.getElementById('taxSlabCount').textContent = document.querySelectorAll('#taxSlabsList .tax-slab-row').length;
+        document.getElementById('taxFormulaPreview').textContent = document.getElementById('taxable_income_formula').value || 'No formula set';
+    }
+
+    function collectTaxFormulaPayload() {
+        return {
+            taxable_income_formula: document.getElementById('taxable_income_formula').value.trim(),
+            slabs: Array.from(document.querySelectorAll('#taxSlabsList .tax-slab-row')).map(row => ({
+                label: row.querySelector('.tax-slab-label').value.trim(),
+                min: row.querySelector('.tax-slab-min').value,
+                max: row.querySelector('.tax-slab-max').value,
+                formula: row.querySelector('.tax-slab-formula').value.trim()
+            }))
+        };
+    }
+
+    function saveTaxFormulas() {
+        fetch('{{ route("settings.tax-formulas.update") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(collectTaxFormulaPayload())
+        })
+        .then(async response => {
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                if (payload.errors) {
+                    const message = Object.values(payload.errors).flat().join('\n');
+                    throw new Error(message);
+                }
+
+                throw new Error(payload.message || 'Failed to save tax formulas.');
+            }
+
+            return payload;
+        })
+        .then(data => {
+            syncTaxFormulaSummary();
+            showToast('Success', data.message, 'success');
+        })
+        .catch(error => {
+            showToast('Error', error.message, 'error');
+        });
+    }
+
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal-overlay')) {
             if (typeof closeBankModal === 'function') closeBankModal();
@@ -1129,5 +1495,7 @@
             alert(title + ': ' + message);
         }
     }
+
+    document.getElementById('taxable_income_formula')?.addEventListener('input', syncTaxFormulaSummary);
 </script>
 @endsection

@@ -22,6 +22,11 @@ class PayrollCalculationService
     protected const DEFAULT_SHORT_HOURS_THRESHOLD_MINUTES = 480;
     protected const DEFAULT_PAYROLL_MONTH_DAY_BASIS = 30;
 
+    public function __construct(
+        protected TaxFormulaService $taxFormulaService
+    ) {
+    }
+
     public function previewMonth(string|Carbon $month): Collection
     {
         $monthStart = $this->normalizeMonth($month);
@@ -225,7 +230,29 @@ class PayrollCalculationService
             - $otherDeduction,
             2
         ), 0.0);
-        $incomeTax = $this->incomeTax($grossSalary);
+        $taxCalculation = $this->taxFormulaService->calculate([
+            'basic_salary' => $basicSalary,
+            'last_increment' => $lastIncrement,
+            'incentives_bonus' => $incentivesBonus,
+            'punctuality_bonus' => $punctualityBonus,
+            'positive_arrears' => $positiveArrears,
+            'positive_other' => $positiveOther,
+            'security_deduction' => round($securityDeduction, 2),
+            'non_paid_leave_deduction' => round($nonPaidLeaveDeduction, 2),
+            'attendance_penalty' => $attendancePenalty,
+            'arrears_deduction' => round($arrearsDeduction, 2),
+            'other_deduction' => round($otherDeduction, 2),
+            'earnings_subtotal' => round($earningsSubtotal, 2),
+            'daily_rate' => $dailyRate,
+            'gross_salary' => $grossSalary,
+            'days_absent' => $daysAbsent,
+            'late_count' => $lateCount,
+            'late_absent_equivalent' => $lateAbsentEquivalent,
+            'unpaid_leave_days' => $unpaidLeaveDays,
+            'short_hours_days' => $shortHoursDays,
+            'security_total_deducted' => round($securityTotalDeducted, 2),
+        ]);
+        $incomeTax = $taxCalculation['income_tax'];
         $annualTaxTotal = $this->cumulativeAnnualTaxTotal($employee, $monthStart, $incomeTax);
         $netSalary = max(round($grossSalary - $incomeTax, 2), 0.0);
 
@@ -272,6 +299,7 @@ class PayrollCalculationService
             'arrears_deduction' => round($arrearsDeduction, 2),
             'other_deduction' => round($otherDeduction, 2),
             'daily_rate' => $dailyRate,
+            'taxable_income' => $taxCalculation['taxable_income'],
             'gross_salary' => $grossSalary,
             'income_tax' => $incomeTax,
             'annual_tax_total' => $annualTaxTotal,
@@ -314,21 +342,6 @@ class PayrollCalculationService
         return strlen($month) === 7
             ? Carbon::createFromFormat('Y-m', $month)->startOfMonth()
             : Carbon::parse($month)->startOfMonth();
-    }
-
-    protected function incomeTax(float $grossSalary): float
-    {
-        $grossSalary = max(round($grossSalary, 2), 0.0);
-
-        if ($grossSalary <= 50000) {
-            return 0.0;
-        }
-
-        if ($grossSalary <= 100000) {
-            return round(($grossSalary - 50000) * 0.01, 2);
-        }
-
-        return round((($grossSalary - 50000) * 0.11) + 6000, 2);
     }
 
     protected function nonPaidLeaveGraceDays(): int
