@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use App\Models\Department;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class AnnouncementController extends Controller
 {
@@ -43,6 +44,10 @@ class AnnouncementController extends Controller
             });
         }
 
+        if ($request->filled('type')) {
+            $announcementsQuery->where('announcement_type', $request->get('type'));
+        }
+
         if ($request->get('status') === 'active') {
             $announcementsQuery->where('is_active', true);
         } elseif ($request->get('status') === 'inactive') {
@@ -71,6 +76,7 @@ class AnnouncementController extends Controller
             'announcements',
             'departments',
             'stats',
+            'user',
             'canCreateAnnouncements',
             'canEditAnnouncements',
             'canManageAnnouncements'
@@ -79,14 +85,7 @@ class AnnouncementController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'message' => 'required|string|max:5000',
-            'is_global' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-            'department_ids' => 'nullable|array',
-            'department_ids.*' => 'exists:departments,id',
-        ]);
+        $validated = $this->validateAnnouncement($request);
 
         $isGlobal = $request->boolean('is_global');
         $departmentIds = collect($validated['department_ids'] ?? [])
@@ -105,6 +104,11 @@ class AnnouncementController extends Controller
         $announcement = Announcement::create([
             'title' => $validated['title'],
             'message' => $validated['message'],
+            'announcement_type' => $validated['announcement_type'],
+            'date_mode' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY ? $validated['date_mode'] : null,
+            'event_date' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY && $validated['date_mode'] === Announcement::DATE_MODE_SINGLE ? $validated['event_date'] : null,
+            'event_start_date' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY && $validated['date_mode'] === Announcement::DATE_MODE_RANGE ? $validated['event_start_date'] : null,
+            'event_end_date' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY && $validated['date_mode'] === Announcement::DATE_MODE_RANGE ? $validated['event_end_date'] : null,
             'is_global' => $isGlobal,
             'is_active' => $request->boolean('is_active', true),
             'created_by' => $request->user()->id,
@@ -121,14 +125,7 @@ class AnnouncementController extends Controller
 
     public function update(Request $request, Announcement $announcement)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'message' => 'required|string|max:5000',
-            'is_global' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-            'department_ids' => 'nullable|array',
-            'department_ids.*' => 'exists:departments,id',
-        ]);
+        $validated = $this->validateAnnouncement($request);
 
         $isGlobal = $request->boolean('is_global');
         $departmentIds = collect($validated['department_ids'] ?? [])
@@ -147,6 +144,11 @@ class AnnouncementController extends Controller
         $announcement->update([
             'title' => $validated['title'],
             'message' => $validated['message'],
+            'announcement_type' => $validated['announcement_type'],
+            'date_mode' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY ? $validated['date_mode'] : null,
+            'event_date' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY && $validated['date_mode'] === Announcement::DATE_MODE_SINGLE ? $validated['event_date'] : null,
+            'event_start_date' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY && $validated['date_mode'] === Announcement::DATE_MODE_RANGE ? $validated['event_start_date'] : null,
+            'event_end_date' => $validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY && $validated['date_mode'] === Announcement::DATE_MODE_RANGE ? $validated['event_end_date'] : null,
             'is_global' => $isGlobal,
             'is_active' => $request->boolean('is_active', true),
         ]);
@@ -167,5 +169,44 @@ class AnnouncementController extends Controller
             'success' => true,
             'message' => 'Announcement deleted successfully.',
         ]);
+    }
+
+    protected function validateAnnouncement(Request $request): array
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'message' => 'required|string|max:5000',
+            'announcement_type' => 'required|in:' . implode(',', array_keys(Announcement::types())),
+            'date_mode' => 'nullable|in:' . implode(',', array_keys(Announcement::dateModes())),
+            'event_date' => 'nullable|date',
+            'event_start_date' => 'nullable|date',
+            'event_end_date' => 'nullable|date|after_or_equal:event_start_date',
+            'is_global' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'department_ids' => 'nullable|array',
+            'department_ids.*' => 'exists:departments,id',
+        ]);
+
+        if ($validated['announcement_type'] === Announcement::TYPE_OFFICIAL_HOLIDAY) {
+            if (! in_array($validated['date_mode'] ?? null, array_keys(Announcement::dateModes()), true)) {
+                throw ValidationException::withMessages([
+                    'date_mode' => 'Select whether the holiday announcement is for a single date or a date range.',
+                ]);
+            }
+
+            if (($validated['date_mode'] ?? null) === Announcement::DATE_MODE_SINGLE && empty($validated['event_date'])) {
+                throw ValidationException::withMessages([
+                    'event_date' => 'Select the holiday date for a single-date holiday announcement.',
+                ]);
+            }
+
+            if (($validated['date_mode'] ?? null) === Announcement::DATE_MODE_RANGE && (empty($validated['event_start_date']) || empty($validated['event_end_date']))) {
+                throw ValidationException::withMessages([
+                    'event_start_date' => 'Select both start and end dates for a holiday date-range announcement.',
+                ]);
+            }
+        }
+
+        return $validated;
     }
 }

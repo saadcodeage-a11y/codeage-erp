@@ -27,6 +27,7 @@ class AnnouncementsTest extends TestCase
         $response = $this->actingAs($user)->postJson(route('announcements.store'), [
             'title' => 'HR Meeting',
             'message' => 'Monthly HR sync at 3 PM.',
+            'announcement_type' => 'general',
             'is_global' => false,
             'is_active' => true,
             'department_ids' => [$department->id],
@@ -35,6 +36,7 @@ class AnnouncementsTest extends TestCase
         $response->assertOk();
         $this->assertDatabaseHas('announcements', [
             'title' => 'HR Meeting',
+            'announcement_type' => 'general',
             'is_global' => false,
             'is_active' => true,
         ]);
@@ -122,5 +124,33 @@ class AnnouncementsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Announcements');
+    }
+
+    public function test_can_create_official_holiday_announcement_with_date_range(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Super Admin',
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('announcements.store'), [
+            'title' => 'Eid Break',
+            'message' => 'Office will remain closed during Eid holidays.',
+            'announcement_type' => 'official_holiday',
+            'date_mode' => 'range',
+            'event_start_date' => '2026-06-17',
+            'event_end_date' => '2026-06-20',
+            'is_global' => true,
+            'is_active' => true,
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('announcements', [
+            'title' => 'Eid Break',
+            'announcement_type' => 'official_holiday',
+            'date_mode' => 'range',
+            'event_start_date' => '2026-06-17 00:00:00',
+            'event_end_date' => '2026-06-20 00:00:00',
+            'is_global' => true,
+        ]);
     }
 }
