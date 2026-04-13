@@ -359,17 +359,59 @@
 
     <div class="card" style="margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px;">
+            <div style="background: #fff7ed; padding: 10px; border-radius: 10px; color: #f97316;">
+                <i data-lucide="workflow" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 16px; font-weight: 600; margin: 0;">How The Tax Engine Works</h3>
+                <p style="color: #6b7280; font-size: 13px; margin: 2px 0 0 0;">Payroll calculates tax in a fixed order. These rules only control the math, not the payroll flow.</p>
+            </div>
+        </div>
+        <div class="tax-workflow-grid">
+            <div class="tax-workflow-card">
+                <span class="tax-workflow-step">Step 1</span>
+                <h4>Build Taxable Income</h4>
+                <p>This formula decides <strong>which amount should be taxed</strong>.</p>
+                <code>(basic_salary + last_increment) - security_deduction</code>
+            </div>
+            <div class="tax-workflow-card">
+                <span class="tax-workflow-step">Step 2</span>
+                <h4>Match The Slab</h4>
+                <p>The result from Step 1 is matched against the slab <strong>Min</strong> and <strong>Max</strong> values.</p>
+                <code>50,000.01 to 100,000.00</code>
+            </div>
+            <div class="tax-workflow-card">
+                <span class="tax-workflow-step">Step 3</span>
+                <h4>Calculate The Tax Amount</h4>
+                <p>This formula decides <strong>how much tax is charged</strong> inside the matched slab.</p>
+                <code>(taxable_income - slab_min) * 0.01</code>
+            </div>
+        </div>
+        <div class="tax-meaning-grid">
+            <div class="tax-meaning-card">
+                <strong>Taxable Income Formula</strong>
+                <p>Use this when you want to define what amount goes into tax checking. Example: only `gross_salary`, or `basic_salary + last_increment`.</p>
+            </div>
+            <div class="tax-meaning-card">
+                <strong>Tax Formula</strong>
+                <p>Use this when you want to define how tax is computed after the taxable income falls inside a slab. Example: `(taxable_income - slab_min) * 0.01`.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px;">
             <div style="background: #eff6ff; padding: 10px; border-radius: 10px; color: #2563eb;">
                 <i data-lucide="function-square" style="width: 20px; height: 20px;"></i>
             </div>
             <div>
-                <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Taxable Income Formula</h3>
-                <p style="color: #6b7280; font-size: 13px; margin: 2px 0 0 0;">This formula is evaluated first. The resulting value is then matched against the slabs below.</p>
+                <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Default Taxable Income Formula</h3>
+                <p style="color: #6b7280; font-size: 13px; margin: 2px 0 0 0;">This is the default formula used in Step 1. A slab can override it later if that slab should use a different taxable amount.</p>
             </div>
         </div>
 
         <div class="form-group" style="margin-bottom: 18px;">
-            <label>Formula</label>
+            <label>Step 1 Formula: What amount should be taxed?</label>
             <input type="text" id="taxable_income_formula" class="form-control formula-builder-target" value="{{ $taxFormulaConfig['taxable_income_formula'] }}" placeholder="e.g. gross_salary or basic_salary + last_increment" style="background: #f9fafb; font-family: monospace;">
             <span class="field-hint">Use payroll variables, numbers, and arithmetic operators. Parentheses and `%`, `^`, `*`, `/`, `+`, `-` are supported.</span>
         </div>
@@ -412,7 +454,7 @@
         <div class="tax-formula-header" style="margin-bottom: 20px;">
             <div>
                 <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Tax Slabs</h3>
-                <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Each slab contains a min/max range and the formula used when taxable income falls within that range.</p>
+                <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Each slab defines the taxable-income range to match and the formula used to calculate tax after the slab matches.</p>
             </div>
             <button type="button" class="btn btn-outline" onclick="addTaxSlabRow()">
                 <i data-lucide="plus"></i> Add Slab
@@ -420,20 +462,33 @@
         </div>
 
         <div class="info-banner" style="margin-bottom: 20px; background: #f8fafc; border-color: #dbeafe;">
-            <div style="display: flex; gap: 12px;">
-                <i data-lucide="info" style="color: #2563eb; flex-shrink: 0; width: 18px; height: 18px;"></i>
-                <div>
-                    <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #1d4ed8;">Slab Formula Variables</h4>
-                    <p style="margin: 0; font-size: 13px; color: #1d4ed8; line-height: 1.6;">
-                        Slab formulas can use all payroll variables plus <strong>taxable_income</strong>, <strong>slab_min</strong>, and <strong>slab_max</strong>.
-                    </p>
+                <div style="display: flex; gap: 12px;">
+                    <i data-lucide="info" style="color: #2563eb; flex-shrink: 0; width: 18px; height: 18px;"></i>
+                    <div>
+                        <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #1d4ed8;">Inside Each Slab</h4>
+                        <p style="margin: 0; font-size: 13px; color: #1d4ed8; line-height: 1.6;">
+                            <strong>Taxable Income Formula</strong> is optional here. Leave it blank to use the default formula above.<br>
+                            <strong>Tax Formula</strong> is required and can use <strong>taxable_income</strong>, <strong>slab_min</strong>, <strong>slab_max</strong>, plus payroll variables.
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
 
         <div id="taxSlabsList" class="tax-slab-list">
-            @foreach($taxFormulaConfig['slabs'] as $slab)
+            @foreach($taxFormulaConfig['slabs'] as $index => $slab)
                 <div class="tax-slab-row">
+                    <div class="tax-slab-row-header">
+                        <div>
+                            <span class="tax-slab-badge">Slab {{ $index + 1 }}</span>
+                            <h4>{{ $slab['label'] }}</h4>
+                            <p>
+                                Applies when taxable income is between
+                                <strong>{{ number_format((float) $slab['min'], 2) }}</strong>
+                                and
+                                <strong>{{ $slab['max'] !== null ? number_format((float) $slab['max'], 2) : 'above' }}</strong>.
+                            </p>
+                        </div>
+                    </div>
                     <div class="tax-slab-grid">
                         <div class="form-group" style="margin: 0;">
                             <label>Label</label>
@@ -448,12 +503,14 @@
                             <input type="number" step="0.01" class="form-control tax-slab-max" value="{{ $slab['max'] }}" placeholder="Leave blank for open ended" style="background: #f9fafb;">
                         </div>
                         <div class="form-group" style="margin: 0;">
-                            <label>Taxable Income Formula</label>
+                            <label>Optional Step 1 Override: What amount is taxable in this slab?</label>
                             <input type="text" class="form-control tax-slab-taxable-formula formula-builder-target" value="{{ $slab['taxable_income_formula'] }}" placeholder="Leave blank to use default taxable formula" style="background: #f9fafb; font-family: monospace;">
+                            <span class="field-hint">Leave blank if this slab should use the default taxable income formula above.</span>
                         </div>
                         <div class="form-group" style="margin: 0;">
-                            <label>Tax Formula</label>
+                            <label>Step 3 Formula: How much tax should be charged?</label>
                             <input type="text" class="form-control tax-slab-formula formula-builder-target" value="{{ $slab['formula'] }}" placeholder="e.g. (taxable_income - 50000) * 0.01" style="background: #f9fafb; font-family: monospace;">
+                            <span class="field-hint">Required. Use this to calculate the actual tax amount after the slab matches.</span>
                         </div>
                     </div>
                     <div class="tax-slab-actions">
@@ -921,6 +978,60 @@
         line-height: 1.2;
         word-break: break-word;
     }
+    .tax-workflow-grid,
+    .tax-meaning-grid {
+        display: grid;
+        gap: 14px;
+    }
+    .tax-workflow-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .tax-meaning-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 18px;
+    }
+    .tax-workflow-card,
+    .tax-meaning-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 18px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+    .tax-workflow-step {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #fff7ed;
+        color: #c2410c;
+        padding: 5px 9px;
+        font-size: 11px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    .tax-workflow-card h4,
+    .tax-meaning-card strong {
+        margin: 0 0 6px;
+        color: #111827;
+        font-size: 15px;
+    }
+    .tax-workflow-card p,
+    .tax-meaning-card p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .tax-workflow-card code {
+        display: block;
+        margin-top: 12px;
+        border-radius: 10px;
+        background: #f9fafb;
+        border: 1px solid #eef2f7;
+        padding: 10px 12px;
+        color: #1f2937;
+        font-size: 12px;
+        word-break: break-word;
+    }
     .tax-builder-toolbar {
         display: flex;
         gap: 8px;
@@ -999,6 +1110,34 @@
         padding: 16px;
         background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
     }
+    .tax-slab-row-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 14px;
+    }
+    .tax-slab-row-header h4 {
+        margin: 8px 0 4px;
+        color: #111827;
+        font-size: 16px;
+    }
+    .tax-slab-row-header p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .tax-slab-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 700;
+    }
     .tax-slab-grid {
         display: grid;
         grid-template-columns: minmax(160px, 1.1fr) 110px 110px minmax(250px, 1.6fr) minmax(250px, 1.8fr);
@@ -1069,6 +1208,8 @@
 
     @media (max-width: 900px) {
         .tax-formula-summary,
+        .tax-workflow-grid,
+        .tax-meaning-grid,
         .tax-slab-grid,
         .tax-variable-grid,
         .tax-example-grid {
