@@ -700,6 +700,60 @@
                         <input type="text" id="hr_contact" class="form-control system-values-input" value="{{ $hrContact }}" placeholder="e.g. John Doe (HR Manager)">
                         <small class="system-values-hint">Used for &#123;&#123;hrContact&#125;&#125; in email templates and onboarding communication.</small>
                     </div>
+
+                    <div class="form-group">
+                        <label class="system-values-label">HR Employees</label>
+                        <div class="hr-employee-multiselect" id="hrEmployeeMultiselect">
+                            <div class="hr-employee-control" data-hr-employee-toggle>
+                                <div class="hr-employee-chip-list" id="hrEmployeeChipList">
+                                    @foreach($selectedHrEmployees as $employee)
+                                        <span class="hr-employee-chip" data-hr-chip-id="{{ $employee->id }}">
+                                            <span>{{ $employee->employee_id }} - {{ $employee->full_name }}</span>
+                                            <button type="button" onclick="removeHrEmployee({{ $employee->id }})" aria-label="Remove {{ $employee->full_name }}">
+                                                <i data-lucide="x"></i>
+                                            </button>
+                                        </span>
+                                    @endforeach
+                                    <input type="text" id="hrEmployeeSearch" class="hr-employee-search-input" placeholder="{{ count($selectedHrEmployeeIds) ? 'Search more employees...' : 'Search employee by name, ID, or email' }}">
+                                </div>
+                                <button type="button" class="hr-employee-toggle-btn" aria-label="Toggle HR employee list">
+                                    <i data-lucide="chevron-down"></i>
+                                </button>
+                            </div>
+                            <div class="hr-employee-dropdown" id="hrEmployeeDropdown" style="display: none;">
+                                @foreach($systemValueEmployees as $employee)
+                                    @php
+                                        $employeeSearchText = strtolower(implode(' ', array_filter([
+                                            $employee->full_name,
+                                            $employee->employee_id,
+                                            $employee->designation,
+                                            $employee->email,
+                                        ])));
+                                    @endphp
+                                    <button
+                                        type="button"
+                                        class="hr-employee-option {{ in_array($employee->id, $selectedHrEmployeeIds, true) ? 'selected' : '' }}"
+                                        data-hr-employee-option
+                                        data-employee-id="{{ $employee->id }}"
+                                        data-search-text="{{ $employeeSearchText }}"
+                                        data-employee-name="{{ $employee->full_name }}"
+                                        data-employee-code="{{ $employee->employee_id }}"
+                                        data-employee-email="{{ $employee->email }}"
+                                        onclick="toggleHrEmployee({{ $employee->id }})"
+                                    >
+                                        <div>
+                                            <strong>{{ $employee->full_name }}</strong>
+                                            <span>{{ $employee->employee_id }}{{ $employee->designation ? ' | ' . $employee->designation : '' }}</span>
+                                            <small>{{ $employee->email ?: 'No email on record' }}</small>
+                                        </div>
+                                        <i data-lucide="check"></i>
+                                    </button>
+                                @endforeach
+                            </div>
+                            <input type="hidden" id="hr_employee_ids" value='@json($selectedHrEmployeeIds)'>
+                        </div>
+                        <small class="system-values-hint">Selected employees are treated as HR recipients. Their email addresses are synced to the existing HR notification email setting automatically.</small>
+                    </div>
                 </div>
             </section>
 
@@ -1133,6 +1187,158 @@
         display: block;
         font-size: 12px;
         line-height: 1.6;
+    }
+    .hr-employee-multiselect {
+        position: relative;
+    }
+    .hr-employee-control {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #f9fafb;
+        padding: 10px 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .hr-employee-control:focus-within,
+    .hr-employee-multiselect.open .hr-employee-control {
+        border-color: #fdba74;
+        box-shadow: 0 0 0 4px rgba(255, 122, 24, 0.12);
+        background: #fff;
+    }
+    .hr-employee-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .hr-employee-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #eff6ff;
+        border: 1px solid #dbeafe;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 600;
+        max-width: 100%;
+    }
+    .hr-employee-chip span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .hr-employee-chip button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(29, 78, 216, 0.12);
+        color: #1d4ed8;
+        cursor: pointer;
+        padding: 0;
+        flex-shrink: 0;
+    }
+    .hr-employee-chip button i {
+        width: 12px;
+        height: 12px;
+    }
+    .hr-employee-search-input {
+        flex: 1 1 180px;
+        min-width: 180px;
+        border: none;
+        outline: none;
+        box-shadow: none;
+        background: transparent;
+        color: #111827;
+        font-size: 14px;
+        padding: 4px 0;
+    }
+    .hr-employee-search-input::placeholder {
+        color: #9ca3af;
+    }
+    .hr-employee-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 0;
+        flex-shrink: 0;
+    }
+    .hr-employee-toggle-btn i {
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s ease;
+    }
+    .hr-employee-multiselect.open .hr-employee-toggle-btn i {
+        transform: rotate(180deg);
+    }
+    .hr-employee-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 25;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+        padding: 8px;
+        max-height: 300px;
+        overflow: auto;
+    }
+    .hr-employee-option {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: none;
+        background: #fff;
+        border-radius: 12px;
+        padding: 12px 14px;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+    .hr-employee-option:hover,
+    .hr-employee-option.selected {
+        background: #fff7ed;
+    }
+    .hr-employee-option strong {
+        display: block;
+        color: #111827;
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+    .hr-employee-option span,
+    .hr-employee-option small {
+        display: block;
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .hr-employee-option i {
+        width: 16px;
+        height: 16px;
+        color: #16a34a;
+        opacity: 0;
+        flex-shrink: 0;
+    }
+    .hr-employee-option.selected i {
+        opacity: 1;
     }
     .attendance-rules-chip-row {
         display: flex;
@@ -2126,6 +2332,119 @@
         document.getElementById('taxExampleEmployeeDropdown').style.display = 'none';
     }
 
+    function getSelectedHrEmployeeIds() {
+        try {
+            const parsed = JSON.parse(document.getElementById('hr_employee_ids')?.value || '[]');
+            return Array.isArray(parsed) ? parsed.map(id => Number(id)).filter(Boolean) : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function setSelectedHrEmployeeIds(ids) {
+        document.getElementById('hr_employee_ids').value = JSON.stringify(ids);
+    }
+
+    function getHrEmployeeOptionById(id) {
+        return document.querySelector(`[data-employee-id="${id}"]`);
+    }
+
+    function renderHrEmployeeChips() {
+        const chipList = document.getElementById('hrEmployeeChipList');
+        const searchInput = document.getElementById('hrEmployeeSearch');
+
+        if (!chipList || !searchInput) {
+            return;
+        }
+
+        const selectedIds = getSelectedHrEmployeeIds();
+        chipList.querySelectorAll('.hr-employee-chip').forEach((chip) => chip.remove());
+
+        selectedIds.forEach((id) => {
+            const option = getHrEmployeeOptionById(id);
+            if (!option) {
+                return;
+            }
+
+            const chip = document.createElement('span');
+            chip.className = 'hr-employee-chip';
+            chip.dataset.hrChipId = String(id);
+            chip.innerHTML = `
+                <span>${option.dataset.employeeCode} - ${option.dataset.employeeName}</span>
+                <button type="button" aria-label="Remove ${option.dataset.employeeName}" onclick="removeHrEmployee(${id})">
+                    <i data-lucide="x"></i>
+                </button>
+            `;
+            chipList.insertBefore(chip, searchInput);
+        });
+
+        document.querySelectorAll('[data-hr-employee-option]').forEach((option) => {
+            option.classList.toggle('selected', selectedIds.includes(Number(option.dataset.employeeId)));
+        });
+
+        searchInput.placeholder = selectedIds.length ? 'Search more employees...' : 'Search employee by name, ID, or email';
+
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    function filterHrEmployees() {
+        const query = (document.getElementById('hrEmployeeSearch')?.value || '').trim().toLowerCase();
+        document.querySelectorAll('[data-hr-employee-option]').forEach((option) => {
+            const matches = !query || (option.dataset.searchText || '').includes(query);
+            option.style.display = matches ? 'flex' : 'none';
+        });
+    }
+
+    function openHrEmployeeDropdown() {
+        const root = document.getElementById('hrEmployeeMultiselect');
+        const dropdown = document.getElementById('hrEmployeeDropdown');
+        root?.classList.add('open');
+        if (dropdown) {
+            dropdown.style.display = 'block';
+        }
+    }
+
+    function closeHrEmployeeDropdown() {
+        const root = document.getElementById('hrEmployeeMultiselect');
+        const dropdown = document.getElementById('hrEmployeeDropdown');
+        root?.classList.remove('open');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+        }
+    }
+
+    function toggleHrEmployeeDropdown() {
+        const root = document.getElementById('hrEmployeeMultiselect');
+        if (root?.classList.contains('open')) {
+            closeHrEmployeeDropdown();
+        } else {
+            openHrEmployeeDropdown();
+            document.getElementById('hrEmployeeSearch')?.focus();
+        }
+    }
+
+    function toggleHrEmployee(id) {
+        const numericId = Number(id);
+        const selectedIds = getSelectedHrEmployeeIds();
+        const nextIds = selectedIds.includes(numericId)
+            ? selectedIds.filter((selectedId) => selectedId !== numericId)
+            : [...selectedIds, numericId];
+
+        setSelectedHrEmployeeIds(nextIds);
+        renderHrEmployeeChips();
+        filterHrEmployees();
+        openHrEmployeeDropdown();
+    }
+
+    function removeHrEmployee(id) {
+        const nextIds = getSelectedHrEmployeeIds().filter((selectedId) => selectedId !== Number(id));
+        setSelectedHrEmployeeIds(nextIds);
+        renderHrEmployeeChips();
+        filterHrEmployees();
+    }
+
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal-overlay')) {
             if (typeof closeBankModal === 'function') closeBankModal();
@@ -2136,12 +2455,17 @@
         if (!e.target.closest('.tax-employee-picker')) {
             closeTaxExampleDropdown();
         }
+
+        if (!e.target.closest('.hr-employee-multiselect')) {
+            closeHrEmployeeDropdown();
+        }
     });
 
     function updateSystemValues() {
         const officeLocation = document.getElementById('office_location').value;
         const hrContact = document.getElementById('hr_contact').value;
         const lateGraceMinutes = document.getElementById('late_grace_minutes').value;
+        const hrEmployeeIds = getSelectedHrEmployeeIds();
         
         fetch('{{ route("settings.general.update") }}', {
             method: 'POST',
@@ -2152,7 +2476,8 @@
             body: JSON.stringify({
                 office_location: officeLocation,
                 hr_contact: hrContact,
-                late_grace_minutes: lateGraceMinutes
+                late_grace_minutes: lateGraceMinutes,
+                hr_employee_ids: hrEmployeeIds
             })
         })
         .then(response => response.json())
@@ -2182,5 +2507,27 @@
     document.getElementById('taxVariableSearch')?.addEventListener('input', filterTaxVariables);
     document.getElementById('taxExampleEmployeeSearch')?.addEventListener('focus', filterTaxExampleEmployees);
     document.getElementById('taxExampleEmployeeSearch')?.addEventListener('input', filterTaxExampleEmployees);
+    document.getElementById('hrEmployeeSearch')?.addEventListener('focus', () => {
+        openHrEmployeeDropdown();
+        filterHrEmployees();
+    });
+    document.getElementById('hrEmployeeSearch')?.addEventListener('input', () => {
+        openHrEmployeeDropdown();
+        filterHrEmployees();
+    });
+    document.querySelector('#hrEmployeeMultiselect [data-hr-employee-toggle]')?.addEventListener('click', (event) => {
+        if (event.target.closest('button')) {
+            return;
+        }
+
+        toggleHrEmployeeDropdown();
+    });
+    document.querySelector('#hrEmployeeMultiselect .hr-employee-toggle-btn')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleHrEmployeeDropdown();
+    });
+    renderHrEmployeeChips();
+    filterHrEmployees();
 </script>
 @endsection

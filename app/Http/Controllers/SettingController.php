@@ -28,16 +28,25 @@ class SettingController extends Controller
         $employeeIdCounter = $employeeIdService->currentCounter();
         $nextEmployeeId = $employeeIdService->nextEmployeeIdPreview();
         $hrEmails = Setting::where('key', 'hr_notification_emails')->value('value') ?? '';
+        $selectedHrEmployeeIds = collect(json_decode(Setting::where('key', 'hr_employee_ids')->value('value') ?? '[]', true))
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
         $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
         $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
         $lateGraceMinutes = (int) (Setting::where('key', 'attendance_late_grace_minutes')->value('value') ?? 0);
-        $formulaExampleEmployees = Employee::query()
+        $systemValueEmployees = Employee::query()
             ->whereNotNull('employee_id')
             ->where('employee_id', '!=', '')
             ->orderByRaw("CASE WHEN employee_id IS NULL OR employee_id = '' THEN 1 ELSE 0 END")
             ->orderByRaw('LENGTH(employee_id)')
             ->orderBy('employee_id')
-            ->get(['id', 'full_name', 'employee_id']);
+            ->get(['id', 'full_name', 'employee_id', 'designation', 'email']);
+        $selectedHrEmployees = $systemValueEmployees
+            ->whereIn('id', $selectedHrEmployeeIds)
+            ->values();
+        $formulaExampleEmployees = $systemValueEmployees;
         $taxFormulaConfig = $taxFormulaService->configuration();
         $taxFormulaVariables = $taxFormulaService->availableVariables();
         
@@ -50,6 +59,9 @@ class SettingController extends Controller
             'employeeIdCounter',
             'nextEmployeeId',
             'hrEmails',
+            'selectedHrEmployeeIds',
+            'selectedHrEmployees',
+            'systemValueEmployees',
             'officeLocation',
             'hrContact',
             'lateGraceMinutes',
@@ -294,6 +306,29 @@ class SettingController extends Controller
 
         if ($request->has('hr_notification_emails')) {
             Setting::updateOrCreate(['key' => 'hr_notification_emails'], ['value' => $request->hr_notification_emails]);
+        }
+
+        if ($request->has('hr_employee_ids')) {
+            $hrEmployeeIds = collect($request->input('hr_employee_ids', []))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            $validEmployees = Employee::query()
+                ->whereIn('id', $hrEmployeeIds)
+                ->orderBy('full_name')
+                ->get(['id', 'email']);
+
+            $validIds = $validEmployees->pluck('id')->values()->all();
+            $derivedEmails = $validEmployees
+                ->pluck('email')
+                ->filter()
+                ->unique()
+                ->implode(', ');
+
+            Setting::updateOrCreate(['key' => 'hr_employee_ids'], ['value' => json_encode($validIds)]);
+            Setting::updateOrCreate(['key' => 'hr_notification_emails'], ['value' => $derivedEmails]);
         }
 
         if ($request->has('office_location')) {
