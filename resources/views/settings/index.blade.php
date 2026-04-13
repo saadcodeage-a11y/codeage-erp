@@ -667,6 +667,24 @@
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div style="padding: 20px; border: 1px solid #e5e7eb; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap;">
+                    <div>
+                        <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin: 0 0 6px 0;">Attendance Rules</h3>
+                        <p style="color: #6b7280; font-size: 13px; margin: 0;">Global rules for attendance marking. Individual working hours still stay on each employee profile.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span class="badge" style="background: #f8fafc; color: #475467; border: 1px solid #e2e8f0;">Weekends: Saturday & Sunday</span>
+                        <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">Late after: {{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</span>
+                    </div>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Late Grace Period (Minutes)</label>
+                    <input type="number" id="late_grace_minutes" class="form-control" value="{{ $lateGraceMinutes }}" min="0" max="240" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
+                    <small style="color: #6b7280; margin-top: 6px; display: block;">If an employee checks in after shift start time plus this grace period, the row is counted late.</small>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Office Location</label>
                 <input type="text" id="office_location" class="form-control" value="{{ $officeLocation }}" placeholder="e.g. Office 101, Business Center, City" style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb;">
@@ -1914,6 +1932,7 @@
     function updateSystemValues() {
         const officeLocation = document.getElementById('office_location').value;
         const hrContact = document.getElementById('hr_contact').value;
+        const lateGraceMinutes = document.getElementById('late_grace_minutes').value;
         
         fetch('{{ route("settings.general.update") }}', {
             method: 'POST',
@@ -1923,7 +1942,8 @@
             },
             body: JSON.stringify({
                 office_location: officeLocation,
-                hr_contact: hrContact
+                hr_contact: hrContact,
+                late_grace_minutes: lateGraceMinutes
             })
         })
         .then(response => response.json())

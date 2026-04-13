@@ -35,35 +35,6 @@
     <div class="card">
         <div class="section-header" style="margin-bottom: 16px;">
             <div>
-                <h2>Attendance Rules</h2>
-                <p>Global rules for attendance marking. Individual working hours stay on each employee profile.</p>
-            </div>
-        </div>
-        <div class="attendance-rule-notes">
-            <span class="summary-pill muted">Weekends: Saturday & Sunday</span>
-            <span class="summary-pill muted">Late after: {{ $lateGraceMinutes }} minute{{ $lateGraceMinutes === 1 ? '' : 's' }}</span>
-        </div>
-        @if($canManageAttendance)
-            <form method="POST" action="{{ route('attendance.settings.update') }}" class="attendance-rule-form">
-                @csrf
-                <input type="hidden" name="month" value="{{ $month }}">
-                <div class="form-group" style="margin: 0;">
-                    <label>Late Grace Period (Minutes)</label>
-                    <input type="number" name="late_grace_minutes" min="0" max="240" value="{{ old('late_grace_minutes', $lateGraceMinutes) }}" required>
-                    <span class="hint">If an employee checks in after shift start time plus this grace period, the row is counted late.</span>
-                </div>
-                <div class="policy-form-actions">
-                    <button type="submit" class="btn btn-primary">Save Attendance Rule</button>
-                </div>
-            </form>
-        @else
-            <div class="empty-state-panel" style="margin-top: 12px;">Only users with attendance edit rights can change the global late threshold.</div>
-        @endif
-    </div>
-
-    <div class="card">
-        <div class="section-header" style="margin-bottom: 16px;">
-            <div>
                 <h2>Official Holidays</h2>
                 <p>Working-day holidays for {{ $selectedYear }}. Weekends are already handled automatically.</p>
             </div>

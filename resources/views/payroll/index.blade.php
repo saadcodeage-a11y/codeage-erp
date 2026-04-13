@@ -407,6 +407,14 @@
         color: #047857;
     }
 
+    .payroll-history-panel .section-header h2,
+    .payroll-detail-panel .section-header h2,
+    .selected-run-header-copy h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        color: #111827;
+    }
+
     .selected-run-header {
         display: flex;
         align-items: flex-start;
@@ -417,10 +425,6 @@
     .selected-run-header-copy {
         flex: 1 1 auto;
         min-width: 0;
-    }
-
-    .selected-run-header-copy h2 {
-        margin: 0 0 8px;
     }
 
     .selected-run-header-copy p {

@@ -30,6 +30,7 @@ class SettingController extends Controller
         $hrEmails = Setting::where('key', 'hr_notification_emails')->value('value') ?? '';
         $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
         $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
+        $lateGraceMinutes = (int) (Setting::where('key', 'attendance_late_grace_minutes')->value('value') ?? 0);
         $formulaExampleEmployees = Employee::query()
             ->whereNotNull('employee_id')
             ->where('employee_id', '!=', '')
@@ -51,6 +52,7 @@ class SettingController extends Controller
             'hrEmails',
             'officeLocation',
             'hrContact',
+            'lateGraceMinutes',
             'formulaExampleEmployees',
             'taxFormulaConfig',
             'taxFormulaVariables'
@@ -300,6 +302,13 @@ class SettingController extends Controller
 
         if ($request->has('hr_contact')) {
             Setting::updateOrCreate(['key' => 'hr_contact'], ['value' => $request->hr_contact]);
+        }
+
+        if ($request->has('late_grace_minutes')) {
+            Setting::updateOrCreate(
+                ['key' => 'attendance_late_grace_minutes'],
+                ['value' => (string) max(0, min(240, (int) $request->late_grace_minutes))]
+            );
         }
 
         return response()->json([
