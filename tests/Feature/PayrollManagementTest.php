@@ -347,7 +347,8 @@ class PayrollManagementTest extends TestCase
             ->get(route('payroll.index', ['month' => '2026-03', 'run' => $payrollRun->id]))
             ->assertOk()
             ->assertSee('Security')
-            ->assertSee('PKR 1,000.00');
+            ->assertSee('PKR 1,000.00')
+            ->assertSee('Search employee by name, ID, designation, bank, or account');
 
         $this->actingAs($accountsUser)
             ->post(route('payroll.finalize', $payrollRun))

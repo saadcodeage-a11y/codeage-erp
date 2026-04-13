@@ -179,6 +179,13 @@
                     </div>
                 </div>
 
+                <div class="payout-preview-tools">
+                    <div class="payout-search-box">
+                        <input type="search" placeholder="Search employee by name, ID, designation, bank, or account" data-saved-payout-search>
+                    </div>
+                    <span class="summary-pill muted" data-saved-payout-search-count>{{ $selectedRunRecords->total() }} employees</span>
+                </div>
+
                 <div class="payout-records-table-wrap">
                     <table class="payout-records-table">
                         <thead>
@@ -196,7 +203,18 @@
                         </thead>
                         <tbody>
                             @foreach($selectedRunRecords as $record)
-                                <tr>
+                                @php
+                                    $savedBankLabel = $record->employee->bank?->name ?? ($record->bank_code ?: 'No linked bank');
+                                    $savedAccountLabel = $record->beneficiary_account_no ?: 'No account number';
+                                    $savedSearchText = collect([
+                                        $record->employee->full_name,
+                                        $record->employee->employee_id,
+                                        $record->employee->designation,
+                                        $savedBankLabel,
+                                        $savedAccountLabel,
+                                    ])->filter()->implode(' ');
+                                @endphp
+                                <tr data-saved-payout-row data-search-text="{{ strtolower($savedSearchText) }}">
                                     <td>
                                         <div class="payout-employee-cell">
                                             <strong>{{ $record->employee->full_name }}</strong>
@@ -205,8 +223,8 @@
                                     </td>
                                     <td>
                                         <div class="payout-bank-cell">
-                                            <strong>{{ $record->employee->bank?->name ?? ($record->bank_code ?: 'No linked bank') }}</strong>
-                                            <span>{{ $record->beneficiary_account_no ?: 'No account number' }}</span>
+                                            <strong>{{ $savedBankLabel }}</strong>
+                                            <span>{{ $savedAccountLabel }}</span>
                                         </div>
                                     </td>
                                     <td>{{ $record->days_absent }}</td>
@@ -224,6 +242,10 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+
+                <div class="empty-state-panel" data-saved-payout-empty-search style="display: none; margin-top: 12px;">
+                    No employees match the current search.
                 </div>
 
                 <div class="pagination-wrapper" style="margin-top: 18px;">
@@ -726,6 +748,43 @@
                 applyFilter();
             }
 
+            function bindSavedPayoutSearch() {
+                const searchInput = document.querySelector('[data-saved-payout-search]');
+                const rows = Array.from(document.querySelectorAll('[data-saved-payout-row]'));
+                const emptyState = document.querySelector('[data-saved-payout-empty-search]');
+                const countNode = document.querySelector('[data-saved-payout-search-count]');
+
+                if (!searchInput || rows.length === 0) {
+                    return;
+                }
+
+                const applyFilter = () => {
+                    const term = searchInput.value.trim().toLowerCase();
+                    let visibleCount = 0;
+
+                    rows.forEach((row) => {
+                        const haystack = row.dataset.searchText || '';
+                        const matches = term === '' || haystack.includes(term);
+                        row.style.display = matches ? '' : 'none';
+
+                        if (matches) {
+                            visibleCount++;
+                        }
+                    });
+
+                    if (countNode) {
+                        countNode.textContent = `${visibleCount} employee${visibleCount === 1 ? '' : 's'}`;
+                    }
+
+                    if (emptyState) {
+                        emptyState.style.display = visibleCount === 0 ? '' : 'none';
+                    }
+                };
+
+                searchInput.addEventListener('input', applyFilter);
+                applyFilter();
+            }
+
             function defaultPaymentDate(month) {
                 if (!month) {
                     return '';
@@ -806,6 +865,7 @@
             });
 
             bindPayoutPreviewInteractions();
+            bindSavedPayoutSearch();
         })();
     </script>
 @endif
