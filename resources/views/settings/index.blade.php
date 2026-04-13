@@ -381,10 +381,25 @@
         </div>
 
         <div class="tax-variable-panel">
-            <h4>Payroll Variables</h4>
+            <div class="tax-variable-panel-header">
+                <h4>Payroll Variables</h4>
+                <input type="text" id="taxVariableSearch" class="form-control" placeholder="Search variables..." style="max-width: 240px; background: #fff;">
+            </div>
+            <div class="info-banner" style="margin-bottom: 14px; background: #fff7ed; border-color: #fed7aa;">
+                <div style="display: flex; gap: 12px;">
+                    <i data-lucide="lightbulb" style="color: #c2410c; flex-shrink: 0; width: 18px; height: 18px;"></i>
+                    <div>
+                        <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #c2410c;">Examples</h4>
+                        <p style="margin: 0; font-size: 13px; color: #9a3412; line-height: 1.6;">
+                            Example taxable formula: <strong>(basic_salary + last_increment) - security_deduction</strong><br>
+                            Example slab formula: <strong>(taxable_income - slab_min) * 0.01</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
             <div class="tax-variable-grid">
                 @foreach($taxFormulaVariables as $variable => $description)
-                    <button type="button" class="formula-token-btn variable" onclick="insertFormulaToken('{{ $variable }}')" title="{{ $description }}">
+                    <button type="button" class="formula-token-btn variable" data-variable-search="{{ strtolower($variable . ' ' . $description) }}" onclick="insertFormulaToken('{{ $variable }}')" title="{{ $description }}">
                         <strong>{{ $variable }}</strong>
                         <span>{{ $description }}</span>
                     </button>
@@ -433,6 +448,10 @@
                             <input type="number" step="0.01" class="form-control tax-slab-max" value="{{ $slab['max'] }}" placeholder="Leave blank for open ended" style="background: #f9fafb;">
                         </div>
                         <div class="form-group" style="margin: 0;">
+                            <label>Taxable Income Formula</label>
+                            <input type="text" class="form-control tax-slab-taxable-formula formula-builder-target" value="{{ $slab['taxable_income_formula'] }}" placeholder="Leave blank to use default taxable formula" style="background: #f9fafb; font-family: monospace;">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
                             <label>Tax Formula</label>
                             <input type="text" class="form-control tax-slab-formula formula-builder-target" value="{{ $slab['formula'] }}" placeholder="e.g. (taxable_income - 50000) * 0.01" style="background: #f9fafb; font-family: monospace;">
                         </div>
@@ -445,6 +464,29 @@
                 </div>
             @endforeach
         </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <div class="tax-formula-header" style="margin-bottom: 18px;">
+            <div>
+                <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Employee Formula Example</h3>
+                <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Search an employee and inspect the current payroll variables available to formulas.</p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="taxExampleEmployeeSearch" class="form-control" list="taxExampleEmployees" placeholder="Search employee by name or ID" style="min-width: 280px; background: #f9fafb;">
+                <button type="button" class="btn btn-outline" onclick="loadTaxFormulaExample()">
+                    <i data-lucide="search"></i> Load Example
+                </button>
+            </div>
+        </div>
+        <datalist id="taxExampleEmployees">
+            @foreach($formulaExampleEmployees as $employee)
+                <option value="{{ $employee->employee_id }} | {{ $employee->full_name }}" data-id="{{ $employee->id }}"></option>
+            @endforeach
+        </datalist>
+
+        <div id="taxExampleState" class="note-panel">Select an employee to preview variable values from the current payroll month.</div>
+        <div id="taxExampleGrid" class="tax-example-grid" style="display: none;"></div>
     </div>
 </div>
 
@@ -910,8 +952,16 @@
         padding: 16px;
         background: #fcfcfd;
     }
+    .tax-variable-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
     .tax-variable-panel h4 {
-        margin: 0 0 12px;
+        margin: 0;
         color: #111827;
         font-size: 14px;
         font-weight: 600;
@@ -951,13 +1001,49 @@
     }
     .tax-slab-grid {
         display: grid;
-        grid-template-columns: minmax(180px, 1.2fr) 120px 120px minmax(280px, 2fr);
+        grid-template-columns: minmax(160px, 1.1fr) 110px 110px minmax(250px, 1.6fr) minmax(250px, 1.8fr);
         gap: 12px;
     }
     .tax-slab-actions {
         display: flex;
         justify-content: flex-end;
         margin-top: 12px;
+    }
+    .tax-example-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .tax-example-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+    }
+    .tax-example-card strong {
+        display: block;
+        color: #111827;
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+    .tax-example-card span {
+        display: block;
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+    .tax-example-card code {
+        display: block;
+        font-family: monospace;
+        color: #1f2937;
+        background: #f9fafb;
+        border: 1px solid #eef2f7;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 12px;
+        word-break: break-word;
     }
     .input-with-icon { position: relative; display: flex; align-items: center; }
     .input-with-icon input { padding-right: 40px; }
@@ -984,7 +1070,8 @@
     @media (max-width: 900px) {
         .tax-formula-summary,
         .tax-slab-grid,
-        .tax-variable-grid {
+        .tax-variable-grid,
+        .tax-example-grid {
             grid-template-columns: 1fr;
         }
     }
@@ -1345,6 +1432,10 @@
                         <input type="number" step="0.01" class="form-control tax-slab-max" value="${slab.max ?? ''}" placeholder="Leave blank for open ended" style="background: #f9fafb;">
                     </div>
                     <div class="form-group" style="margin: 0;">
+                        <label>Taxable Income Formula</label>
+                        <input type="text" class="form-control tax-slab-taxable-formula formula-builder-target" value="${slab.taxable_income_formula || ''}" placeholder="Leave blank to use default taxable formula" style="background: #f9fafb; font-family: monospace;">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
                         <label>Tax Formula</label>
                         <input type="text" class="form-control tax-slab-formula formula-builder-target" value="${slab.formula || ''}" placeholder="e.g. (taxable_income - 50000) * 0.01" style="background: #f9fafb; font-family: monospace;">
                     </div>
@@ -1412,6 +1503,7 @@
                 label: row.querySelector('.tax-slab-label').value.trim(),
                 min: row.querySelector('.tax-slab-min').value,
                 max: row.querySelector('.tax-slab-max').value,
+                taxable_income_formula: row.querySelector('.tax-slab-taxable-formula').value.trim(),
                 formula: row.querySelector('.tax-slab-formula').value.trim()
             }))
         };
@@ -1444,6 +1536,59 @@
         .then(data => {
             syncTaxFormulaSummary();
             showToast('Success', data.message, 'success');
+        })
+        .catch(error => {
+            showToast('Error', error.message, 'error');
+        });
+    }
+
+    function filterTaxVariables() {
+        const query = (document.getElementById('taxVariableSearch')?.value || '').trim().toLowerCase();
+
+        document.querySelectorAll('[data-variable-search]').forEach(button => {
+            button.style.display = button.dataset.variableSearch.includes(query) ? '' : 'none';
+        });
+    }
+
+    function loadTaxFormulaExample() {
+        const input = document.getElementById('taxExampleEmployeeSearch');
+        const option = Array.from(document.querySelectorAll('#taxExampleEmployees option'))
+            .find(item => item.value === input.value);
+
+        if (!option) {
+            return alert('Select an employee from the list to load example values.');
+        }
+
+        fetch(`{{ route('settings.tax-formulas.example') }}?employee_id=${option.dataset.id}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async response => {
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Failed to load formula example.');
+            }
+
+            return payload;
+        })
+        .then(payload => {
+            document.getElementById('taxExampleState').innerHTML = `
+                <strong style="display:block;color:#111827;margin-bottom:4px;">${payload.employee.name} (${payload.employee.employee_id})</strong>
+                <span style="color:#6b7280;font-size:13px;">Using current payroll inputs for ${payload.month}.</span>
+            `;
+
+            const grid = document.getElementById('taxExampleGrid');
+            grid.innerHTML = payload.variables.map(variable => `
+                <div class="tax-example-card">
+                    <strong>${variable.label}</strong>
+                    <span>${variable.description}</span>
+                    <code>${Number(variable.value).toFixed(2)}</code>
+                </div>
+            `).join('');
+            grid.style.display = 'grid';
         })
         .catch(error => {
             showToast('Error', error.message, 'error');
@@ -1497,5 +1642,6 @@
     }
 
     document.getElementById('taxable_income_formula')?.addEventListener('input', syncTaxFormulaSummary);
+    document.getElementById('taxVariableSearch')?.addEventListener('input', filterTaxVariables);
 </script>
 @endsection

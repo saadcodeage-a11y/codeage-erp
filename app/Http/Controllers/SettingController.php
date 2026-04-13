@@ -7,8 +7,10 @@ use Illuminate\Http\Request;
 use App\Models\Bank;
 use App\Models\SmtpConfiguration;
 use App\Models\CompanyPolicy;
+use App\Models\Employee;
 use App\Models\Setting;
 use App\Services\EmployeeIdService;
+use App\Services\PayrollCalculationService;
 use App\Services\TaxFormulaService;
 use Illuminate\Support\Facades\Mail;
 
@@ -28,6 +30,13 @@ class SettingController extends Controller
         $hrEmails = Setting::where('key', 'hr_notification_emails')->value('value') ?? '';
         $officeLocation = Setting::where('key', 'office_location')->value('value') ?? '';
         $hrContact = Setting::where('key', 'hr_contact')->value('value') ?? '';
+        $formulaExampleEmployees = Employee::query()
+            ->whereNotNull('employee_id')
+            ->where('employee_id', '!=', '')
+            ->orderByRaw("CASE WHEN employee_id IS NULL OR employee_id = '' THEN 1 ELSE 0 END")
+            ->orderByRaw('LENGTH(employee_id)')
+            ->orderBy('employee_id')
+            ->get(['id', 'full_name', 'employee_id']);
         $taxFormulaConfig = $taxFormulaService->configuration();
         $taxFormulaVariables = $taxFormulaService->availableVariables();
         
@@ -42,6 +51,7 @@ class SettingController extends Controller
             'hrEmails',
             'officeLocation',
             'hrContact',
+            'formulaExampleEmployees',
             'taxFormulaConfig',
             'taxFormulaVariables'
         ));
@@ -309,6 +319,7 @@ class SettingController extends Controller
             'slabs.*.label' => 'nullable|string|max:255',
             'slabs.*.min' => 'required|numeric|min:0',
             'slabs.*.max' => 'nullable|numeric|min:0',
+            'slabs.*.taxable_income_formula' => 'nullable|string|max:1000',
             'slabs.*.formula' => 'required|string|max:1000',
         ]);
 
@@ -318,6 +329,36 @@ class SettingController extends Controller
             'success' => true,
             'message' => 'Tax calculation rules updated successfully.',
             'configuration' => $savedConfig,
+        ]);
+    }
+
+    public function taxFormulaExample(Request $request, PayrollCalculationService $payrollCalculationService, TaxFormulaService $taxFormulaService)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+        ]);
+
+        $employee = Employee::query()->findOrFail($validated['employee_id']);
+        $row = $payrollCalculationService->calculateEmployeePayroll($employee, now()->startOfMonth());
+
+        $variables = collect($taxFormulaService->availableVariables())
+            ->map(function ($description, $key) use ($row) {
+                return [
+                    'label' => $key,
+                    'description' => $description,
+                    'value' => $row[$key] ?? 0,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'employee' => [
+                'id' => $employee->id,
+                'name' => $employee->full_name,
+                'employee_id' => $employee->employee_id,
+            ],
+            'month' => now()->startOfMonth()->format('F Y'),
+            'variables' => $variables,
         ]);
     }
 }

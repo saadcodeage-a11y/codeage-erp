@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,5 +58,35 @@ class SettingsTest extends TestCase
             'taxable_income + 125',
             (string) Setting::query()->where('key', 'tax_slab_rules')->value('value')
         );
+    }
+
+    public function test_can_load_tax_formula_example_for_employee(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Super Admin',
+        ]);
+
+        $department = Department::create(['name' => 'Finance']);
+        $employee = Employee::create([
+            'full_name' => 'Formula Example Employee',
+            'email' => 'formula-example@example.com',
+            'status' => 'active',
+            'department_id' => $department->id,
+            'designation' => 'Analyst',
+            'employee_id' => 'CA-E-777',
+            'current_salary' => 75000,
+            'last_increment' => 5000,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('settings.tax-formulas.example', [
+            'employee_id' => $employee->id,
+        ]));
+
+        $response->assertOk()
+            ->assertJsonPath('employee.employee_id', 'CA-E-777')
+            ->assertJsonFragment([
+                'label' => 'basic_salary',
+                'value' => 75000,
+            ]);
     }
 }

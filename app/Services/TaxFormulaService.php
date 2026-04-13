@@ -74,18 +74,21 @@ class TaxFormulaService
                     'label' => 'Up to 50,000',
                     'min' => 0,
                     'max' => 50000,
+                    'taxable_income_formula' => '',
                     'formula' => '0',
                 ],
                 [
                     'label' => '50,000.01 to 100,000',
                     'min' => 50000.01,
                     'max' => 100000,
+                    'taxable_income_formula' => '',
                     'formula' => '(taxable_income - 50000) * 0.01',
                 ],
                 [
                     'label' => 'Above 100,000',
                     'min' => 100000.01,
                     'max' => null,
+                    'taxable_income_formula' => '',
                     'formula' => '(taxable_income - 50000) * 0.11 + 6000',
                 ],
             ],
@@ -134,6 +137,15 @@ class TaxFormulaService
         }
 
         foreach ($slabs as $index => $slab) {
+            $slabTaxableFormula = trim((string) ($slab['taxable_income_formula'] ?? '')) ?: $formula;
+
+            try {
+                $slabTaxableIncome = $this->expressionEvaluator->evaluate($slabTaxableFormula, $sampleVariables);
+            } catch (\Throwable $exception) {
+                $errors["slabs.$index.taxable_income_formula"] = $exception->getMessage();
+                $slabTaxableIncome = $taxableIncome;
+            }
+
             if ($slab['formula'] === '') {
                 $errors["slabs.$index.formula"] = 'Tax formula is required for each slab.';
                 continue;
@@ -145,9 +157,9 @@ class TaxFormulaService
 
             try {
                 $this->expressionEvaluator->evaluate($slab['formula'], array_merge($sampleVariables, [
-                    'taxable_income' => $taxableIncome,
+                    'taxable_income' => $slabTaxableIncome,
                     'slab_min' => (float) $slab['min'],
-                    'slab_max' => (float) ($slab['max'] ?? $taxableIncome),
+                    'slab_max' => (float) ($slab['max'] ?? $slabTaxableIncome),
                 ]));
             } catch (\Throwable $exception) {
                 $errors["slabs.$index.formula"] = $exception->getMessage();
@@ -167,8 +179,7 @@ class TaxFormulaService
     public function calculate(array $variables): array
     {
         $config = $this->configuration();
-        $taxableIncome = max(round($this->expressionEvaluator->evaluate($config['taxable_income_formula'], $variables), 2), 0.0);
-        $slab = $this->resolveSlab($config['slabs'], $taxableIncome);
+        [$slab, $taxableIncome] = $this->resolveSlab($config, $variables);
 
         $tax = max(round($this->expressionEvaluator->evaluate($slab['formula'], array_merge($variables, [
             'taxable_income' => $taxableIncome,
@@ -184,29 +195,40 @@ class TaxFormulaService
         ];
     }
 
-    protected function resolveSlab(array $slabs, float $taxableIncome): array
+    protected function resolveSlab(array $config, array $variables): array
     {
-        foreach ($slabs as $slab) {
+        $fallback = null;
+
+        foreach ($config['slabs'] as $slab) {
+            $slabTaxableFormula = trim((string) ($slab['taxable_income_formula'] ?? '')) ?: $config['taxable_income_formula'];
+            $taxableIncome = max(round($this->expressionEvaluator->evaluate($slabTaxableFormula, $variables), 2), 0.0);
             $min = (float) $slab['min'];
             $max = $slab['max'] !== null ? (float) $slab['max'] : null;
 
             if ($taxableIncome < $min) {
+                $fallback = [$slab, $taxableIncome];
                 continue;
             }
 
             if ($max !== null && $taxableIncome > $max) {
+                $fallback = [$slab, $taxableIncome];
                 continue;
             }
 
-            return $slab;
+            return [$slab, $taxableIncome];
         }
 
-        return collect($slabs)->sortBy('min')->last() ?: [
+        if ($fallback) {
+            return $fallback;
+        }
+
+        return [[
             'label' => 'Default',
             'min' => 0,
             'max' => null,
+            'taxable_income_formula' => $config['taxable_income_formula'],
             'formula' => '0',
-        ];
+        ], max(round($this->expressionEvaluator->evaluate($config['taxable_income_formula'], $variables), 2), 0.0)];
     }
 
     protected function normalizeSlabs(array $slabs): array
@@ -217,6 +239,7 @@ class TaxFormulaService
                     'label' => trim((string) ($slab['label'] ?? ('Slab ' . ($index + 1)))),
                     'min' => round((float) ($slab['min'] ?? 0), 2),
                     'max' => $slab['max'] === '' || $slab['max'] === null ? null : round((float) $slab['max'], 2),
+                    'taxable_income_formula' => trim((string) ($slab['taxable_income_formula'] ?? '')),
                     'formula' => trim((string) ($slab['formula'] ?? '')),
                 ];
             })

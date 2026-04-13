@@ -185,6 +185,7 @@ Route::middleware('auth')->group(function () {
     // General Settings
     Route::post('/settings/general', [SettingController::class, 'updateGeneralSettings'])->middleware('module:settings,edit')->name('settings.general.update');
     Route::post('/settings/tax-formulas', [SettingController::class, 'updateTaxFormulas'])->middleware('module:settings,edit')->name('settings.tax-formulas.update');
+    Route::get('/settings/tax-formulas/example', [SettingController::class, 'taxFormulaExample'])->middleware('module:settings,read')->name('settings.tax-formulas.example');
     
     // Email Testing
     Route::post('/settings/test-email', [SettingController::class, 'sendTestEmail'])->middleware('module:settings,edit')->name('settings.test-email');
