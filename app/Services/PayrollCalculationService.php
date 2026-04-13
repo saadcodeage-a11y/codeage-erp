@@ -225,8 +225,7 @@ class PayrollCalculationService
             - $otherDeduction,
             2
         ), 0.0);
-        $taxableSalary = max(round($basicSalary + $lastIncrement, 2), 0.0);
-        $incomeTax = $this->incomeTax($taxableSalary);
+        $incomeTax = $this->incomeTax($grossSalary);
         $annualTaxTotal = $this->cumulativeAnnualTaxTotal($employee, $monthStart, $incomeTax);
         $netSalary = max(round($grossSalary - $incomeTax, 2), 0.0);
 
@@ -317,13 +316,19 @@ class PayrollCalculationService
             : Carbon::parse($month)->startOfMonth();
     }
 
-    protected function incomeTax(float $taxableSalary): float
+    protected function incomeTax(float $grossSalary): float
     {
-        $taxableSalary = max(round($taxableSalary, 2), 0.0);
-        $annualizedTaxableIncome = $taxableSalary * 12;
-        $annualTax = $this->annualIncomeTaxFor2025_26($annualizedTaxableIncome);
+        $grossSalary = max(round($grossSalary, 2), 0.0);
 
-        return round($annualTax / 12, 2);
+        if ($grossSalary <= 50000) {
+            return 0.0;
+        }
+
+        if ($grossSalary <= 100000) {
+            return round(($grossSalary - 50000) * 0.01, 2);
+        }
+
+        return round((($grossSalary - 50000) * 0.11) + 6000, 2);
     }
 
     protected function nonPaidLeaveGraceDays(): int
@@ -399,33 +404,6 @@ class PayrollCalculationService
     protected function payrollMonthDayBasis(): int
     {
         return (int) (Setting::query()->where('key', 'payroll_month_day_basis')->value('value') ?? self::DEFAULT_PAYROLL_MONTH_DAY_BASIS);
-    }
-
-    protected function annualIncomeTaxFor2025_26(float $annualizedTaxableIncome): float
-    {
-        $annualizedTaxableIncome = max(round($annualizedTaxableIncome, 2), 0.0);
-
-        if ($annualizedTaxableIncome <= 600000) {
-            return 0.0;
-        }
-
-        if ($annualizedTaxableIncome <= 1200000) {
-            return round(($annualizedTaxableIncome - 600000) * 0.025, 2);
-        }
-
-        if ($annualizedTaxableIncome <= 2200000) {
-            return round((($annualizedTaxableIncome - 1200000) * 0.11) + 6000, 2);
-        }
-
-        if ($annualizedTaxableIncome <= 3200000) {
-            return round((($annualizedTaxableIncome - 2200000) * 0.23) + 116000, 2);
-        }
-
-        if ($annualizedTaxableIncome <= 4100000) {
-            return round((($annualizedTaxableIncome - 3200000) * 0.30) + 346000, 2);
-        }
-
-        return round((($annualizedTaxableIncome - 4100000) * 0.35) + 616000, 2);
     }
 
     protected function cumulativeAnnualTaxTotal(Employee $employee, Carbon $monthStart, float $currentMonthTax): float

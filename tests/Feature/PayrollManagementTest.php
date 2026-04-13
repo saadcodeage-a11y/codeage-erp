@@ -165,9 +165,9 @@ class PayrollManagementTest extends TestCase
         $this->assertSame('250.00', $record->positive_other);
         $this->assertSame('500.00', $record->arrears_deduction);
         $this->assertSame('53175.00', $record->gross_salary);
-        $this->assertSame('250.00', $record->income_tax);
-        $this->assertSame('250.00', $record->annual_tax_total);
-        $this->assertSame('52925.00', $record->net_salary);
+        $this->assertSame('31.75', $record->income_tax);
+        $this->assertSame('31.75', $record->annual_tax_total);
+        $this->assertSame('53143.25', $record->net_salary);
     }
 
     public function test_can_autosave_single_employee_payroll_adjustment(): void
@@ -593,8 +593,8 @@ class PayrollManagementTest extends TestCase
         $this->assertSame(1, $record->unpaid_leave_days);
         $this->assertSame('2000.00', $record->non_paid_leave_deduction);
         $this->assertSame('58000.00', $record->gross_salary);
-        $this->assertSame('250.00', $record->income_tax);
-        $this->assertSame('57750.00', $record->net_salary);
+        $this->assertSame('80.00', $record->income_tax);
+        $this->assertSame('57920.00', $record->net_salary);
     }
 
     public function test_cumulative_annual_tax_total_includes_prior_fiscal_year_months_only(): void
@@ -659,8 +659,8 @@ class PayrollManagementTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('250000.00', $record->gross_salary);
-        $this->assertSame('25000.00', $record->income_tax);
-        $this->assertSame('91000.00', $record->annual_tax_total);
+        $this->assertSame('28000.00', $record->income_tax);
+        $this->assertSame('94000.00', $record->annual_tax_total);
     }
 
     public function test_inactive_employee_is_excluded_from_preview_and_generation_even_with_attendance_and_adjustments(): void
