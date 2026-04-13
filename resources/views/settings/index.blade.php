@@ -425,7 +425,10 @@
         <div class="tax-variable-panel">
             <div class="tax-variable-panel-header">
                 <h4>Payroll Variables</h4>
-                <input type="text" id="taxVariableSearch" class="form-control" placeholder="Search variables..." style="max-width: 240px; background: #fff;">
+                <label for="taxVariableSearch" class="tax-variable-search-wrap">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="taxVariableSearch" placeholder="Search variables...">
+                </label>
             </div>
             <div class="info-banner" style="margin-bottom: 14px; background: #fff7ed; border-color: #fed7aa;">
                 <div style="display: flex; gap: 12px;">
@@ -530,17 +533,33 @@
                 <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Search an employee and inspect the current payroll variables available to formulas.</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <input type="text" id="taxExampleEmployeeSearch" class="form-control" list="taxExampleEmployees" placeholder="Search employee by name or ID" style="min-width: 280px; background: #f9fafb;">
+                <div class="tax-employee-picker">
+                    <input type="hidden" id="taxExampleEmployeeId">
+                    <div class="tax-employee-picker-input">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="taxExampleEmployeeSearch" class="form-control" placeholder="Search employee by name or ID" autocomplete="off" style="min-width: 280px; background: #f9fafb; border: none; padding-left: 0;">
+                    </div>
+                    <div id="taxExampleEmployeeDropdown" class="tax-employee-dropdown" style="display: none;">
+                        @foreach($formulaExampleEmployees as $employee)
+                            <button
+                                type="button"
+                                class="tax-employee-option"
+                                data-id="{{ $employee->id }}"
+                                data-search="{{ strtolower($employee->employee_id . ' ' . $employee->full_name) }}"
+                                data-label="{{ $employee->employee_id }} | {{ $employee->full_name }}"
+                                onclick="selectTaxExampleEmployee(this)"
+                            >
+                                <strong>{{ $employee->employee_id }}</strong>
+                                <span>{{ $employee->full_name }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
                 <button type="button" class="btn btn-outline" onclick="loadTaxFormulaExample()">
                     <i data-lucide="search"></i> Load Example
                 </button>
             </div>
         </div>
-        <datalist id="taxExampleEmployees">
-            @foreach($formulaExampleEmployees as $employee)
-                <option value="{{ $employee->employee_id }} | {{ $employee->full_name }}" data-id="{{ $employee->id }}"></option>
-            @endforeach
-        </datalist>
 
         <div id="taxExampleState" class="note-panel">Select an employee to preview variable values from the current payroll month.</div>
         <div id="taxExampleGrid" class="tax-example-grid" style="display: none;"></div>
@@ -1077,6 +1096,43 @@
         font-size: 14px;
         font-weight: 600;
     }
+    .tax-variable-search-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 240px;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1px solid #dbe1ea;
+        border-radius: 12px;
+        background: #ffffff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .tax-variable-search-wrap:focus-within {
+        border-color: #ff5a1f;
+        box-shadow: 0 0 0 4px rgba(255, 90, 31, 0.12);
+        background: #fff;
+    }
+    .tax-variable-search-wrap i {
+        width: 18px;
+        height: 18px;
+        color: #6b7280;
+        flex-shrink: 0;
+    }
+    .tax-variable-search-wrap input {
+        width: 100%;
+        min-width: 0;
+        border: none;
+        outline: none;
+        box-shadow: none;
+        background: transparent;
+        color: #111827;
+        font-size: 14px;
+        padding: 0;
+    }
+    .tax-variable-search-wrap input::placeholder {
+        color: #9ca3af;
+    }
     .tax-variable-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1183,6 +1239,78 @@
         padding: 10px 12px;
         font-size: 12px;
         word-break: break-word;
+    }
+    .tax-employee-picker {
+        position: relative;
+        min-width: 320px;
+        flex: 1 1 320px;
+        max-width: 420px;
+    }
+    .tax-employee-picker-input {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #f9fafb;
+        min-height: 44px;
+        transition: all 0.2s ease;
+    }
+    .tax-employee-picker-input:focus-within {
+        border-color: #fdba74;
+        box-shadow: 0 0 0 3px rgba(255, 122, 24, 0.12);
+        background: #fff;
+    }
+    .tax-employee-picker-input i {
+        width: 18px;
+        height: 18px;
+        color: #6b7280;
+        flex-shrink: 0;
+    }
+    .tax-employee-picker-input input {
+        flex: 1;
+        outline: none;
+        box-shadow: none;
+    }
+    .tax-employee-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+        padding: 8px;
+        max-height: 280px;
+        overflow: auto;
+    }
+    .tax-employee-option {
+        width: 100%;
+        border: none;
+        background: #fff;
+        border-radius: 10px;
+        padding: 12px 14px;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .tax-employee-option:hover,
+    .tax-employee-option.active {
+        background: #fff7ed;
+    }
+    .tax-employee-option strong {
+        display: block;
+        color: #111827;
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+    .tax-employee-option span {
+        display: block;
+        color: #6b7280;
+        font-size: 12px;
     }
     .input-with-icon { position: relative; display: flex; align-items: center; }
     .input-with-icon input { padding-right: 40px; }
@@ -1692,15 +1820,13 @@
     }
 
     function loadTaxFormulaExample() {
-        const input = document.getElementById('taxExampleEmployeeSearch');
-        const option = Array.from(document.querySelectorAll('#taxExampleEmployees option'))
-            .find(item => item.value === input.value);
+        const employeeId = document.getElementById('taxExampleEmployeeId').value;
 
-        if (!option) {
+        if (!employeeId) {
             return alert('Select an employee from the list to load example values.');
         }
 
-        fetch(`{{ route('settings.tax-formulas.example') }}?employee_id=${option.dataset.id}`, {
+        fetch(`{{ route('settings.tax-formulas.example') }}?employee_id=${employeeId}`, {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1736,11 +1862,52 @@
         });
     }
 
+    function filterTaxExampleEmployees() {
+        const input = document.getElementById('taxExampleEmployeeSearch');
+        const dropdown = document.getElementById('taxExampleEmployeeDropdown');
+        const query = input.value.trim().toLowerCase();
+        const options = Array.from(dropdown.querySelectorAll('.tax-employee-option'));
+
+        let visibleCount = 0;
+
+        options.forEach(option => {
+            const matches = query === '' || option.dataset.search.includes(query);
+            option.style.display = matches ? '' : 'none';
+            option.classList.remove('active');
+            if (matches && visibleCount === 0) {
+                option.classList.add('active');
+            }
+            if (matches) {
+                visibleCount++;
+            }
+        });
+
+        dropdown.style.display = visibleCount > 0 ? 'block' : 'none';
+
+        if (query === '') {
+            document.getElementById('taxExampleEmployeeId').value = '';
+        }
+    }
+
+    function selectTaxExampleEmployee(button) {
+        document.getElementById('taxExampleEmployeeSearch').value = button.dataset.label;
+        document.getElementById('taxExampleEmployeeId').value = button.dataset.id;
+        document.getElementById('taxExampleEmployeeDropdown').style.display = 'none';
+    }
+
+    function closeTaxExampleDropdown() {
+        document.getElementById('taxExampleEmployeeDropdown').style.display = 'none';
+    }
+
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal-overlay')) {
             if (typeof closeBankModal === 'function') closeBankModal();
             if (typeof closeSmtpModal === 'function') closeSmtpModal();
             if (typeof closePolicyModal === 'function') closePolicyModal();
+        }
+
+        if (!e.target.closest('.tax-employee-picker')) {
+            closeTaxExampleDropdown();
         }
     });
 
@@ -1784,5 +1951,7 @@
 
     document.getElementById('taxable_income_formula')?.addEventListener('input', syncTaxFormulaSummary);
     document.getElementById('taxVariableSearch')?.addEventListener('input', filterTaxVariables);
+    document.getElementById('taxExampleEmployeeSearch')?.addEventListener('focus', filterTaxExampleEmployees);
+    document.getElementById('taxExampleEmployeeSearch')?.addEventListener('input', filterTaxExampleEmployees);
 </script>
 @endsection
