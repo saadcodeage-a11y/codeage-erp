@@ -114,16 +114,22 @@
                         + ($permission['edit'] ? 1 : 0);
                 }, 0);
                 $moduleCount = count($permissions);
+                $grantedModuleCount = collect($permissions)->filter(fn ($permission) => $permission['read'] || $permission['create'] || $permission['edit'])->count();
+                $coveragePercent = $moduleCount > 0 ? (int) round(($grantedModuleCount / $moduleCount) * 100) : 0;
                 $rolePayload = ['id' => $role->id, 'name' => $role->name, 'permissions' => $permissions];
             @endphp
             <div class="role-card">
                 <div class="role-card-header">
-                    <div>
-                        <h3>{{ $role->name }}</h3>
-                        <p>{{ $role->users_count }} assigned {{ \Illuminate\Support\Str::plural('user', $role->users_count) }}</p>
-                        <div class="role-card-metrics">
-                            <span class="metric-chip">{{ $allowedCount }} permissions allowed</span>
-                            <span class="metric-chip muted">{{ $moduleCount }} modules covered</span>
+                    <div class="role-card-identity">
+                        <div class="role-avatar">{{ strtoupper(substr($role->name, 0, 2)) }}</div>
+                        <div>
+                            <h3>{{ $role->name }}</h3>
+                            <p>{{ $role->users_count }} assigned {{ \Illuminate\Support\Str::plural('user', $role->users_count) }}</p>
+                            <div class="role-card-metrics">
+                                <span class="metric-chip">{{ $allowedCount }} permissions allowed</span>
+                                <span class="metric-chip muted">{{ $moduleCount }} modules covered</span>
+                                <span class="metric-chip neutral">{{ $grantedModuleCount }} modules active</span>
+                            </div>
                         </div>
                     </div>
                     <div class="action-buttons">
@@ -131,19 +137,43 @@
                         <button class="btn-action outline-red" onclick="deleteRole({{ $role->id }}, @json($role->name))"><i data-lucide="trash-2"></i> Delete</button>
                     </div>
                 </div>
+                <div class="role-card-summary">
+                    <div class="role-summary-stat">
+                        <span>Coverage</span>
+                        <strong>{{ $coveragePercent }}%</strong>
+                    </div>
+                    <div class="role-summary-progress">
+                        <div class="role-summary-progress-track">
+                            <div class="role-summary-progress-bar" style="width: {{ $coveragePercent }}%;"></div>
+                        </div>
+                        <p>{{ $grantedModuleCount }} of {{ $moduleCount }} modules currently available to this role.</p>
+                    </div>
+                </div>
                 <div class="role-permission-list">
                     @foreach($permissions as $permission)
                         <div class="module-permission-card">
                             <div class="module-permission-header">
-                                <strong>{{ $permission['label'] }}</strong>
+                                <div>
+                                    <strong>{{ $permission['label'] }}</strong>
+                                    <small>{{ collect([$permission['read'], $permission['create'], $permission['edit']])->filter()->count() }}/3 permissions enabled</small>
+                                </div>
                                 <span class="module-status {{ ($permission['read'] || $permission['create'] || $permission['edit']) ? 'active' : 'inactive' }}">
                                     {{ ($permission['read'] || $permission['create'] || $permission['edit']) ? 'Access Granted' : 'No Access' }}
                                 </span>
                             </div>
-                            <div class="permission-chip-row">
-                                <span class="permission-chip {{ $permission['read'] ? 'allowed' : 'denied' }}">Read</span>
-                                <span class="permission-chip {{ $permission['create'] ? 'allowed' : 'denied' }}">Create</span>
-                                <span class="permission-chip {{ $permission['edit'] ? 'allowed' : 'denied' }}">Edit</span>
+                            <div class="permission-matrix">
+                                <div class="permission-matrix-item {{ $permission['read'] ? 'allowed' : 'denied' }}">
+                                    <span>Read</span>
+                                    <strong>{{ $permission['read'] ? 'Allowed' : 'Blocked' }}</strong>
+                                </div>
+                                <div class="permission-matrix-item {{ $permission['create'] ? 'allowed' : 'denied' }}">
+                                    <span>Create</span>
+                                    <strong>{{ $permission['create'] ? 'Allowed' : 'Blocked' }}</strong>
+                                </div>
+                                <div class="permission-matrix-item {{ $permission['edit'] ? 'allowed' : 'denied' }}">
+                                    <span>Edit</span>
+                                    <strong>{{ $permission['edit'] ? 'Allowed' : 'Blocked' }}</strong>
+                                </div>
                             </div>
                         </div>
                     @endforeach
@@ -284,6 +314,20 @@
     .role-grid { display: grid; gap: 20px; }
     .role-card { background: white; border: 1px solid #e5e7eb; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05); }
     .role-card-header { display: flex; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid #f3f4f6; }
+    .role-card-identity { display: flex; align-items: flex-start; gap: 14px; }
+    .role-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        color: #c2410c;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
     .role-card-header h3 { margin: 0 0 4px; }
     .role-card-header p { margin: 0; color: #6b7280; font-size: 13px; }
     .role-card-metrics { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
@@ -301,29 +345,85 @@
         background: #f3f4f6;
         color: #6b7280;
     }
+    .metric-chip.neutral {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+    .role-card-summary {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 16px;
+        align-items: center;
+        padding: 18px 20px;
+        background: #fcfcfd;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .role-summary-stat {
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: white;
+        text-align: center;
+    }
+    .role-summary-stat span {
+        display: block;
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    .role-summary-stat strong {
+        display: block;
+        color: #111827;
+        font-size: 24px;
+        line-height: 1;
+    }
+    .role-summary-progress-track {
+        height: 10px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    .role-summary-progress-bar {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #ff7a18 0%, #ff4a00 100%);
+    }
+    .role-summary-progress p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+    }
     .role-permission-list {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 14px;
         padding: 18px;
         background: #fcfcfd;
     }
     .module-permission-card {
         padding: 16px;
-        border: 1px solid #eef2f7;
-        border-radius: 14px;
+        border: 1px solid #e9eef5;
+        border-radius: 16px;
         background: white;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
     }
     .module-permission-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         gap: 10px;
         margin-bottom: 14px;
     }
     .module-permission-header strong {
-        font-size: 14px;
+        display: block;
+        font-size: 15px;
         color: #111827;
+        margin-bottom: 4px;
+    }
+    .module-permission-header small {
+        color: #6b7280;
+        font-size: 12px;
     }
     .module-status {
         padding: 4px 8px;
@@ -340,28 +440,36 @@
         background: #f3f4f6;
         color: #6b7280;
     }
-    .permission-chip-row {
-        display: flex;
+    .permission-matrix {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
-        flex-wrap: wrap;
     }
-    .permission-chip {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 72px;
-        padding: 7px 10px;
-        border-radius: 10px;
+    .permission-matrix-item {
         border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 10px 8px;
+        text-align: center;
+    }
+    .permission-matrix-item span {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 5px;
+    }
+    .permission-matrix-item strong {
+        display: block;
         font-size: 12px;
         font-weight: 600;
     }
-    .permission-chip.allowed {
+    .permission-matrix-item.allowed {
         background: #eff6ff;
         border-color: #bfdbfe;
         color: #1d4ed8;
     }
-    .permission-chip.denied {
+    .permission-matrix-item.denied {
         background: #f9fafb;
         border-color: #e5e7eb;
         color: #6b7280;
@@ -376,6 +484,9 @@
     @media (max-width: 900px) {
         .roles-overview { flex-direction: column; align-items: flex-start; }
         .role-card-header, .permission-row { grid-template-columns: 1fr; display: grid; }
+        .role-card-identity,
+        .role-card-summary,
+        .permission-matrix { grid-template-columns: 1fr; }
         .module-permission-header { flex-direction: column; align-items: flex-start; }
     }
 </style>
