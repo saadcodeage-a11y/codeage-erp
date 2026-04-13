@@ -104,8 +104,8 @@
     <section class="payroll-detail-panel">
         @if($selectedRun)
             <div class="card">
-                <div class="section-header" style="margin-bottom: 16px;">
-                    <div>
+                <div class="selected-run-header" style="margin-bottom: 16px;">
+                    <div class="selected-run-header-copy">
                         <h2>{{ $selectedRun->pay_period_month->format('F Y') }} Details</h2>
                         <p>{{ $selectedRun->name }} | Generated {{ optional($selectedRun->generated_at)->format('d M, Y h:i A') ?? 'Not recorded' }}</p>
                     </div>
@@ -407,6 +407,26 @@
         color: #047857;
     }
 
+    .selected-run-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .selected-run-header-copy {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .selected-run-header-copy h2 {
+        margin: 0 0 8px;
+    }
+
+    .selected-run-header-copy p {
+        margin: 0;
+    }
+
     .payroll-detail-panel {
         display: grid;
         gap: 20px;
@@ -668,6 +688,11 @@
     @media (max-width: 768px) {
         .payroll-page-header {
             flex-direction: column;
+        }
+
+        .selected-run-header {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .payroll-overview-stats,
