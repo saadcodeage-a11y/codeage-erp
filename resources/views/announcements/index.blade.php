@@ -10,7 +10,6 @@
     ];
     $announcementTypes = \App\Models\Announcement::types();
     $announcementDateModes = \App\Models\Announcement::dateModes();
-    $readerDepartmentName = $user->employee?->department?->name;
 @endphp
 
 <div class="page-header">
@@ -34,81 +33,56 @@
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Active</span><span class="stat-value">{{ $stats['active'] }}</span></div><div class="stat-icon-wrapper green"><i data-lucide="badge-check"></i></div></div>
 </div>
 
-<div class="announcement-overview-grid">
-    <div class="card announcement-overview-card">
-        <div class="section-header">
-            <div>
-                <h2>Announcement Filters</h2>
-                <p>Refine the announcement list by audience, type, or current status.</p>
-            </div>
-            @if(request()->filled('search') || request()->filled('type') || request()->filled('department') || request()->filled('status'))
-                <a href="{{ route('announcements.index') }}" class="btn btn-outline announcement-clear-btn">
-                    <i data-lucide="rotate-ccw"></i> Clear
-                </a>
-            @endif
+<div class="card announcement-overview-card" style="margin-bottom: 24px;">
+    <div class="section-header">
+        <div>
+            <h2>Announcement Filters</h2>
+            <p>Refine the announcement list by audience, type, or current status.</p>
         </div>
-        <form method="GET" action="{{ route('announcements.index') }}" class="announcement-filter-form">
-            <div class="form-group" style="margin: 0;">
-                <label>Search</label>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by title, message, department, or creator">
-            </div>
-            <div class="form-group" style="margin: 0;">
-                <label>Type</label>
-                <select name="type">
-                    <option value="">All types</option>
-                    @foreach($announcementTypes as $typeKey => $typeLabel)
-                        <option value="{{ $typeKey }}" @selected(request('type') === $typeKey)>{{ $typeLabel }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="form-group" style="margin: 0;">
-                <label>Department</label>
-                <select name="department">
-                    <option value="">All audiences</option>
-                    @foreach($departments as $department)
-                        <option value="{{ $department->id }}" @selected((string) request('department') === (string) $department->id)>{{ $department->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="form-group" style="margin: 0;">
-                <label>Status</label>
-                <select name="status">
-                    <option value="">All statuses</option>
-                    @foreach($announcementStatuses as $statusKey => $statusLabel)
-                        <option value="{{ $statusKey }}" @selected(request('status') === $statusKey)>{{ $statusLabel }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="announcement-filter-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i data-lucide="filter"></i> Apply Filters
-                </button>
-            </div>
-        </form>
+        @if(request()->filled('search') || request()->filled('type') || request()->filled('department') || request()->filled('status'))
+            <a href="{{ route('announcements.index') }}" class="btn btn-outline announcement-clear-btn">
+                <i data-lucide="rotate-ccw"></i> Clear
+            </a>
+        @endif
     </div>
-
-    <div class="card audience-helper-card">
-        <div class="section-header">
-            <div>
-                <h2>How Visibility Works</h2>
-                <p>Module permission controls access. Department targeting controls who sees each announcement.</p>
-            </div>
+    <form method="GET" action="{{ route('announcements.index') }}" class="announcement-filter-form">
+        <div class="form-group" style="margin: 0;">
+            <label>Search</label>
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by title, message, department, or creator">
         </div>
-        <div class="audience-helper-stack">
-            <div class="audience-helper-item">
-                <span class="summary-pill">Global</span>
-                <p>Visible to everyone who can open the Announcements module.</p>
-            </div>
-            <div class="audience-helper-item">
-                <span class="summary-pill muted">Department</span>
-                <p>Visible only to selected departments. Your current department: <strong>{{ $readerDepartmentName ?: 'Not linked' }}</strong>.</p>
-            </div>
-            <div class="audience-helper-item">
-                <span class="summary-pill muted">Official Holiday</span>
-                <p>Use this type when the notice has a single holiday date or a holiday date range.</p>
-            </div>
+        <div class="form-group" style="margin: 0;">
+            <label>Type</label>
+            <select name="type">
+                <option value="">All types</option>
+                @foreach($announcementTypes as $typeKey => $typeLabel)
+                    <option value="{{ $typeKey }}" @selected(request('type') === $typeKey)>{{ $typeLabel }}</option>
+                @endforeach
+            </select>
         </div>
-    </div>
+        <div class="form-group" style="margin: 0;">
+            <label>Department</label>
+            <select name="department">
+                <option value="">All audiences</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" @selected((string) request('department') === (string) $department->id)>{{ $department->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label>Status</label>
+            <select name="status">
+                <option value="">All statuses</option>
+                @foreach($announcementStatuses as $statusKey => $statusLabel)
+                    <option value="{{ $statusKey }}" @selected(request('status') === $statusKey)>{{ $statusLabel }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="announcement-filter-actions">
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i> Apply Filters
+            </button>
+        </div>
+    </form>
 </div>
 
 @if($announcements->count())
@@ -526,13 +500,6 @@
 @endif
 
 <style>
-    .announcement-overview-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
-        gap: 24px;
-        margin-bottom: 24px;
-        align-items: start;
-    }
     .announcement-filter-form {
         display: grid;
         grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(180px, 0.7fr)) auto;
@@ -546,26 +513,6 @@
     }
     .announcement-clear-btn {
         white-space: nowrap;
-    }
-    .announcement-overview-card,
-    .audience-helper-card {
-        height: 100%;
-    }
-    .audience-helper-stack {
-        display: grid;
-        gap: 12px;
-    }
-    .audience-helper-item {
-        padding: 14px 16px;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        background: #fcfcfd;
-    }
-    .audience-helper-item p {
-        margin: 10px 0 0;
-        color: #6b7280;
-        font-size: 13px;
-        line-height: 1.6;
     }
     .announcement-list {
         display: grid;
@@ -851,7 +798,6 @@
         font-size: 14px;
     }
     @media (max-width: 1180px) {
-        .announcement-overview-grid,
         .announcement-form-grid {
             grid-template-columns: 1fr;
         }
