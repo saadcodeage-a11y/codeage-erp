@@ -291,17 +291,8 @@ class PayrollCalculationService
         return Employee::query()
             ->with(['department', 'bank'])
             ->whereNotNull('employee_id')
-            ->where(function ($query) use ($monthStart, $monthEnd) {
-                $query->where('status', 'active')
-                    ->orWhereNotNull('current_salary')
-                    ->orWhereNotNull('last_increment')
-                    ->orWhereHas('attendanceRecords', function ($attendanceQuery) use ($monthStart, $monthEnd) {
-                        $attendanceQuery->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()]);
-                    })
-                    ->orWhereHas('payrollAdjustments', function ($adjustmentQuery) use ($monthStart) {
-                        $adjustmentQuery->whereDate('adjustment_month', $monthStart->toDateString());
-                    });
-            })
+            ->where('employee_id', '!=', '')
+            ->where('status', 'active')
             ->orderByRaw("CASE WHEN employee_id IS NULL OR employee_id = '' THEN 1 ELSE 0 END")
             ->orderByRaw('LENGTH(employee_id)')
             ->orderBy('employee_id')

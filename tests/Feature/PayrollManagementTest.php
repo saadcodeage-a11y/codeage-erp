@@ -656,4 +656,195 @@ class PayrollManagementTest extends TestCase
         $this->assertSame('25000.00', $record->income_tax);
         $this->assertSame('91000.00', $record->annual_tax_total);
     }
+
+    public function test_inactive_employee_is_excluded_from_preview_and_generation_even_with_attendance_and_adjustments(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $inactiveEmployee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-650',
+            'status' => 'inactive',
+            'current_salary' => 70000,
+            'last_increment' => 5000,
+        ]);
+        $activeEmployee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-651',
+            'status' => 'active',
+            'current_salary' => 60000,
+            'last_increment' => 3000,
+        ]);
+
+        AttendanceRecord::create([
+            'employee_id' => $inactiveEmployee->id,
+            'attendance_date' => '2026-03-10',
+            'status' => 'absent',
+        ]);
+
+        EmployeePayrollAdjustment::create([
+            'employee_id' => $inactiveEmployee->id,
+            'adjustment_month' => '2026-03-01',
+            'incentives_bonus' => 2500,
+            'remarks' => 'Should not be considered once inactive.',
+        ]);
+
+        $previewResponse = $this->actingAs($accountsUser)
+            ->getJson(route('payroll.payout-preview', ['month' => '2026-03']));
+
+        $previewResponse->assertOk();
+        $previewResponse->assertSee($activeEmployee->employee_id);
+        $previewResponse->assertDontSee($inactiveEmployee->employee_id);
+
+        $this->actingAs($accountsUser)->post(route('payroll.generate'), [
+            'month' => '2026-03',
+            'payment_date' => '2026-04-01',
+        ])->assertRedirect();
+
+        $payrollRun = PayrollRun::whereDate('pay_period_month', '2026-03-01')->firstOrFail();
+
+        $this->assertDatabaseHas('employee_payroll_records', [
+            'payroll_run_id' => $payrollRun->id,
+            'employee_id' => $activeEmployee->id,
+        ]);
+        $this->assertDatabaseMissing('employee_payroll_records', [
+            'payroll_run_id' => $payrollRun->id,
+            'employee_id' => $inactiveEmployee->id,
+        ]);
+    }
+
+    public function test_historical_payout_keeps_employee_visible_after_employee_becomes_inactive(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $employee = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-652',
+            'full_name' => 'Historical Payroll Employee',
+        ]);
+
+        $payrollRun = PayrollRun::create([
+            'name' => 'February 2026 Payroll',
+            'pay_period_month' => '2026-02-01',
+            'payment_date' => '2026-03-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'finalized',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now()->subMonth(),
+            'finalized_at' => now()->subMonth(),
+        ]);
+
+        EmployeePayrollRecord::create([
+            'payroll_run_id' => $payrollRun->id,
+            'employee_id' => $employee->id,
+            'bank_code' => 'MBL',
+            'beneficiary_name' => $employee->full_name,
+            'beneficiary_account_no' => $employee->iban,
+            'contact_number' => $employee->phone,
+            'email_address' => $employee->email,
+            'days_absent' => 0,
+            'late_count' => 0,
+            'late_absent_equivalent' => 0,
+            'unpaid_leave_days' => 0,
+            'short_hours_days' => 0,
+            'basic_salary' => 50000,
+            'last_increment' => 0,
+            'incentives_bonus' => 0,
+            'punctuality_bonus' => 0,
+            'positive_arrears' => 0,
+            'positive_other' => 0,
+            'security_deduction' => 0,
+            'security_total_deducted' => 0,
+            'non_paid_leave_deduction' => 0,
+            'attendance_penalty' => 0,
+            'arrears_deduction' => 0,
+            'other_deduction' => 0,
+            'gross_salary' => 50000,
+            'income_tax' => 0,
+            'annual_tax_total' => 0,
+            'net_salary' => 50000,
+        ]);
+
+        $employee->update(['status' => 'resigned']);
+
+        $response = $this->actingAs($accountsUser)
+            ->get(route('payroll.index', ['month' => '2026-02', 'run' => $payrollRun->id]));
+
+        $response->assertOk()
+            ->assertSee('Historical Payroll Employee')
+            ->assertSee('CA-E-652')
+            ->assertSee('Finalized');
+    }
+
+    public function test_regenerating_draft_drops_employees_who_are_no_longer_active(): void
+    {
+        $accountsUser = $this->createUser('Accounts Manager');
+        $staysActive = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-653',
+            'current_salary' => 55000,
+            'last_increment' => 5000,
+        ]);
+        $becomesInactive = $this->createPayrollEmployee([
+            'employee_id' => 'CA-E-654',
+            'current_salary' => 65000,
+            'last_increment' => 4000,
+        ]);
+
+        $draftRun = PayrollRun::create([
+            'name' => 'March 2026 Payroll',
+            'pay_period_month' => '2026-03-01',
+            'payment_date' => '2026-04-01',
+            'source_workbook' => 'system-calculated',
+            'status' => 'draft',
+            'generated_by' => $accountsUser->id,
+            'generated_at' => now()->subDay(),
+        ]);
+
+        foreach ([$staysActive, $becomesInactive] as $employee) {
+            EmployeePayrollRecord::create([
+                'payroll_run_id' => $draftRun->id,
+                'employee_id' => $employee->id,
+                'bank_code' => 'MBL',
+                'beneficiary_name' => $employee->full_name,
+                'beneficiary_account_no' => $employee->iban,
+                'contact_number' => $employee->phone,
+                'email_address' => $employee->email,
+                'days_absent' => 0,
+                'late_count' => 0,
+                'late_absent_equivalent' => 0,
+                'unpaid_leave_days' => 0,
+                'short_hours_days' => 0,
+                'basic_salary' => $employee->current_salary,
+                'last_increment' => $employee->last_increment,
+                'incentives_bonus' => 0,
+                'punctuality_bonus' => 0,
+                'positive_arrears' => 0,
+                'positive_other' => 0,
+                'security_deduction' => 0,
+                'security_total_deducted' => 0,
+                'non_paid_leave_deduction' => 0,
+                'attendance_penalty' => 0,
+                'arrears_deduction' => 0,
+                'other_deduction' => 0,
+                'gross_salary' => (float) $employee->current_salary + (float) $employee->last_increment,
+                'income_tax' => 0,
+                'annual_tax_total' => 0,
+                'net_salary' => (float) $employee->current_salary + (float) $employee->last_increment,
+            ]);
+        }
+
+        $becomesInactive->update(['status' => 'terminated']);
+
+        $this->actingAs($accountsUser)->post(route('payroll.generate'), [
+            'month' => '2026-03',
+            'payment_date' => '2026-04-05',
+        ])->assertRedirect();
+
+        $draftRun->refresh();
+
+        $this->assertSame(1, $draftRun->records()->count());
+        $this->assertDatabaseHas('employee_payroll_records', [
+            'payroll_run_id' => $draftRun->id,
+            'employee_id' => $staysActive->id,
+        ]);
+        $this->assertDatabaseMissing('employee_payroll_records', [
+            'payroll_run_id' => $draftRun->id,
+            'employee_id' => $becomesInactive->id,
+        ]);
+    }
 }
