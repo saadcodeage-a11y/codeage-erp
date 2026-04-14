@@ -42,6 +42,12 @@
                         <span>My Team</span>
                     </a>
                 @endif
+                @if(Auth::user()->canAccessModule('performance_management'))
+                    <a href="{{ route('performance.index') }}" class="nav-item {{ request()->routeIs('performance.*') ? 'active' : '' }}">
+                        <i data-lucide="chart-column-big"></i>
+                        <span>Performance</span>
+                    </a>
+                @endif
                 @if(Auth::user()->canAccessModule('leave_management'))
                     <a href="{{ route('leaves.index') }}" class="nav-item {{ request()->routeIs('leaves.*') || request()->routeIs('leave-types.*') ? 'active' : '' }}">
                         <i data-lucide="calendar-range"></i>
@@ -64,12 +70,6 @@
                     <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                         <i data-lucide="files"></i>
                         <span>Reports</span>
-                    </a>
-                @endif
-                @if(Auth::user()->canAccessModule('performance_management'))
-                    <a href="{{ route('performance.index') }}" class="nav-item {{ request()->routeIs('performance.*') ? 'active' : '' }}">
-                        <i data-lucide="chart-column-big"></i>
-                        <span>Performance</span>
                     </a>
                 @endif
                 @if(Auth::user()->canAccessModule('announcements'))
