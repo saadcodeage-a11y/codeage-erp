@@ -32,38 +32,49 @@ Route::get('/login', function () {
 })->name('login');
 
 Route::post('/login', function (\Illuminate\Http\Request $request) {
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
+    $validated = $request->validate([
+        'email' => ['required', 'string'],
+        'password' => ['required', 'string'],
     ]);
 
-    if (Auth::attempt($credentials)) {
-        $user = Auth::user();
+    $login = trim($validated['email']);
+    $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'user_id';
+    $user = \App\Models\User::where($field, $login)->first();
 
-        if ($user->two_factor_enabled) {
-            Auth::logout(); // Log out immediately to prevent access without 2FA
-            
-            $user->generateTwoFactorCode();
-            
-            // Send Email (using Queue if possible, but for now synchronous or sync queue)
-            try {
-                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\TwoFactorCodeMail($user->two_factor_code));
-            } catch (\Exception $e) {
-                // Log error but proceed to show the form (user can click resend)
-                // Log::error($e->getMessage());
-            }
-
-            $request->session()->put('user_2fa_id', $user->id);
-            return redirect()->route('verify.index');
-        }
-
-        $request->session()->regenerate();
-        return redirect()->intended('dashboard');
+    if (! $user || ! \Illuminate\Support\Facades\Hash::check($validated['password'], $user->password)) {
+        return back()->withErrors([
+            'email' => 'The provided credentials do not match our records.',
+        ])->onlyInput('email');
     }
 
-    return back()->withErrors([
-        'email' => 'The provided credentials do not match our records.',
-    ])->onlyInput('email');
+    if (! $user->is_active) {
+        return back()->withErrors([
+            'email' => 'Your account is inactive. Please contact HR or an administrator.',
+        ])->onlyInput('email');
+    }
+
+    Auth::login($user);
+    $user = Auth::user();
+
+    if ($user->two_factor_enabled) {
+        Auth::logout(); // Log out immediately to prevent access without 2FA
+        
+        $user->generateTwoFactorCode();
+        
+        // Send Email (using Queue if possible, but for now synchronous or sync queue)
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\TwoFactorCodeMail($user->two_factor_code));
+        } catch (\Exception $e) {
+            // Log error but proceed to show the form (user can click resend)
+            // Log::error($e->getMessage());
+        }
+
+        $request->session()->put('user_2fa_id', $user->id);
+        return redirect()->route('verify.index');
+    }
+
+    $request->session()->regenerate();
+    return redirect()->intended('dashboard');
 })->name('login.post');
 
 Route::post('verify/resend', [App\Http\Controllers\TwoFactorController::class, 'resend'])->name('verify.resend');
@@ -73,7 +84,7 @@ Route::post('/logout', function (\Illuminate\Http\Request $request) {
     Auth::logout();
     $request->session()->invalidate();
     $request->session()->regenerateToken();
-    return redirect('/login');
+    return redirect()->route('login')->with('success', 'You have been logged out successfully.');
 })->name('logout');
 
 use App\Http\Controllers\DashboardController;

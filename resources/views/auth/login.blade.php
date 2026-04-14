@@ -19,7 +19,7 @@
 </head>
 <body>
     <div class="login-container">
-        <div class="login-card">
+        <div class="login-card" id="login-card">
             <div class="logo-container">
                 <img src="{{ asset('images/logo.png') }}" alt="{{ config('app.name') }}" class="logo">
             </div>
@@ -27,24 +27,84 @@
             <h1 class="welcome-title">Welcome to {{ config('app.name') }}</h1>
             <p class="welcome-subtitle">Sign in to continue to your dashboard</p>
 
-            <form method="POST" action="{{ route('login') }}">
+            @if(session('success') || session('status') || $errors->any())
+                <div class="login-alerts">
+                    @if(session('success'))
+                        <div class="login-alert login-alert--success" role="status" aria-live="polite">
+                            <span class="login-alert__icon">✓</span>
+                            <span>{{ session('success') }}</span>
+                        </div>
+                    @endif
+
+                    @if(session('status'))
+                        <div class="login-alert login-alert--success" role="status" aria-live="polite">
+                            <span class="login-alert__icon">✓</span>
+                            <span>{{ session('status') }}</span>
+                        </div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="login-alert login-alert--error" role="alert" aria-live="assertive">
+                            <span class="login-alert__icon">!</span>
+                            <div class="login-alert__content">
+                                <strong>Login failed</strong>
+                                <ul class="login-alert__list">
+                                    @foreach($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login') }}" id="login-form" novalidate>
                 @csrf
                 
                 <div class="form-group">
                     <label for="email">Username / Email</label>
-                    <input type="text" id="email" name="email" placeholder="Enter your username or email" required autofocus>
+                    <input
+                        type="text"
+                        id="email"
+                        name="email"
+                        value="{{ old('email') }}"
+                        placeholder="Enter your username or email"
+                        required
+                        autofocus
+                        autocomplete="username"
+                        class="@error('email') is-invalid @enderror"
+                    >
+                    @error('email')
+                        <p class="field-error">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
+                        required
+                        autocomplete="current-password"
+                        class="@error('password') is-invalid @enderror"
+                    >
+                    @error('password')
+                        <p class="field-error">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="forgot-password">
                     <a href="#">Forgot Password?</a>
                 </div>
 
-                <button type="submit" class="login-btn">Login</button>
+                <button type="submit" class="login-btn" id="login-submit-btn">
+                    <span class="login-btn__label">Login</span>
+                    <span class="login-btn__loader" aria-hidden="true"></span>
+                    <span class="login-btn__loading-text">Signing in...</span>
+                </button>
             </form>
 
             <div class="footer">
@@ -52,5 +112,28 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('login-form');
+            const submitButton = document.getElementById('login-submit-btn');
+            const loginCard = document.getElementById('login-card');
+
+            if (!form || !submitButton || !loginCard) {
+                return;
+            }
+
+            form.addEventListener('submit', function () {
+                if (!form.checkValidity()) {
+                    return;
+                }
+
+                submitButton.disabled = true;
+                submitButton.classList.add('is-loading');
+                submitButton.setAttribute('aria-busy', 'true');
+                loginCard.classList.add('is-loading');
+            });
+        });
+    </script>
 </body>
 </html>
