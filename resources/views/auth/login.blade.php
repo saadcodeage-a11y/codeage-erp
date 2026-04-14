@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - {{ config('app.name') }}</title>
+    @php
+        $loginCssVersion = file_exists(public_path('css/login.css'))
+            ? filemtime(public_path('css/login.css'))
+            : time();
+    @endphp
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/login.css'])
-    @else
-        <link rel="stylesheet" href="{{ asset('css/login.css') }}">
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
+    <link rel="stylesheet" href="{{ asset('css/login.css') }}?v={{ $loginCssVersion }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Fallback if CSS file loading issues occur during dev */
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
@@ -23,7 +26,7 @@
             <div class="logo-container">
                 <img src="{{ asset('images/logo.png') }}" alt="{{ config('app.name') }}" class="logo">
             </div>
-            
+
             <h1 class="welcome-title">Welcome to {{ config('app.name') }}</h1>
             <p class="welcome-subtitle">Sign in to continue to your dashboard</p>
 
@@ -31,21 +34,21 @@
                 <div class="login-alerts">
                     @if(session('success'))
                         <div class="login-alert login-alert--success" role="status" aria-live="polite">
-                            <span class="login-alert__icon">✓</span>
+                            <span class="login-alert__icon" aria-hidden="true">✓</span>
                             <span>{{ session('success') }}</span>
                         </div>
                     @endif
 
                     @if(session('status'))
                         <div class="login-alert login-alert--success" role="status" aria-live="polite">
-                            <span class="login-alert__icon">✓</span>
+                            <span class="login-alert__icon" aria-hidden="true">✓</span>
                             <span>{{ session('status') }}</span>
                         </div>
                     @endif
 
                     @if($errors->any())
                         <div class="login-alert login-alert--error" role="alert" aria-live="assertive">
-                            <span class="login-alert__icon">!</span>
+                            <span class="login-alert__icon" aria-hidden="true">!</span>
                             <div class="login-alert__content">
                                 <strong>Login failed</strong>
                                 <ul class="login-alert__list">
@@ -61,7 +64,7 @@
 
             <form method="POST" action="{{ route('login') }}" id="login-form" novalidate>
                 @csrf
-                
+
                 <div class="form-group">
                     <label for="email">Username / Email</label>
                     <input
@@ -75,9 +78,6 @@
                         autocomplete="username"
                         class="@error('email') is-invalid @enderror"
                     >
-                    @error('email')
-                        <p class="field-error">{{ $message }}</p>
-                    @enderror
                 </div>
 
                 <div class="form-group">
@@ -91,9 +91,6 @@
                         autocomplete="current-password"
                         class="@error('password') is-invalid @enderror"
                     >
-                    @error('password')
-                        <p class="field-error">{{ $message }}</p>
-                    @enderror
                 </div>
 
                 <div class="forgot-password">
@@ -101,9 +98,8 @@
                 </div>
 
                 <button type="submit" class="login-btn" id="login-submit-btn">
-                    <span class="login-btn__label">Login</span>
                     <span class="login-btn__loader" aria-hidden="true"></span>
-                    <span class="login-btn__loading-text">Signing in...</span>
+                    <span class="login-btn__label" id="login-submit-label">Login</span>
                 </button>
             </form>
 
@@ -117,11 +113,23 @@
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('login-form');
             const submitButton = document.getElementById('login-submit-btn');
+            const submitLabel = document.getElementById('login-submit-label');
             const loginCard = document.getElementById('login-card');
 
-            if (!form || !submitButton || !loginCard) {
+            if (!form || !submitButton || !submitLabel || !loginCard) {
                 return;
             }
+
+            const resetLoginButton = function () {
+                submitButton.disabled = false;
+                submitButton.classList.remove('is-loading');
+                submitButton.removeAttribute('aria-busy');
+                submitLabel.textContent = 'Login';
+                loginCard.classList.remove('is-loading');
+            };
+
+            resetLoginButton();
+            window.addEventListener('pageshow', resetLoginButton);
 
             form.addEventListener('submit', function () {
                 if (!form.checkValidity()) {
@@ -131,6 +139,7 @@
                 submitButton.disabled = true;
                 submitButton.classList.add('is-loading');
                 submitButton.setAttribute('aria-busy', 'true');
+                submitLabel.textContent = 'Signing in...';
                 loginCard.classList.add('is-loading');
             });
         });
