@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Services\ReportExportService;
 use App\Services\ReportsService;
 use Illuminate\Http\Request;
@@ -22,6 +23,13 @@ class ReportsController extends Controller
             'activeTab' => $activeTab,
             'report' => $report,
             'departments' => $reportsService->departments(),
+            'employees' => Employee::query()
+                ->with('department')
+                ->orderByRaw("CASE WHEN employee_id IS NULL OR employee_id = '' THEN 1 ELSE 0 END")
+                ->orderByRaw('LENGTH(employee_id)')
+                ->orderBy('employee_id')
+                ->orderBy('full_name')
+                ->get(['id', 'full_name', 'employee_id', 'designation', 'department_id']),
         ]);
     }
 
