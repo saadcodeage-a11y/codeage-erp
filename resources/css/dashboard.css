@@ -543,7 +543,7 @@ button,
 .tab-item {
     padding: 8px 16px;
     border-radius: 6px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
     text-decoration: none;
@@ -551,11 +551,30 @@ button,
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s;
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .tab-item.active {
     background-color: #FF4A00;
     color: white;
+}
+
+.tab-item:hover {
+    color: #374151;
+    background-color: #f9fafb;
+}
+
+.tab-item:focus-visible {
+    box-shadow: 0 0 0 3px rgba(251, 91, 46, 0.14);
 }
 
 .badge {

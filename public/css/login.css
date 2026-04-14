@@ -122,9 +122,12 @@ body {
     margin-bottom: 4px;
 }
 
-.login-alert__list {
+.login-alert__messages {
+    margin-top: 4px;
+}
+
+.login-alert__messages p {
     margin: 0;
-    padding-left: 18px;
 }
 
 .form-group {

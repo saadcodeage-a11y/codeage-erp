@@ -51,11 +51,11 @@
                             <span class="login-alert__icon" aria-hidden="true">!</span>
                             <div class="login-alert__content">
                                 <strong>Login failed</strong>
-                                <ul class="login-alert__list">
+                                <div class="login-alert__messages">
                                     @foreach($errors->all() as $error)
-                                        <li>{{ $error }}</li>
+                                        <p>{{ $error }}</p>
                                     @endforeach
-                                </ul>
+                                </div>
                             </div>
                         </div>
                     @endif
