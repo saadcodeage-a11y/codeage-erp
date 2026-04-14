@@ -33,7 +33,12 @@ class DashboardService
 
     protected function buildSuperAdminDashboard(User $user): array
     {
+        $totalEmployees = Employee::count();
+        $activeEmployees = Employee::query()->where('status', 'active')->count();
         $pendingApprovals = Employee::query()->where('status', 'pending_approval')->count();
+        $inactiveEmployees = Employee::query()->whereIn('status', ['inactive', 'terminated', 'resigned', 'on_leave'])->count();
+        $totalUsers = User::count();
+        $activeUsers = $this->activeUsersCount();
         $draftRuns = PayrollRun::query()->where('status', 'draft')->count();
         $pendingLeaves = LeaveRequest::query()->where('status', 'pending')->count();
         $pendingHrReviews = PerformanceEvaluation::query()
@@ -46,10 +51,10 @@ class DashboardService
             'subtitle' => 'Org-wide overview, operations backlog, and admin shortcuts.',
             'role_label' => 'Super Admin',
             'stats' => [
-                $this->stat('Total Employees', (string) Employee::count(), 'users', 'orange'),
-                $this->stat('Active Employees', (string) Employee::query()->where('status', 'active')->count(), 'user-check', 'green'),
-                $this->stat('Total Users', (string) User::count(), 'shield', 'purple'),
-                $this->stat('Active Users', (string) $this->activeUsersCount(), 'activity', 'blue'),
+                $this->stat('Total Employees', (string) $totalEmployees, 'users', 'orange'),
+                $this->stat('Active Employees', (string) $activeEmployees, 'user-check', 'green'),
+                $this->stat('Total Users', (string) $totalUsers, 'shield', 'purple'),
+                $this->stat('Active Users', (string) $activeUsers, 'activity', 'blue'),
                 $this->stat('Pending Approvals', (string) $pendingApprovals, 'clock-3', 'yellow'),
                 $this->stat('Draft Payroll Runs', (string) $draftRuns, 'wallet-cards', 'blue-dark'),
             ],
@@ -88,6 +93,15 @@ class DashboardService
                     'description' => 'Payout months still pending final review.',
                 ],
             ],
+            'workforce_mix' => [
+                ['label' => 'Active', 'value' => $activeEmployees, 'color' => '#16a34a'],
+                ['label' => 'Pending', 'value' => $pendingApprovals, 'color' => '#f59e0b'],
+                ['label' => 'Inactive / Exited', 'value' => $inactiveEmployees, 'color' => '#64748b'],
+            ],
+            'user_mix' => [
+                ['label' => 'Active Users', 'value' => $activeUsers, 'color' => '#2563eb'],
+                ['label' => 'Other Users', 'value' => max($totalUsers - $activeUsers, 0), 'color' => '#94a3b8'],
+            ],
             'announcements' => $this->latestAnnouncementsFor($user),
         ];
     }
@@ -107,6 +121,12 @@ class DashboardService
                 AttendanceRecord::STATUS_EARLY_LEAVE,
             ])
             ->count();
+        $attendanceBreakdown = [
+            ['label' => 'Late', 'value' => AttendanceRecord::query()->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_LATE)->count(), 'color' => '#f59e0b'],
+            ['label' => 'Absent', 'value' => AttendanceRecord::query()->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_ABSENT)->count(), 'color' => '#ef4444'],
+            ['label' => 'Incomplete', 'value' => AttendanceRecord::query()->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_INCOMPLETE)->count(), 'color' => '#8b5cf6'],
+            ['label' => 'Early Leave', 'value' => AttendanceRecord::query()->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_EARLY_LEAVE)->count(), 'color' => '#0ea5e9'],
+        ];
 
         return [
             'view' => 'hr-manager',
@@ -148,6 +168,7 @@ class DashboardService
             'pending_leave_requests' => $pendingLeaveRequests,
             'pending_hr_finalizations' => $pendingHrFinalizations,
             'attendance_exceptions' => $attendanceExceptions,
+            'attendance_breakdown' => $attendanceBreakdown,
             'announcements' => $this->latestAnnouncementsFor($user),
         ];
     }
@@ -164,6 +185,22 @@ class DashboardService
         $latestRunGross = $latestRun ? (float) $latestRun->records()->sum('gross_salary') : 0;
         $latestRunTax = $latestRun ? (float) $latestRun->records()->sum('income_tax') : 0;
         $latestRunNet = $latestRun ? (float) $latestRun->records()->sum('net_salary') : 0;
+        $latestRunSecurity = $latestRun ? (float) $latestRun->records()->sum('security_deduction') : 0;
+        $recentRuns = PayrollRun::query()
+            ->withCount('records')
+            ->latest('pay_period_month')
+            ->take(6)
+            ->get();
+        $recentRunSeries = $recentRuns->map(function (PayrollRun $run) {
+            return [
+                'label' => $run->pay_period_month?->format('M Y') ?? 'N/A',
+                'records' => (int) $run->records_count,
+                'gross' => (float) $run->records()->sum('gross_salary'),
+                'net' => (float) $run->records()->sum('net_salary'),
+                'tax' => (float) $run->records()->sum('income_tax'),
+                'status' => $run->status,
+            ];
+        });
 
         return [
             'view' => 'accounts-manager',
@@ -190,12 +227,10 @@ class DashboardService
                 'gross' => $latestRunGross,
                 'tax' => $latestRunTax,
                 'net' => $latestRunNet,
+                'security' => $latestRunSecurity,
             ],
-            'recent_runs' => PayrollRun::query()
-                ->withCount('records')
-                ->latest('pay_period_month')
-                ->take(6)
-                ->get(),
+            'recent_runs' => $recentRuns,
+            'recent_run_series' => $recentRunSeries,
             'payroll_exceptions' => $latestRun
                 ? $latestRun->records()
                     ->with('employee.department')
@@ -233,6 +268,25 @@ class DashboardService
 
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
+        $assignedEmployeesCount = $assignedEmployeeIds->count();
+        $activeTeamMembers = Employee::query()
+            ->whereIn('id', $assignedEmployeeIds)
+            ->where('status', 'active')
+            ->count();
+        $pendingManagerEvaluations = PerformanceEvaluation::query()
+            ->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))
+            ->where('status', PerformanceEvaluation::STATUS_MANAGER_DRAFT)
+            ->count();
+        $attendanceIssues = AttendanceRecord::query()
+            ->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))
+            ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->whereIn('status', [
+                AttendanceRecord::STATUS_LATE,
+                AttendanceRecord::STATUS_ABSENT,
+                AttendanceRecord::STATUS_INCOMPLETE,
+                AttendanceRecord::STATUS_EARLY_LEAVE,
+            ])
+            ->count();
 
         return [
             'view' => 'team-manager',
@@ -240,25 +294,10 @@ class DashboardService
             'subtitle' => 'Team workload, current month issues, and evaluation follow-up for assigned employees.',
             'role_label' => 'Team Manager',
             'stats' => [
-                $this->stat('Assigned Employees', (string) $assignedEmployeeIds->count(), 'users-round', 'orange'),
-                $this->stat('Active Team Members', (string) Employee::query()
-                    ->whereIn('id', $assignedEmployeeIds)
-                    ->where('status', 'active')
-                    ->count(), 'user-check', 'green'),
-                $this->stat('Pending Manager Evaluations', (string) PerformanceEvaluation::query()
-                    ->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))
-                    ->where('status', PerformanceEvaluation::STATUS_MANAGER_DRAFT)
-                    ->count(), 'chart-column-big', 'blue'),
-                $this->stat('Attendance Issues', (string) AttendanceRecord::query()
-                    ->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))
-                    ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-                    ->whereIn('status', [
-                        AttendanceRecord::STATUS_LATE,
-                        AttendanceRecord::STATUS_ABSENT,
-                        AttendanceRecord::STATUS_INCOMPLETE,
-                        AttendanceRecord::STATUS_EARLY_LEAVE,
-                    ])
-                    ->count(), 'fingerprint', 'yellow'),
+                $this->stat('Assigned Employees', (string) $assignedEmployeesCount, 'users-round', 'orange'),
+                $this->stat('Active Team Members', (string) $activeTeamMembers, 'user-check', 'green'),
+                $this->stat('Pending Manager Evaluations', (string) $pendingManagerEvaluations, 'chart-column-big', 'blue'),
+                $this->stat('Attendance Issues', (string) $attendanceIssues, 'fingerprint', 'yellow'),
             ],
             'quick_actions' => $this->filterQuickActions($user, [
                 $this->action('My Team', 'Assigned employee overview', 'user-round-search', route('team.index'), 'orange-light', 'team_management'),
@@ -289,6 +328,21 @@ class DashboardService
             'announcements' => $user->canAccessModule('announcements')
                 ? $this->latestAnnouncementsFor($user)
                 : collect(),
+            'team_status_mix' => [
+                ['label' => 'Active', 'value' => $activeTeamMembers, 'color' => '#16a34a'],
+                ['label' => 'Other Statuses', 'value' => max($assignedEmployeesCount - $activeTeamMembers, 0), 'color' => '#94a3b8'],
+            ],
+            'evaluation_status_mix' => [
+                ['label' => 'Manager Draft', 'value' => $pendingManagerEvaluations, 'color' => '#f59e0b'],
+                ['label' => 'Pending HR', 'value' => PerformanceEvaluation::query()->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))->where('status', PerformanceEvaluation::STATUS_PENDING_HR)->count(), 'color' => '#3b82f6'],
+                ['label' => 'Finalized', 'value' => PerformanceEvaluation::query()->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))->where('status', PerformanceEvaluation::STATUS_FINALIZED)->count(), 'color' => '#10b981'],
+            ],
+            'attendance_issue_breakdown' => [
+                ['label' => 'Late', 'value' => AttendanceRecord::query()->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_LATE)->count(), 'color' => '#f59e0b'],
+                ['label' => 'Absent', 'value' => AttendanceRecord::query()->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_ABSENT)->count(), 'color' => '#ef4444'],
+                ['label' => 'Incomplete', 'value' => AttendanceRecord::query()->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_INCOMPLETE)->count(), 'color' => '#8b5cf6'],
+                ['label' => 'Early Leave', 'value' => AttendanceRecord::query()->whereHas('employee', fn ($query) => $query->where('team_manager_user_id', $user->id))->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->where('status', AttendanceRecord::STATUS_EARLY_LEAVE)->count(), 'color' => '#0ea5e9'],
+            ],
         ];
     }
 
@@ -369,6 +423,11 @@ class DashboardService
             ->first();
 
         $latestSecuritySnapshot = $employee->securityFundSnapshots()->latest('snapshot_month')->first();
+        $leaveStatusMix = [
+            ['label' => 'Pending', 'value' => $employee->leaveRequests()->where('status', 'pending')->count(), 'color' => '#f59e0b'],
+            ['label' => 'Approved', 'value' => $employee->leaveRequests()->where('status', 'approved')->count(), 'color' => '#16a34a'],
+            ['label' => 'Other', 'value' => $employee->leaveRequests()->whereNotIn('status', ['pending', 'approved'])->count(), 'color' => '#94a3b8'],
+        ];
 
         return [
             'view' => 'employee',
@@ -402,6 +461,7 @@ class DashboardService
             'latest_review' => $latestReview,
             'latest_payroll' => $latestPayroll,
             'latest_security_snapshot' => $latestSecuritySnapshot,
+            'leave_status_mix' => $leaveStatusMix,
         ];
     }
 

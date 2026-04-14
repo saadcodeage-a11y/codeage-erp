@@ -54,9 +54,9 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Operational Overview');
-        $response->assertSee('Pending Items');
-        $response->assertSee('Department Overview');
+        $response->assertSee('Workforce Mix');
+        $response->assertSee('Operational Queue');
+        $response->assertSee('Department Footprint');
         $response->assertSee('Engineering');
         $response->assertSee('Draft Payroll Runs');
     }
@@ -107,9 +107,9 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($hrUser)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Upcoming Leave &amp; HR Queue', false);
-        $response->assertSee('Attendance Exceptions');
-        $response->assertSee('Recent Workforce Changes');
+        $response->assertSee('People Ops Pulse');
+        $response->assertSee('Attendance Breakdown');
+        $response->assertSee('Workforce Movement');
         $response->assertSee('Pending HR Finalizations');
         $response->assertSee('HR Visible Employee');
     }
@@ -152,10 +152,10 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($accountsUser)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Latest Payout Summary');
+        $response->assertSee('Payroll Composition');
         $response->assertSee('Recent Payroll Runs');
-        $response->assertSee('Payroll Exceptions');
-        $response->assertSee('Reporting Shortcuts');
+        $response->assertSee('Exception Watchlist');
+        $response->assertSee('Report Shortcuts');
         $response->assertSee('Draft Payouts');
         $response->assertSee('Accounts Visible Employee');
     }
@@ -201,8 +201,9 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($manager)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Team Snapshot');
-        $response->assertSee('Pending / Recent Evaluations');
+        $response->assertSee('Team Health');
+        $response->assertSee('Evaluation Pipeline');
+        $response->assertSee('Assigned Team Members');
         $response->assertSee('Pending Manager Evaluations');
         $response->assertSee('Assigned Team Employee');
         $response->assertDontSee('Other Team Employee');
@@ -369,8 +370,8 @@ class DashboardTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('This Month at a Glance');
-        $response->assertSee('Recent Leave Status');
-        $response->assertSee('Payroll / Tax / Security Highlights');
+        $response->assertSee('Leave Timeline');
+        $response->assertSee('Compensation Snapshot');
         $response->assertSee('Visible Announcement');
         $response->assertSee('Visible final feedback');
         $response->assertDontSee('Hidden Announcement');
