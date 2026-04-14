@@ -15,7 +15,9 @@
     </div>
 </div>
 
-<div class="stats-grid">
+@php($hasActiveFilters = request()->filled('search') || request()->filled('type') || request()->filled('status'))
+
+<div class="stats-grid performance-stats-grid">
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Total Evaluations</span><span class="stat-value">{{ $stats['total'] }}</span></div><div class="stat-icon-wrapper orange"><i data-lucide="clipboard-list"></i></div></div>
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Monthly</span><span class="stat-value">{{ $stats['monthly'] }}</span></div><div class="stat-icon-wrapper blue"><i data-lucide="calendar-days"></i></div></div>
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Bi-Annual</span><span class="stat-value">{{ $stats['biannual'] }}</span></div><div class="stat-icon-wrapper yellow"><i data-lucide="calendar-range"></i></div></div>
@@ -23,10 +25,12 @@
     <div class="stat-card"><div class="stat-content"><span class="stat-label">Finalized</span><span class="stat-value">{{ $stats['finalized'] }}</span></div><div class="stat-icon-wrapper green"><i data-lucide="badge-check"></i></div></div>
 </div>
 
-<div class="search-container">
-    <form action="{{ route('performance.index') }}" method="GET" class="search-form performance-filter-form">
-        <i data-lucide="search" class="search-icon"></i>
-        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by employee name, ID, or designation..." class="search-input">
+<div class="search-container performance-search-container">
+    <form action="{{ route('performance.index') }}" method="GET" class="performance-search-form">
+        <div class="performance-search-field">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by employee name, ID, or designation..." class="search-input">
+        </div>
         <div class="performance-filter-select-wrap">
             <select name="type" class="performance-filter-select">
                 <option value="">All types</option>
@@ -44,54 +48,64 @@
             </select>
         </div>
         <button type="submit" class="btn btn-outline performance-filter-action"><i data-lucide="filter"></i> Filter</button>
-        @if(request()->filled('search') || request()->filled('type') || request()->filled('status'))
+        @if($hasActiveFilters)
             <a href="{{ route('performance.index') }}" class="btn btn-outline performance-filter-action">Clear</a>
         @endif
     </form>
 </div>
 
 <div class="table-card">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Employee</th>
-                <th>Type</th>
-                <th>Period</th>
-                <th>Manager Score</th>
-                <th>Final Score</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($evaluations as $evaluation)
+    @if($evaluations->count() > 0)
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <td>
-                        <div class="employee-cell">
-                            <div class="avatar-sm orange">{{ strtoupper(substr($evaluation->employee?->full_name ?? 'NA', 0, 2)) }}</div>
-                            <div class="employee-info">
-                                <span class="emp-name">{{ $evaluation->employee?->full_name ?? 'Unknown employee' }}</span>
-                                <span class="emp-email">{{ $evaluation->employee?->employee_id }} | {{ $evaluation->employee?->designation }}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td><span class="summary-pill muted">{{ \App\Models\PerformanceEvaluation::types()[$evaluation->evaluation_type] ?? ucfirst($evaluation->evaluation_type) }}</span></td>
-                    <td>{{ $evaluation->periodLabel() }}</td>
-                    <td>{{ $evaluation->managerAverage() !== null ? number_format($evaluation->managerAverage(), 2) . ' / 5' : 'Not submitted' }}</td>
-                    <td>{{ $evaluation->hrAverage() !== null ? number_format($evaluation->hrAverage(), 2) . ' / 5' : 'Pending HR' }}</td>
-                    <td><span class="status-badge {{ $evaluation->status }}">{{ \App\Models\PerformanceEvaluation::statuses()[$evaluation->status] ?? ucfirst(str_replace('_', ' ', $evaluation->status)) }}</span></td>
-                    <td>
-                        <a href="{{ route('performance.show', $evaluation) }}" class="btn-action outline">
-                            <i data-lucide="chart-no-axes-column"></i> Open
-                        </a>
-                    </td>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Period</th>
+                    <th>Manager Score</th>
+                    <th>Final Score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
-            @empty
-                <tr><td colspan="7" class="text-center">No performance evaluations found.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    <div class="pagination-wrapper">{{ $evaluations->links() }}</div>
+            </thead>
+            <tbody>
+                @foreach($evaluations as $evaluation)
+                    <tr>
+                        <td>
+                            <div class="employee-cell">
+                                <div class="avatar-sm orange">{{ strtoupper(substr($evaluation->employee?->full_name ?? 'NA', 0, 2)) }}</div>
+                                <div class="employee-info">
+                                    <span class="emp-name">{{ $evaluation->employee?->full_name ?? 'Unknown employee' }}</span>
+                                    <span class="emp-email">{{ $evaluation->employee?->employee_id }} | {{ $evaluation->employee?->designation }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="summary-pill muted">{{ \App\Models\PerformanceEvaluation::types()[$evaluation->evaluation_type] ?? ucfirst($evaluation->evaluation_type) }}</span></td>
+                        <td>{{ $evaluation->periodLabel() }}</td>
+                        <td>{{ $evaluation->managerAverage() !== null ? number_format($evaluation->managerAverage(), 2) . ' / 5' : 'Not submitted' }}</td>
+                        <td>{{ $evaluation->hrAverage() !== null ? number_format($evaluation->hrAverage(), 2) . ' / 5' : 'Pending HR' }}</td>
+                        <td><span class="status-badge {{ $evaluation->status }}">{{ \App\Models\PerformanceEvaluation::statuses()[$evaluation->status] ?? ucfirst(str_replace('_', ' ', $evaluation->status)) }}</span></td>
+                        <td>
+                            <a href="{{ route('performance.show', $evaluation) }}" class="btn-action outline">
+                                <i data-lucide="chart-no-axes-column"></i> Open
+                            </a>
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <div class="pagination-wrapper">{{ $evaluations->links() }}</div>
+    @else
+        <div class="performance-empty-state">
+            <div class="performance-empty-state__icon">
+                <i data-lucide="chart-column-big"></i>
+            </div>
+            <div class="performance-empty-state__content">
+                <h3>No performance evaluations found</h3>
+                <p>{{ $hasActiveFilters ? 'Try adjusting the current filters to widen the result set.' : 'Create a new evaluation to start tracking monthly and bi-annual performance.' }}</p>
+            </div>
+        </div>
+    @endif
 </div>
 
 <div id="performanceCreateModal" class="modal-overlay" style="display: none;">
@@ -175,10 +189,30 @@
 </script>
 
 <style>
-    .performance-filter-form {
-        grid-template-columns: minmax(280px, 1fr) 200px 200px auto auto;
-        gap: 14px;
+    .performance-stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 20px;
+    }
+    .performance-search-container {
+        margin-bottom: 20px;
+    }
+    .performance-search-form {
+        display: grid;
+        grid-template-columns: minmax(320px, 1fr) 190px 190px auto auto;
+        gap: 12px;
         align-items: center;
+    }
+    .performance-search-field {
+        position: relative;
+        min-width: 0;
+    }
+    .performance-search-field .search-icon {
+        left: 14px;
+    }
+    .performance-search-field .search-input {
+        height: 44px;
+        padding-left: 42px;
+        border-radius: 12px;
     }
     .performance-filter-select-wrap {
         position: relative;
@@ -218,15 +252,57 @@
     .performance-filter-action {
         height: 44px;
         align-self: stretch;
+        justify-content: center;
+        min-width: 96px;
+        text-decoration: none;
+    }
+    .performance-empty-state {
+        padding: 56px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 14px;
+    }
+    .performance-empty-state__icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #f97316;
+        background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+        border: 1px solid #fed7aa;
+    }
+    .performance-empty-state__icon i {
+        width: 30px;
+        height: 30px;
+    }
+    .performance-empty-state__content h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+    }
+    .performance-empty-state__content p {
+        margin: 0;
+        max-width: 440px;
+        color: #6b7280;
+        line-height: 1.6;
     }
     @media (max-width: 1180px) {
-        .performance-filter-form {
+        .performance-search-form {
             grid-template-columns: 1fr 1fr;
         }
     }
     @media (max-width: 768px) {
-        .performance-filter-form {
+        .performance-search-form {
             grid-template-columns: 1fr;
+        }
+        .performance-filter-action {
+            width: 100%;
         }
     }
 </style>
