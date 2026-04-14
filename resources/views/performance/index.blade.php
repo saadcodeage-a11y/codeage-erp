@@ -24,24 +24,28 @@
 </div>
 
 <div class="search-container">
-    <form action="{{ route('performance.index') }}" method="GET" class="search-form" style="grid-template-columns: minmax(240px, 1fr) 180px 180px auto auto;">
+    <form action="{{ route('performance.index') }}" method="GET" class="search-form performance-filter-form">
         <i data-lucide="search" class="search-icon"></i>
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by employee name, ID, or designation..." class="search-input">
-        <select name="type" class="announcement-inline-select">
-            <option value="">All types</option>
-            @foreach(\App\Models\PerformanceEvaluation::types() as $typeKey => $typeLabel)
-                <option value="{{ $typeKey }}" @selected(request('type') === $typeKey)>{{ $typeLabel }}</option>
-            @endforeach
-        </select>
-        <select name="status" class="announcement-inline-select">
-            <option value="">All statuses</option>
-            @foreach(\App\Models\PerformanceEvaluation::statuses() as $statusKey => $statusLabel)
-                <option value="{{ $statusKey }}" @selected(request('status') === $statusKey)>{{ $statusLabel }}</option>
-            @endforeach
-        </select>
-        <button type="submit" class="btn btn-outline"><i data-lucide="filter"></i> Filter</button>
+        <div class="performance-filter-select-wrap">
+            <select name="type" class="performance-filter-select">
+                <option value="">All types</option>
+                @foreach(\App\Models\PerformanceEvaluation::types() as $typeKey => $typeLabel)
+                    <option value="{{ $typeKey }}" @selected(request('type') === $typeKey)>{{ $typeLabel }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="performance-filter-select-wrap">
+            <select name="status" class="performance-filter-select">
+                <option value="">All statuses</option>
+                @foreach(\App\Models\PerformanceEvaluation::statuses() as $statusKey => $statusLabel)
+                    <option value="{{ $statusKey }}" @selected(request('status') === $statusKey)>{{ $statusLabel }}</option>
+                @endforeach
+            </select>
+        </div>
+        <button type="submit" class="btn btn-outline performance-filter-action"><i data-lucide="filter"></i> Filter</button>
         @if(request()->filled('search') || request()->filled('type') || request()->filled('status'))
-            <a href="{{ route('performance.index') }}" class="btn btn-outline">Clear</a>
+            <a href="{{ route('performance.index') }}" class="btn btn-outline performance-filter-action">Clear</a>
         @endif
     </form>
 </div>
@@ -169,4 +173,61 @@
         }
     });
 </script>
+
+<style>
+    .performance-filter-form {
+        grid-template-columns: minmax(280px, 1fr) 200px 200px auto auto;
+        gap: 14px;
+        align-items: center;
+    }
+    .performance-filter-select-wrap {
+        position: relative;
+        min-width: 0;
+    }
+    .performance-filter-select {
+        width: 100%;
+        height: 44px;
+        padding: 0 42px 0 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        color: #111827;
+        font-size: 14px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .performance-filter-select-wrap::after {
+        content: '';
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid #6b7280;
+        border-bottom: 2px solid #6b7280;
+        transform: translateY(-65%) rotate(45deg);
+        pointer-events: none;
+    }
+    .performance-filter-select:focus {
+        border-color: #fb923c;
+        box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.14);
+    }
+    .performance-filter-action {
+        height: 44px;
+        align-self: stretch;
+    }
+    @media (max-width: 1180px) {
+        .performance-filter-form {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (max-width: 768px) {
+        .performance-filter-form {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 @endsection
