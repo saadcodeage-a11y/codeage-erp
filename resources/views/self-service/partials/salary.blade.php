@@ -26,7 +26,7 @@
                         <td><strong>{{ $formatMoney($record->net_salary) }}</strong></td>
                         <td>
                             @if($record->payrollRun)
-                                <a href="{{ route('self-service.payroll.payslip', $record) }}" class="btn btn-outline small" style="text-decoration: none;">Download</a>
+                                <a href="{{ route('profile.self-service.payroll.payslip', $record) }}" class="btn btn-outline small" style="text-decoration: none;">Download</a>
                             @else
                                 <span class="muted-text">Unavailable</span>
                             @endif

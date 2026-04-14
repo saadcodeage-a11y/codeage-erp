@@ -96,13 +96,10 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    // Self Service
-    Route::middleware('module:self_service,read')->group(function () {
-        Route::get('/self-service', [SelfServiceController::class, 'index'])->name('self-service.index');
-        Route::post('/self-service/leaves', [SelfServiceController::class, 'storeLeave'])->name('self-service.leaves.store');
-        Route::post('/self-service/leaves/{leaveRequest}/cancel', [SelfServiceController::class, 'cancelLeave'])->name('self-service.leaves.cancel');
-        Route::get('/self-service/payroll/{payrollRecord}/payslip', [SelfServiceController::class, 'downloadPayslip'])->name('self-service.payroll.payslip');
-    });
+    Route::get('/self-service', [SelfServiceController::class, 'index'])->name('self-service.index');
+    Route::post('/profile/self-service/leaves', [SelfServiceController::class, 'storeLeave'])->name('profile.self-service.leaves.store');
+    Route::post('/profile/self-service/leaves/{leaveRequest}/cancel', [SelfServiceController::class, 'cancelLeave'])->name('profile.self-service.leaves.cancel');
+    Route::get('/profile/self-service/payroll/{payrollRecord}/payslip', [SelfServiceController::class, 'downloadPayslip'])->name('profile.self-service.payroll.payslip');
 
     // Employees
     Route::middleware('module:employees,read')->group(function () {

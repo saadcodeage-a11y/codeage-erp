@@ -26,7 +26,6 @@ class UserManagementTest extends TestCase
         $response->assertSee('Accounts Manager');
         $response->assertSee('Team Manager');
         $response->assertSee('Employee');
-        $response->assertSee('Self Service');
         $response->assertSee('My Team');
         $response->assertSee('Performance');
         $response->assertSee('Leave Management');
@@ -34,7 +33,7 @@ class UserManagementTest extends TestCase
         $response->assertSee('Payroll');
         $response->assertSee('Reports');
         $response->assertSee('Announcements');
-        $response->assertSee('>14<', false);
+        $response->assertSee('>13<', false);
         $response->assertSee('Modules');
     }
 
@@ -48,7 +47,6 @@ class UserManagementTest extends TestCase
             'name' => 'Operations Lead',
             'permissions' => [
                 'dashboard' => ['read' => true, 'create' => false, 'edit' => false],
-                'self_service' => ['read' => false, 'create' => false, 'edit' => false],
                 'employees' => ['read' => true, 'create' => true, 'edit' => true],
                 'team_management' => ['read' => true, 'create' => false, 'edit' => true],
                 'performance_management' => ['read' => true, 'create' => true, 'edit' => true],
@@ -68,14 +66,6 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseHas('roles', ['name' => 'Operations Lead']);
 
         $role = Role::where('name', 'Operations Lead')->firstOrFail();
-
-        $this->assertDatabaseHas('role_permissions', [
-            'role_id' => $role->id,
-            'module' => 'self_service',
-            'can_read' => false,
-            'can_create' => false,
-            'can_edit' => false,
-        ]);
 
         $this->assertDatabaseHas('role_permissions', [
             'role_id' => $role->id,

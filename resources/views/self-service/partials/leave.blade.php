@@ -14,7 +14,7 @@
     <div class="self-service-two-col">
         <div class="sub-card">
             <h3>Apply for Leave</h3>
-            <form action="{{ route('self-service.leaves.store') }}" method="POST" class="portal-form">
+            <form action="{{ route('profile.self-service.leaves.store') }}" method="POST" class="portal-form">
                 @csrf
                 <div class="form-group">
                     <label>Leave Type</label>
@@ -58,7 +58,7 @@
                             <div class="review-note">Review note: {{ $leaveRequest->reviewer_notes }}</div>
                         @endif
                         @if($leaveRequest->status === 'pending')
-                            <form action="{{ route('self-service.leaves.cancel', $leaveRequest) }}" method="POST" style="margin-top: 0.75rem;">
+                            <form action="{{ route('profile.self-service.leaves.cancel', $leaveRequest) }}" method="POST" style="margin-top: 0.75rem;">
                                 @csrf
                                 <button type="submit" class="btn btn-outline small">Cancel Request</button>
                             </form>

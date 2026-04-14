@@ -45,7 +45,7 @@ class SelfServicePortalTest extends TestCase
         ]);
     }
 
-    public function test_employee_can_access_self_service_but_unlinked_employee_account_is_denied_cleanly(): void
+    public function test_profile_page_embeds_self_service_for_linked_non_super_admin_accounts(): void
     {
         $employee = $this->createEmployee([
             'full_name' => 'Linked Employee',
@@ -58,23 +58,24 @@ class SelfServicePortalTest extends TestCase
         $superAdmin = User::factory()->create(['role' => 'Super Admin']);
 
         $this->actingAs($linkedUser)
-            ->get(route('self-service.index'))
+            ->get(route('profile.index', ['tab' => 'profile']))
             ->assertOk()
-            ->assertSee('Self Service')
+            ->assertSee('My Profile')
             ->assertSee('Linked Employee');
 
         $this->actingAs($unlinkedUser)
-            ->get(route('self-service.index'))
-            ->assertForbidden()
-            ->assertSee('Employee Profile Not Linked');
+            ->get(route('profile.index'))
+            ->assertOk()
+            ->assertSee('No Linked Employee Profile');
 
         $this->actingAs($hrUser)
-            ->get(route('self-service.index'))
-            ->assertForbidden();
+            ->get(route('profile.index'))
+            ->assertOk();
 
         $this->actingAs($superAdmin)
-            ->get(route('self-service.index'))
-            ->assertForbidden();
+            ->get(route('profile.index'))
+            ->assertOk()
+            ->assertDontSee('Employee Self-Service');
     }
 
     public function test_self_service_only_shows_linked_employee_data_and_hides_non_finalized_reviews(): void
@@ -288,7 +289,7 @@ class SelfServicePortalTest extends TestCase
             'hr_finalized_at' => now(),
         ]);
 
-        $response = $this->actingAs($employeeUser)->get(route('self-service.index', ['tab' => 'performance']));
+        $response = $this->actingAs($employeeUser)->get(route('profile.index', ['tab' => 'performance']));
 
         $response->assertOk();
         $response->assertSee('Visible Employee');
@@ -317,12 +318,12 @@ class SelfServicePortalTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($employeeUser)->post(route('self-service.leaves.store'), [
+        $this->actingAs($employeeUser)->post(route('profile.self-service.leaves.store'), [
             'leave_type_id' => $leaveType->id,
             'start_date' => now()->addDays(2)->toDateString(),
             'end_date' => now()->addDays(3)->toDateString(),
             'reason' => 'Portal submission',
-        ])->assertRedirect(route('self-service.index', ['tab' => 'leave']));
+        ])->assertRedirect(route('profile.index', ['tab' => 'leave']));
 
         $leaveRequest = LeaveRequest::firstOrFail();
 
@@ -334,8 +335,8 @@ class SelfServicePortalTest extends TestCase
         ]);
 
         $this->actingAs($employeeUser)
-            ->post(route('self-service.leaves.cancel', $leaveRequest))
-            ->assertRedirect(route('self-service.index', ['tab' => 'leave']));
+            ->post(route('profile.self-service.leaves.cancel', $leaveRequest))
+            ->assertRedirect(route('profile.index', ['tab' => 'leave']));
 
         $this->assertDatabaseHas('leave_requests', [
             'id' => $leaveRequest->id,
@@ -381,11 +382,11 @@ class SelfServicePortalTest extends TestCase
         ]);
 
         $this->actingAs($employeeUser)
-            ->get(route('self-service.payroll.payslip', $ownRecord))
+            ->get(route('profile.self-service.payroll.payslip', $ownRecord))
             ->assertOk();
 
         $this->actingAs($employeeUser)
-            ->get(route('self-service.payroll.payslip', $otherRecord))
+            ->get(route('profile.self-service.payroll.payslip', $otherRecord))
             ->assertForbidden();
     }
 }
