@@ -60,6 +60,12 @@
                         <span>Payroll</span>
                     </a>
                 @endif
+                @if(Auth::user()->canAccessModule('performance_management'))
+                    <a href="{{ route('performance.index') }}" class="nav-item {{ request()->routeIs('performance.*') ? 'active' : '' }}">
+                        <i data-lucide="chart-column-big"></i>
+                        <span>Performance</span>
+                    </a>
+                @endif
                 @if(Auth::user()->canAccessModule('announcements'))
                     <a href="{{ route('announcements.index') }}" class="nav-item {{ request()->routeIs('announcements.*') ? 'active' : '' }}">
                         <i data-lucide="megaphone"></i>

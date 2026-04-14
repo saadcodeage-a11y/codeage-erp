@@ -51,8 +51,8 @@
                     <td><span class="status-badge {{ $employee->status }}">{{ ucfirst(str_replace('_', ' ', $employee->status)) }}</span></td>
                     <td>{{ $employee->teamManager?->name ?? 'Not assigned' }}</td>
                     <td>
-                        <a href="{{ route('team.show', $employee) }}" class="btn-action outline">
-                            <i data-lucide="star"></i> Review
+                        <a href="{{ route('performance.index', ['search' => $employee->employee_id ?: $employee->full_name]) }}" class="btn-action outline">
+                            <i data-lucide="chart-column-big"></i> Performance
                         </a>
                     </td>
                 </tr>

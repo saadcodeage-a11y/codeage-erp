@@ -10,6 +10,7 @@ class Role extends Model
         'dashboard' => 'Dashboard',
         'employees' => 'Employees',
         'team_management' => 'My Team',
+        'performance_management' => 'Performance',
         'leave_management' => 'Leave Management',
         'attendance_management' => 'Attendance Management',
         'payroll_management' => 'Payroll',

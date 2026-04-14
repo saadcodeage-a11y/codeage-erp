@@ -49,6 +49,11 @@ class User extends Authenticatable
         return $this->hasMany(TeamPerformanceReview::class, 'manager_user_id');
     }
 
+    public function performanceEvaluations()
+    {
+        return $this->hasMany(PerformanceEvaluation::class, 'manager_user_id');
+    }
+
     public function roleDefinition()
     {
         return $this->belongsTo(Role::class, 'role', 'name');

@@ -121,6 +121,11 @@ class Employee extends Model
         return $this->hasMany(TeamPerformanceReview::class)->latest('review_month');
     }
 
+    public function performanceEvaluations()
+    {
+        return $this->hasMany(PerformanceEvaluation::class)->latest('period_start');
+    }
+
     public function getEffectiveShiftStartTimeAttribute(): ?string
     {
         return $this->shift_start_time ?: static::settingValue('default_shift_start_time');

@@ -87,6 +87,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\PerformanceController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
@@ -122,6 +123,19 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware('module:team_management,edit')->group(function () {
         Route::post('/my-team/{employee}/reviews', [TeamController::class, 'storeReview'])->name('team.reviews.store');
+    });
+
+    // Performance Management
+    Route::middleware('module:performance_management,read')->group(function () {
+        Route::get('/performance', [PerformanceController::class, 'index'])->name('performance.index');
+        Route::get('/performance/{performance}', [PerformanceController::class, 'show'])->name('performance.show');
+    });
+    Route::middleware('module:performance_management,create')->group(function () {
+        Route::post('/performance', [PerformanceController::class, 'store'])->name('performance.store');
+    });
+    Route::middleware('module:performance_management,edit')->group(function () {
+        Route::post('/performance/{performance}/manager-contribution', [PerformanceController::class, 'updateManagerContribution'])->name('performance.manager.update');
+        Route::post('/performance/{performance}/finalize', [PerformanceController::class, 'finalize'])->name('performance.finalize');
     });
 
     // Leave Management
