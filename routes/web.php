@@ -88,6 +88,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\ReportsController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
@@ -179,6 +180,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/payroll/adjustments/autosave', [PayrollController::class, 'autosaveAdjustment'])->name('payroll.adjustments.autosave');
         Route::post('/payroll/{payrollRun}/finalize', [PayrollController::class, 'finalize'])->name('payroll.finalize');
         Route::delete('/payroll/{payrollRun}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
+    });
+
+    // Reports
+    Route::middleware('module:reports,read')->group(function () {
+        Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{reportType}/csv', [ReportsController::class, 'downloadCsv'])->name('reports.csv');
+        Route::get('/reports/{reportType}/pdf', [ReportsController::class, 'downloadPdf'])->name('reports.pdf');
     });
 
     // Announcements
