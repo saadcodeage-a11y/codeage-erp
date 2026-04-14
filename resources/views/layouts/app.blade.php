@@ -16,6 +16,10 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+    @php
+        $showEmployeeSelfServiceNav = Auth::check() && ! Auth::user()->isSuperAdmin() && Auth::user()->employee_id;
+        $profileTab = request()->routeIs('profile.index') ? request()->query('tab', 'account') : null;
+    @endphp
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -28,6 +32,40 @@
                     <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                         <i data-lucide="layout-grid"></i>
                         <span>Dashboard</span>
+                    </a>
+                @endif
+                @if($showEmployeeSelfServiceNav)
+                    <a href="{{ route('profile.index', ['tab' => 'account']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'account' ? 'active' : '' }}">
+                        <i data-lucide="user"></i>
+                        <span>My Profile</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'profile']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'profile' ? 'active' : '' }}">
+                        <i data-lucide="badge-info"></i>
+                        <span>Employee Profile</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'salary']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'salary' ? 'active' : '' }}">
+                        <i data-lucide="wallet"></i>
+                        <span>Salary History</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'security']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'security' ? 'active' : '' }}">
+                        <i data-lucide="shield"></i>
+                        <span>Security Fund</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'tax']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'tax' ? 'active' : '' }}">
+                        <i data-lucide="receipt-text"></i>
+                        <span>Tax Records</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'attendance']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'attendance' ? 'active' : '' }}">
+                        <i data-lucide="fingerprint"></i>
+                        <span>My Attendance</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'leave']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'leave' ? 'active' : '' }}">
+                        <i data-lucide="calendar-range"></i>
+                        <span>My Leave</span>
+                    </a>
+                    <a href="{{ route('profile.index', ['tab' => 'performance']) }}" class="nav-item {{ request()->routeIs('profile.index') && $profileTab === 'performance' ? 'active' : '' }}">
+                        <i data-lucide="chart-column-big"></i>
+                        <span>My Performance</span>
                     </a>
                 @endif
                 @if(Auth::user()->canAccessModule('employees'))
@@ -119,10 +157,12 @@
                     </div>
                 </div>
                 
-                <a href="{{ route('profile.index') }}" class="nav-item mt-4 {{ request()->is('profile*') ? 'active' : '' }}">
-                    <i data-lucide="user"></i>
-                    <span>My Profile</span>
-                </a>
+                @unless($showEmployeeSelfServiceNav)
+                    <a href="{{ route('profile.index', ['tab' => 'account']) }}" class="nav-item mt-4 {{ request()->routeIs('profile.index') && $profileTab === 'account' ? 'active' : '' }}">
+                        <i data-lucide="user"></i>
+                        <span>My Profile</span>
+                    </a>
+                @endunless
                 
                 <!-- Logout Form -->
                 <form method="POST" action="/logout" id="logout-form" style="display: none;">

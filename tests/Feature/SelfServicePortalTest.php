@@ -61,7 +61,14 @@ class SelfServicePortalTest extends TestCase
             ->get(route('profile.index', ['tab' => 'profile']))
             ->assertOk()
             ->assertSee('My Profile')
-            ->assertSee('Linked Employee');
+            ->assertSee('Linked Employee')
+            ->assertSee('Employee Profile')
+            ->assertSee('Salary History')
+            ->assertSee('Security Fund')
+            ->assertSee('Tax Records')
+            ->assertSee('My Attendance')
+            ->assertSee('My Leave')
+            ->assertSee('My Performance');
 
         $this->actingAs($unlinkedUser)
             ->get(route('profile.index'))
@@ -75,7 +82,13 @@ class SelfServicePortalTest extends TestCase
         $this->actingAs($superAdmin)
             ->get(route('profile.index'))
             ->assertOk()
-            ->assertDontSee('Employee Self-Service');
+            ->assertDontSee('Employee Profile')
+            ->assertDontSee('Salary History')
+            ->assertDontSee('Security Fund')
+            ->assertDontSee('Tax Records')
+            ->assertDontSee('My Attendance')
+            ->assertDontSee('My Leave')
+            ->assertDontSee('My Performance');
     }
 
     public function test_self_service_only_shows_linked_employee_data_and_hides_non_finalized_reviews(): void
