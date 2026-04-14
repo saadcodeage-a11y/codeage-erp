@@ -693,20 +693,25 @@
         gap: 12px;
     }
     .checkbox-card {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        column-gap: 12px;
         padding: 14px 16px;
         border: 1px solid #e5e7eb;
         border-radius: 16px;
         background: #fcfcfd;
-        align-items: flex-start;
+        align-items: start;
         min-height: 88px;
     }
     .checkbox-card input[type="checkbox"] {
-        margin-top: 3px;
+        margin: 4px 0 0;
+        justify-self: start;
     }
     .checkbox-card span {
         display: flex;
         flex-direction: column;
         gap: 4px;
+        min-width: 0;
     }
     .checkbox-card strong {
         color: #111827;
@@ -727,14 +732,22 @@
         background: #fff;
     }
     .department-choice {
-        display: flex;
-        gap: 10px;
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        column-gap: 10px;
         align-items: center;
         padding: 12px 14px;
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         background: #f9fafb;
         min-height: 52px;
+    }
+    .department-choice input[type="checkbox"] {
+        margin: 0;
+        justify-self: center;
+    }
+    .department-choice span {
+        line-height: 1.35;
     }
     .holiday-date-fields {
         display: grid;
