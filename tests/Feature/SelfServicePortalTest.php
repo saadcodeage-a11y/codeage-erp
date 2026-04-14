@@ -55,6 +55,7 @@ class SelfServicePortalTest extends TestCase
         $linkedUser = $this->createEmployeeUser($employee);
         $unlinkedUser = $this->createEmployeeUser();
         $hrUser = User::factory()->create(['role' => 'HR Manager']);
+        $superAdmin = User::factory()->create(['role' => 'Super Admin']);
 
         $this->actingAs($linkedUser)
             ->get(route('self-service.index'))
@@ -68,6 +69,10 @@ class SelfServicePortalTest extends TestCase
             ->assertSee('Employee Profile Not Linked');
 
         $this->actingAs($hrUser)
+            ->get(route('self-service.index'))
+            ->assertForbidden();
+
+        $this->actingAs($superAdmin)
             ->get(route('self-service.index'))
             ->assertForbidden();
     }

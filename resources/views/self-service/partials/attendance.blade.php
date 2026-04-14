@@ -32,9 +32,9 @@
                     <tr>
                         <td>{{ $record->attendance_date?->format('d M Y') }}</td>
                         <td><span class="status-pill {{ $record->status }}">{{ ucfirst(str_replace('_', ' ', $record->status)) }}</span></td>
-                        <td>{{ $record->shift_start_time ? \Illuminate\Support\Carbon::createFromFormat('H:i:s', $record->shift_start_time)->format('g:i A') : '--:--' }} to {{ $record->shift_end_time ? \Illuminate\Support\Carbon::createFromFormat('H:i:s', $record->shift_end_time)->format('g:i A') : '--:--' }}</td>
-                        <td>{{ $record->clock_in ? \Illuminate\Support\Carbon::createFromFormat('H:i:s', $record->clock_in)->format('g:i A') : '--' }}</td>
-                        <td>{{ $record->clock_out ? \Illuminate\Support\Carbon::createFromFormat('H:i:s', $record->clock_out)->format('g:i A') : '--' }}</td>
+                        <td>{{ $formatTime($record->shift_start_time) }} to {{ $formatTime($record->shift_end_time) }}</td>
+                        <td>{{ $formatTime($record->clock_in) }}</td>
+                        <td>{{ $formatTime($record->clock_out) }}</td>
                         <td>{{ $record->late_duration ?: '--' }}</td>
                         <td>{{ $record->early_duration ?: '--' }}</td>
                         <td>{{ $record->work_duration ?: '--' }}</td>

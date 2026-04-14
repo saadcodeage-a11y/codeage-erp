@@ -4,6 +4,25 @@
 
 @php
     $formatMoney = fn ($value) => 'PKR ' . number_format((float) ($value ?? 0), 2);
+    $formatTime = function ($value) {
+        if (! $value) {
+            return '--:--';
+        }
+
+        foreach (['H:i:s', 'H:i'] as $format) {
+            try {
+                return \Illuminate\Support\Carbon::createFromFormat($format, $value)->format('g:i A');
+            } catch (\Throwable $exception) {
+                continue;
+            }
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->format('g:i A');
+        } catch (\Throwable $exception) {
+            return $value;
+        }
+    };
 @endphp
 
 @section('content')
@@ -49,7 +68,7 @@
         </div>
         <div class="hero-shift-card">
             <span>Effective Shift</span>
-            <strong>{{ $employee->effective_shift_start_time ? \Illuminate\Support\Carbon::createFromFormat('H:i:s', $employee->effective_shift_start_time)->format('g:i A') : '--:--' }} to {{ $employee->effective_shift_end_time ? \Illuminate\Support\Carbon::createFromFormat('H:i:s', $employee->effective_shift_end_time)->format('g:i A') : '--:--' }}</strong>
+            <strong>{{ $formatTime($employee->effective_shift_start_time) }} to {{ $formatTime($employee->effective_shift_end_time) }}</strong>
             <small>{{ $employee->shift_start_time || $employee->shift_end_time ? 'Custom employee timing' : 'Using system default timing' }}</small>
         </div>
     </div>

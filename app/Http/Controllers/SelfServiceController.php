@@ -16,6 +16,8 @@ class SelfServiceController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorizeEmployeePortal($request->user());
+
         $employee = $this->linkedEmployee($request->user());
         $activeTab = $request->query('tab', 'profile');
 
@@ -104,6 +106,7 @@ class SelfServiceController extends Controller
 
     public function storeLeave(Request $request, LeaveRequestService $leaveRequestService)
     {
+        $this->authorizeEmployeePortal($request->user());
         $employee = $this->linkedEmployeeOrFail($request->user());
 
         $validated = $request->validate([
@@ -122,6 +125,7 @@ class SelfServiceController extends Controller
 
     public function cancelLeave(Request $request, LeaveRequest $leaveRequest, LeaveRequestService $leaveRequestService)
     {
+        $this->authorizeEmployeePortal($request->user());
         $employee = $this->linkedEmployeeOrFail($request->user());
         abort_if((int) $leaveRequest->employee_id !== (int) $employee->id, 403);
 
@@ -134,6 +138,7 @@ class SelfServiceController extends Controller
 
     public function downloadPayslip(Request $request, EmployeePayrollRecord $payrollRecord, PayslipPdfService $payslipPdfService)
     {
+        $this->authorizeEmployeePortal($request->user());
         $employee = $this->linkedEmployeeOrFail($request->user());
         abort_if((int) $payrollRecord->employee_id !== (int) $employee->id, 403);
 
@@ -157,5 +162,10 @@ class SelfServiceController extends Controller
         abort_if(! $employee, 403, 'Employee account is not linked to an employee record.');
 
         return $employee;
+    }
+
+    protected function authorizeEmployeePortal($user): void
+    {
+        abort_if($user->role !== 'Employee', 403, 'Self Service is only available from an employee account.');
     }
 }

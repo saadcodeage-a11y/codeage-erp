@@ -30,7 +30,7 @@
                         <span>Dashboard</span>
                     </a>
                 @endif
-                @if(Auth::user()->canAccessModule('self_service'))
+                @if(Auth::user()->role === 'Employee' && Auth::user()->canAccessModule('self_service'))
                     <a href="{{ route('self-service.index') }}" class="nav-item {{ request()->routeIs('self-service.*') ? 'active' : '' }}">
                         <i data-lucide="badge-info"></i>
                         <span>Self Service</span>
