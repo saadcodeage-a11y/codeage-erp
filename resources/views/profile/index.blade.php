@@ -4,6 +4,8 @@
 
 @php
     $formatMoney = fn ($value) => 'PKR ' . number_format((float) ($value ?? 0), 2);
+    $employeeTabs = ['profile' => 'Employee Profile', 'salary' => 'Salary History', 'security' => 'Security Fund', 'tax' => 'Tax Records', 'attendance' => 'Attendance', 'leave' => 'Leave', 'performance' => 'Performance'];
+    $showProfileSummary = $activeTab === 'account';
     $formatTime = function ($value) {
         if (! $value) {
             return '--:--';
@@ -38,46 +40,48 @@
     </div>
 </div>
 
-<div class="profile-hero table-card">
-    <div class="profile-identity">
-        <div class="avatar-lg" id="profileAvatarContainer">
-            @if($user->avatar)
-                <img id="profileAvatarImg" src="{{ asset('storage/' . $user->avatar) }}" alt="Profile">
-            @else
-                {{ strtoupper(substr($user->name, 0, 2)) }}
-            @endif
-            <button type="button" class="avatar-upload-button" onclick="document.getElementById('avatarInput').click()">
-                <i data-lucide="camera"></i>
-            </button>
-            <input type="file" id="avatarInput" style="display: none;" accept="image/*" onchange="uploadAvatar(this)">
-        </div>
-        <div>
-            <div class="hero-title-row">
-                <h2>{{ $user->name }}</h2>
-                <span class="role-pill">{{ $user->role }}</span>
+@if($showProfileSummary)
+    <div class="profile-hero table-card">
+        <div class="profile-identity">
+            <div class="avatar-lg" id="profileAvatarContainer">
+                @if($user->avatar)
+                    <img id="profileAvatarImg" src="{{ asset('storage/' . $user->avatar) }}" alt="Profile">
+                @else
+                    {{ strtoupper(substr($user->name, 0, 2)) }}
+                @endif
+                <button type="button" class="avatar-upload-button" onclick="document.getElementById('avatarInput').click()">
+                    <i data-lucide="camera"></i>
+                </button>
+                <input type="file" id="avatarInput" style="display: none;" accept="image/*" onchange="uploadAvatar(this)">
             </div>
-            <p>{{ $user->email }}</p>
-            @if($employee)
-                <div class="hero-meta">
-                    <span>{{ $employee->employee_id ?: 'Pending ID' }}</span>
-                    <span>{{ $employee->designation ?: 'No designation' }}</span>
-                    <span>{{ $employee->department?->name ?? 'Unassigned Department' }}</span>
+            <div>
+                <div class="hero-title-row">
+                    <h2>{{ $user->name }}</h2>
+                    <span class="role-pill">{{ $user->role }}</span>
                 </div>
-            @endif
+                <p>{{ $user->email }}</p>
+                @if($employee)
+                    <div class="hero-meta">
+                        <span>{{ $employee->employee_id ?: 'Pending ID' }}</span>
+                        <span>{{ $employee->designation ?: 'No designation' }}</span>
+                        <span>{{ $employee->department?->name ?? 'Unassigned Department' }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+        <div class="profile-meta-card">
+            <span>Account Status</span>
+            <strong>{{ $user->is_active ? 'Active' : 'Inactive' }}</strong>
+            <small>Two-factor authentication: {{ $user->two_factor_enabled ? 'Enabled' : 'Disabled' }}</small>
         </div>
     </div>
-    <div class="profile-meta-card">
-        <span>Account Status</span>
-        <strong>{{ $user->is_active ? 'Active' : 'Inactive' }}</strong>
-        <small>Two-factor authentication: {{ $user->two_factor_enabled ? 'Enabled' : 'Disabled' }}</small>
-    </div>
-</div>
+@endif
 
 @if(session('status') === 'password-updated')
     <div class="portal-alert success"><i data-lucide="circle-check-big"></i><span>Password updated successfully.</span></div>
 @endif
 
-@if($employee)
+@if($employee && $showProfileSummary)
     <div class="stats-grid self-service-stats">
         <div class="stat-card"><div class="stat-content"><span class="stat-label">Latest Net Salary</span><span class="stat-value">{{ $portalStats['latestNetSalary'] !== null ? $formatMoney($portalStats['latestNetSalary']) : 'N/A' }}</span></div></div>
         <div class="stat-card"><div class="stat-content"><span class="stat-label">Security Balance</span><span class="stat-value">{{ $portalStats['securityBalance'] !== null ? $formatMoney($portalStats['securityBalance']) : 'N/A' }}</span></div></div>
@@ -89,7 +93,7 @@
 <div class="tabs-container profile-tabs">
     <a href="{{ route('profile.index', ['tab' => 'account']) }}" class="tab-item {{ $activeTab === 'account' ? 'active' : '' }}">Account</a>
     @if($employee)
-        @foreach(['profile' => 'Employee Profile', 'salary' => 'Salary History', 'security' => 'Security Fund', 'tax' => 'Tax Records', 'attendance' => 'Attendance', 'leave' => 'Leave', 'performance' => 'Performance'] as $tabKey => $label)
+        @foreach($employeeTabs as $tabKey => $label)
             <a href="{{ route('profile.index', ['tab' => $tabKey]) }}" class="tab-item {{ $activeTab === $tabKey ? 'active' : '' }}">{{ $label }}</a>
         @endforeach
     @endif
@@ -140,18 +144,6 @@
 
 @if($employee)
     <div class="employee-tab-shell {{ in_array($activeTab, ['profile', 'salary', 'security', 'tax', 'attendance', 'leave', 'performance']) ? '' : 'hidden-tab' }}">
-        <div class="employee-summary-card">
-            <div>
-                <span class="summary-label">Employee Self-Service</span>
-                <h2>{{ $employee->full_name }}</h2>
-                <p>{{ $employee->employee_id ?: 'Pending ID' }} | {{ $employee->designation ?: 'No designation' }}</p>
-            </div>
-            <div class="summary-shift">
-                <span>Effective Shift</span>
-                <strong>{{ $formatTime($employee->effective_shift_start_time) }} to {{ $formatTime($employee->effective_shift_end_time) }}</strong>
-            </div>
-        </div>
-
         @include('self-service.partials.profile')
         @include('self-service.partials.salary')
         @include('self-service.partials.security')
