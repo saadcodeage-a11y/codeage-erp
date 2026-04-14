@@ -89,12 +89,21 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SelfServiceController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    // Self Service
+    Route::middleware('module:self_service,read')->group(function () {
+        Route::get('/self-service', [SelfServiceController::class, 'index'])->name('self-service.index');
+        Route::post('/self-service/leaves', [SelfServiceController::class, 'storeLeave'])->name('self-service.leaves.store');
+        Route::post('/self-service/leaves/{leaveRequest}/cancel', [SelfServiceController::class, 'cancelLeave'])->name('self-service.leaves.cancel');
+        Route::get('/self-service/payroll/{payrollRecord}/payslip', [SelfServiceController::class, 'downloadPayslip'])->name('self-service.payroll.payslip');
+    });
+
     // Employees
     Route::middleware('module:employees,read')->group(function () {
         Route::get('employees', [EmployeeController::class, 'index'])->name('employees.index');

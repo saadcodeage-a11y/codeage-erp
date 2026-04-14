@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Services\LeaveRequestService;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -47,7 +48,7 @@ class LeaveController extends Controller
         return view('leaves.index', compact('leaveRequests', 'leaveTypes', 'employees', 'counts', 'status'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, LeaveRequestService $leaveRequestService)
     {
         $user = $request->user();
 
@@ -59,43 +60,7 @@ class LeaveController extends Controller
             'reason' => 'required|string|max:2000',
         ]);
 
-        $employeeId = $user->role === 'Employee' ? $user->employee_id : ($validated['employee_id'] ?? null);
-        abort_unless($employeeId, 422, 'An employee must be selected for this leave request.');
-
-        $employee = Employee::findOrFail($employeeId);
-        $leaveType = LeaveType::findOrFail($validated['leave_type_id']);
-        $daysCount = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
-
-        if ($leaveType->max_days && $daysCount > $leaveType->max_days) {
-            return back()->withErrors(['end_date' => "This leave type allows a maximum of {$leaveType->max_days} days."])->withInput();
-        }
-
-        $overlapExists = LeaveRequest::where('employee_id', $employee->id)
-            ->whereIn('status', ['pending', 'approved'])
-            ->where(function ($query) use ($validated) {
-                $query->whereBetween('start_date', [$validated['start_date'], $validated['end_date']])
-                    ->orWhereBetween('end_date', [$validated['start_date'], $validated['end_date']])
-                    ->orWhere(function ($nested) use ($validated) {
-                        $nested->where('start_date', '<=', $validated['start_date'])
-                            ->where('end_date', '>=', $validated['end_date']);
-                    });
-            })
-            ->exists();
-
-        if ($overlapExists) {
-            return back()->withErrors(['start_date' => 'This employee already has a pending or approved leave request for the selected dates.'])->withInput();
-        }
-
-        LeaveRequest::create([
-            'employee_id' => $employee->id,
-            'leave_type_id' => $leaveType->id,
-            'requested_by_user_id' => $user->id,
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'days_count' => $daysCount,
-            'reason' => $validated['reason'],
-            'status' => 'pending',
-        ]);
+        $leaveRequestService->submit($user, $validated);
 
         return redirect()->route('leaves.index')->with('success', 'Leave request submitted successfully.');
     }
@@ -132,19 +97,9 @@ class LeaveController extends Controller
         return response()->json(['success' => true, 'message' => 'Leave request rejected successfully.']);
     }
 
-    public function cancel(Request $request, LeaveRequest $leaveRequest)
+    public function cancel(Request $request, LeaveRequest $leaveRequest, LeaveRequestService $leaveRequestService)
     {
-        $user = $request->user();
-
-        abort_if($leaveRequest->status !== 'pending', 422, 'Only pending leave requests can be cancelled.');
-        abort_if($user->role === 'Employee' && $leaveRequest->employee_id !== $user->employee_id, 403);
-
-        $leaveRequest->update([
-            'status' => 'cancelled',
-            'reviewer_notes' => $leaveRequest->reviewer_notes,
-            'reviewed_by_user_id' => $user->id,
-            'reviewed_at' => now(),
-        ]);
+        $leaveRequestService->cancel($request->user(), $leaveRequest);
 
         return response()->json(['success' => true, 'message' => 'Leave request cancelled successfully.']);
     }

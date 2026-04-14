@@ -8,6 +8,7 @@ class Role extends Model
 {
     public const MODULES = [
         'dashboard' => 'Dashboard',
+        'self_service' => 'Self Service',
         'employees' => 'Employees',
         'team_management' => 'My Team',
         'performance_management' => 'Performance',
