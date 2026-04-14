@@ -39,6 +39,16 @@ class User extends Authenticatable
         return $this->belongsTo(Employee::class);
     }
 
+    public function managedEmployees()
+    {
+        return $this->hasMany(Employee::class, 'team_manager_user_id');
+    }
+
+    public function performanceReviews()
+    {
+        return $this->hasMany(TeamPerformanceReview::class, 'manager_user_id');
+    }
+
     public function roleDefinition()
     {
         return $this->belongsTo(Role::class, 'role', 'name');

@@ -372,6 +372,18 @@
                             @error('department_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-group">
+                            <label>Team Manager</label>
+                            <select name="team_manager_user_id">
+                                <option value="">Select Team Manager</option>
+                                @foreach($teamManagers as $manager)
+                                    <option value="{{ $manager->id }}" {{ old('team_manager_user_id') == $manager->id ? 'selected' : '' }}>
+                                        {{ $manager->name }}{{ $manager->employee_id ? ' (' . $manager->employee_id . ')' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('team_manager_user_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-group">
                             <label>Shift End Time</label>
                             <input type="time" name="shift_end_time" value="{{ old('shift_end_time') }}">
                             @error('shift_end_time') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
@@ -767,6 +779,12 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Team Manager</label>
+                            <select name="team_manager_user_id" id="edit_team_manager_user_id">
+                                <option value="">Select Team Manager</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>Shift End Time</label>
                             <input type="time" name="shift_end_time" id="edit_shift_end_time">
                         </div>
@@ -907,6 +925,7 @@
             const employee = data.employee;
             const departments = data.departments;
             const banks = data.banks;
+            const teamManagers = data.teamManagers;
             
             // Set Form Action
             document.getElementById('editEmployeeForm').action = `/employees/${id}`;
@@ -930,6 +949,16 @@
                 opt.textContent = bank.code ? `${bank.name} (${bank.code})` : bank.name;
                 if (employee.bank_id == bank.id) opt.selected = true;
                 bankSelect.appendChild(opt);
+            });
+
+            const managerSelect = document.getElementById('edit_team_manager_user_id');
+            managerSelect.innerHTML = '<option value="">Select Team Manager</option>';
+            teamManagers.forEach(manager => {
+                const opt = document.createElement('option');
+                opt.value = manager.id;
+                opt.textContent = manager.employee_id ? `${manager.name} (${manager.employee_id})` : manager.name;
+                if (String(employee.team_manager_user_id || '') === String(manager.id)) opt.selected = true;
+                managerSelect.appendChild(opt);
             });
 
             // Populate Fields

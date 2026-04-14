@@ -24,12 +24,14 @@ class UserManagementTest extends TestCase
         $response->assertSee('Super Admin');
         $response->assertSee('HR Manager');
         $response->assertSee('Accounts Manager');
+        $response->assertSee('Team Manager');
         $response->assertSee('Employee');
+        $response->assertSee('My Team');
         $response->assertSee('Leave Management');
         $response->assertSee('Attendance Management');
         $response->assertSee('Payroll');
         $response->assertSee('Announcements');
-        $response->assertSee('>10<', false);
+        $response->assertSee('>11<', false);
         $response->assertSee('Modules');
     }
 
@@ -44,6 +46,7 @@ class UserManagementTest extends TestCase
             'permissions' => [
                 'dashboard' => ['read' => true, 'create' => false, 'edit' => false],
                 'employees' => ['read' => true, 'create' => true, 'edit' => true],
+                'team_management' => ['read' => true, 'create' => false, 'edit' => true],
                 'leave_management' => ['read' => true, 'create' => true, 'edit' => false],
                 'attendance_management' => ['read' => true, 'create' => false, 'edit' => false],
                 'payroll_management' => ['read' => true, 'create' => false, 'edit' => false],
@@ -65,6 +68,14 @@ class UserManagementTest extends TestCase
             'module' => 'employees',
             'can_read' => true,
             'can_create' => true,
+            'can_edit' => true,
+        ]);
+
+        $this->assertDatabaseHas('role_permissions', [
+            'role_id' => $role->id,
+            'module' => 'team_management',
+            'can_read' => true,
+            'can_create' => false,
             'can_edit' => true,
         ]);
 

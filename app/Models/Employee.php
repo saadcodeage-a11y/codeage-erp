@@ -41,6 +41,7 @@ class Employee extends Model
         'employee_id',
         'designation',
         'department_id',
+        'team_manager_user_id',
         'status',
         'inactive_reason',
         'hiring_date',
@@ -68,6 +69,11 @@ class Employee extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function teamManager()
+    {
+        return $this->belongsTo(User::class, 'team_manager_user_id');
     }
 
     public function bank()
@@ -108,6 +114,11 @@ class Employee extends Model
     public function securityFundSnapshots()
     {
         return $this->hasMany(EmployeeSecurityFundSnapshot::class)->latest('snapshot_month');
+    }
+
+    public function performanceReviews()
+    {
+        return $this->hasMany(TeamPerformanceReview::class)->latest('review_month');
     }
 
     public function getEffectiveShiftStartTimeAttribute(): ?string
@@ -240,6 +251,12 @@ class Employee extends Model
             $departmentName = $this->department?->name ?? 'Unassigned';
 
             return "Employee {$this->full_name} department changed to {$departmentName}";
+        }
+
+        if ($this->wasChanged('team_manager_user_id')) {
+            $managerName = $this->teamManager?->name ?? 'Unassigned';
+
+            return "Employee {$this->full_name} team manager changed to {$managerName}";
         }
 
         return "Employee {$this->full_name} was updated";

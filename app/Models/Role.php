@@ -9,6 +9,7 @@ class Role extends Model
     public const MODULES = [
         'dashboard' => 'Dashboard',
         'employees' => 'Employees',
+        'team_management' => 'My Team',
         'leave_management' => 'Leave Management',
         'attendance_management' => 'Attendance Management',
         'payroll_management' => 'Payroll',

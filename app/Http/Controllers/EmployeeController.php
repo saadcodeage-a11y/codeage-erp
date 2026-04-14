@@ -11,6 +11,7 @@ use App\Models\HrLetter;
 use App\Models\LeaveRequest;
 use App\Models\Bank;
 use App\Models\EmployeeEmploymentHistory;
+use App\Models\User;
 use App\Services\EmployeeIdService;
 use App\Services\EmployeeImportService;
 use App\Services\MailService;
@@ -40,7 +41,7 @@ class EmployeeController extends Controller
 
         // Filter Logic
         $status = $request->get('status', 'active');
-        $query = Employee::with('department');
+        $query = Employee::with(['department', 'teamManager']);
 
         if ($status === 'active') {
             $query->where('status', 'active');
@@ -70,8 +71,9 @@ class EmployeeController extends Controller
             ->withQueryString();
         $departments = \App\Models\Department::all();
         $banks = Bank::orderBy('name')->get();
+        $teamManagers = $this->teamManagerOptions();
 
-        return view('employees.index', compact('employees', 'counts', 'status', 'departments', 'banks'));
+        return view('employees.index', compact('employees', 'counts', 'status', 'departments', 'banks', 'teamManagers'));
     }
 
 
@@ -151,6 +153,7 @@ class EmployeeController extends Controller
     {
         $employee->load([
             'department',
+            'teamManager',
             'bank',
             'employmentHistories.department',
             'leaveRequests.leaveType',
@@ -199,7 +202,9 @@ class EmployeeController extends Controller
             ->latest()
             ->get();
 
-        return view('employees.show', compact('employee', 'employeeActivityLogs'));
+        $teamManagers = $this->teamManagerOptions();
+
+        return view('employees.show', compact('employee', 'employeeActivityLogs', 'teamManagers'));
     }
 
     public function edit(Employee $employee)
@@ -209,12 +214,14 @@ class EmployeeController extends Controller
                 'employee' => $employee,
                 'departments' => \App\Models\Department::all(),
                 'banks' => Bank::orderBy('name')->get(),
+                'teamManagers' => $this->teamManagerOptions(),
             ]);
         }
         $departments = \App\Models\Department::all();
         $banks = Bank::orderBy('name')->get();
+        $teamManagers = $this->teamManagerOptions();
 
-        return view('employees.edit', compact('employee', 'departments', 'banks'));
+        return view('employees.edit', compact('employee', 'departments', 'banks', 'teamManagers'));
     }
 
     public function update(Request $request, Employee $employee, EmployeeIdService $employeeIdService)
@@ -223,6 +230,7 @@ class EmployeeController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:employees,email,' . $employee->id,
             'department_id' => 'required|exists:departments,id',
+            'team_manager_user_id' => 'nullable|exists:users,id',
             'designation' => 'required|string|max:255',
             'status' => 'nullable|in:' . implode(',', self::AVAILABLE_STATUSES),
             'inactive_reason' => 'nullable|string|max:1000|required_if:status,inactive',
@@ -333,6 +341,7 @@ class EmployeeController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:employees,email',
             'department_id' => 'required|exists:departments,id',
+            'team_manager_user_id' => 'nullable|exists:users,id',
             'designation' => 'required|string|max:255',
         ]);
 
@@ -553,6 +562,15 @@ class EmployeeController extends Controller
         }
 
         return $data;
+    }
+
+    protected function teamManagerOptions()
+    {
+        return User::query()
+            ->where('role', 'Team Manager')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'employee_id']);
     }
 
     protected function employeeLetterBody(Employee $employee, string $type, Carbon $generatedAt): string

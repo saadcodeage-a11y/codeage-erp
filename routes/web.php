@@ -86,6 +86,7 @@ use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\TeamController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'module:dashboard,read'])
@@ -112,6 +113,15 @@ Route::middleware('auth')->group(function () {
         Route::post('employees/{employee}/approve', [EmployeeController::class, 'approve'])->name('employees.approve');
         Route::post('employees/{employee}/disapprove', [EmployeeController::class, 'disapprove'])->name('employees.disapprove');
         Route::post('employees/{employee}/letters', [EmployeeController::class, 'generateLetter'])->name('employees.letters.generate');
+    });
+
+    // Team Management
+    Route::middleware('module:team_management,read')->group(function () {
+        Route::get('/my-team', [TeamController::class, 'index'])->name('team.index');
+        Route::get('/my-team/{employee}', [TeamController::class, 'show'])->name('team.show');
+    });
+    Route::middleware('module:team_management,edit')->group(function () {
+        Route::post('/my-team/{employee}/reviews', [TeamController::class, 'storeReview'])->name('team.reviews.store');
     });
 
     // Leave Management

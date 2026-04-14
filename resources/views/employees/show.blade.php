@@ -151,6 +151,10 @@
                 <label>Department</label>
                 <p>{{ $employee->department?->name ?? 'Not assigned' }}</p>
             </div>
+            <div class="info-item">
+                <label>Team Manager</label>
+                <p>{{ $employee->teamManager?->name ?? 'Not assigned' }}</p>
+            </div>
              <div class="info-item">
                 <label>Payroll Status</label>
                 <p>{{ $employee->payroll_status ?? 'Not specified' }}</p>
@@ -937,6 +941,15 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Team Manager</label>
+                            <select name="team_manager_user_id" id="edit_team_manager_user_id">
+                                <option value="">Select Team Manager</option>
+                                @foreach($teamManagers as $manager)
+                                    <option value="{{ $manager->id }}">{{ $manager->employee_id ? $manager->name . ' (' . $manager->employee_id . ')' : $manager->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>Shift End Time</label>
                             <input type="time" name="shift_end_time" id="edit_shift_end_time">
                         </div>
@@ -1061,6 +1074,7 @@
             const employee = data.employee;
             const departments = data.departments;
             const banks = data.banks;
+            const teamManagers = data.teamManagers;
             document.getElementById('editEmployeeForm').action = `/employees/${id}`;
             const deptSelect = document.getElementById('edit_department_id');
             deptSelect.innerHTML = '<option value="">Select Department</option>';
@@ -1080,6 +1094,16 @@
                 opt.textContent = bank.code ? `${bank.name} (${bank.code})` : bank.name;
                 if (employee.bank_id == bank.id) opt.selected = true;
                 bankSelect.appendChild(opt);
+            });
+
+            const managerSelect = document.getElementById('edit_team_manager_user_id');
+            managerSelect.innerHTML = '<option value="">Select Team Manager</option>';
+            teamManagers.forEach(manager => {
+                const opt = document.createElement('option');
+                opt.value = manager.id;
+                opt.textContent = manager.employee_id ? `${manager.name} (${manager.employee_id})` : manager.name;
+                if (String(employee.team_manager_user_id || '') === String(manager.id)) opt.selected = true;
+                managerSelect.appendChild(opt);
             });
 
             document.getElementById('edit_full_name').value = employee.full_name || '';

@@ -36,6 +36,12 @@
                         <span>Employees</span>
                     </a>
                 @endif
+                @if(Auth::user()->canAccessModule('team_management'))
+                    <a href="{{ route('team.index') }}" class="nav-item {{ request()->routeIs('team.*') ? 'active' : '' }}">
+                        <i data-lucide="user-round-search"></i>
+                        <span>My Team</span>
+                    </a>
+                @endif
                 @if(Auth::user()->canAccessModule('leave_management'))
                     <a href="{{ route('leaves.index') }}" class="nav-item {{ request()->routeIs('leaves.*') || request()->routeIs('leave-types.*') ? 'active' : '' }}">
                         <i data-lucide="calendar-range"></i>
