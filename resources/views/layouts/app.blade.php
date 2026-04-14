@@ -4,10 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Dashboard') - {{ config('app.name') }}</title>
+    @php
+        $dashboardCssPath = resource_path('css/dashboard.css');
+        $dashboardCssVersion = file_exists(public_path('css/dashboard.css'))
+            ? filemtime(public_path('css/dashboard.css'))
+            : time();
+    @endphp
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/dashboard.css'])
-    @else
-        <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @endif
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $dashboardCssVersion }}">
+    @if (request()->routeIs('dashboard') && file_exists($dashboardCssPath))
+        <style data-inline-dashboard-styles>
+            {!! file_get_contents($dashboardCssPath) !!}
+        </style>
     @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
