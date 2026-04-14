@@ -1,5 +1,5 @@
 <div class="dashboard-section-grid">
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Team Roster Snapshot</h3>
         </div>
@@ -11,7 +11,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $employee->full_name }}</strong>
-                            <p>{{ $employee->designation ?: 'No designation' }} · {{ $employee->department?->name ?? 'Unassigned' }}</p>
+                            <p>{{ $employee->designation ?: 'No designation' }} &middot; {{ $employee->department?->name ?? 'Unassigned' }}</p>
                         </div>
                         <span class="dashboard-status-chip {{ $employee->status === 'active' ? '' : 'muted' }}">{{ ucfirst($employee->status) }}</span>
                     </div>
@@ -20,7 +20,7 @@
         @endif
     </section>
 
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Recent Evaluations</h3>
         </div>
@@ -32,7 +32,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $evaluation->employee?->full_name ?? 'Unknown Employee' }}</strong>
-                            <p>{{ $evaluation->periodLabel() }} · {{ \App\Models\PerformanceEvaluation::types()[$evaluation->evaluation_type] ?? 'Evaluation' }}</p>
+                            <p>{{ $evaluation->periodLabel() }} &middot; {{ \App\Models\PerformanceEvaluation::types()[$evaluation->evaluation_type] ?? 'Evaluation' }}</p>
                         </div>
                         <span class="dashboard-status-chip {{ $evaluation->status === \App\Models\PerformanceEvaluation::STATUS_FINALIZED ? '' : 'muted' }}">
                             {{ \App\Models\PerformanceEvaluation::statuses()[$evaluation->status] ?? ucfirst($evaluation->status) }}
@@ -46,7 +46,7 @@
 
 <div class="dashboard-section-grid">
     @if($dashboard['team_leaves']->isNotEmpty())
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Team Leave Activity</h3>
             </div>
@@ -55,7 +55,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $leave->employee?->full_name ?? 'Unknown Employee' }}</strong>
-                            <p>{{ $leave->leaveType?->name ?? 'Leave' }} · {{ $leave->start_date?->format('d M') }} to {{ $leave->end_date?->format('d M') }}</p>
+                            <p>{{ $leave->leaveType?->name ?? 'Leave' }} &middot; {{ $leave->start_date?->format('d M') }} to {{ $leave->end_date?->format('d M') }}</p>
                         </div>
                         <span class="dashboard-status-chip {{ $leave->status === 'approved' ? '' : 'muted' }}">{{ ucfirst($leave->status) }}</span>
                     </div>
@@ -65,7 +65,7 @@
     @endif
 
     @if($dashboard['announcements']->isNotEmpty())
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Latest Announcements</h3>
             </div>
@@ -74,7 +74,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $announcement->title }}</strong>
-                            <p>{{ $announcement->audienceLabel() }} · {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
+                            <p>{{ $announcement->audienceLabel() }} &middot; {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
                         </div>
                         <span class="dashboard-status-chip">{{ \App\Models\Announcement::types()[$announcement->announcement_type] ?? 'Announcement' }}</span>
                     </div>

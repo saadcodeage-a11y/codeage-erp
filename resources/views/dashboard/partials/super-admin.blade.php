@@ -1,5 +1,5 @@
 <div class="dashboard-section-grid dashboard-section-grid-wide">
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Recent Activity</h3>
         </div>
@@ -20,7 +20,7 @@
         @endif
     </section>
 
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Pending Operational Items</h3>
         </div>
@@ -37,7 +37,7 @@
 </div>
 
 <div class="dashboard-section-grid">
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Department Overview</h3>
         </div>
@@ -61,7 +61,7 @@
         @endif
     </section>
 
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Latest Announcements</h3>
         </div>
@@ -76,7 +76,7 @@
                             <p>
                                 {{ $announcement->audienceLabel() }}
                                 @if($announcement->eventDateLabel())
-                                    · {{ $announcement->eventDateLabel() }}
+                                    &middot; {{ $announcement->eventDateLabel() }}
                                 @endif
                             </p>
                         </div>

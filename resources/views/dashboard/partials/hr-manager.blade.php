@@ -1,5 +1,5 @@
 <div class="dashboard-section-grid">
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Upcoming Leave Calendar</h3>
         </div>
@@ -11,7 +11,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $leave->employee?->full_name ?? 'Unknown Employee' }}</strong>
-                            <p>{{ $leave->leaveType?->name ?? 'Leave' }} · {{ $leave->start_date?->format('d M') }} to {{ $leave->end_date?->format('d M') }}</p>
+                            <p>{{ $leave->leaveType?->name ?? 'Leave' }} &middot; {{ $leave->start_date?->format('d M') }} to {{ $leave->end_date?->format('d M') }}</p>
                         </div>
                         <span class="dashboard-status-chip">{{ $leave->days_count }} day{{ $leave->days_count === 1 ? '' : 's' }}</span>
                     </div>
@@ -20,7 +20,7 @@
         @endif
     </section>
 
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Recent Workforce Changes</h3>
         </div>
@@ -32,7 +32,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $employee->full_name }}</strong>
-                            <p>{{ $employee->designation ?: 'No designation' }} · {{ $employee->department?->name ?? 'Unassigned' }}</p>
+                            <p>{{ $employee->designation ?: 'No designation' }} &middot; {{ $employee->department?->name ?? 'Unassigned' }}</p>
                         </div>
                         <span class="dashboard-status-chip muted">{{ str_replace('_', ' ', ucfirst($employee->status)) }}</span>
                     </div>
@@ -43,7 +43,7 @@
 </div>
 
 <div class="dashboard-section-grid">
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Recent Hires</h3>
         </div>
@@ -55,7 +55,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $employee->full_name }}</strong>
-                            <p>{{ $employee->designation ?: 'No designation' }} · Joined {{ $employee->hiring_date?->format('d M Y') ?? 'N/A' }}</p>
+                            <p>{{ $employee->designation ?: 'No designation' }} &middot; Joined {{ $employee->hiring_date?->format('d M Y') ?? 'N/A' }}</p>
                         </div>
                         <span class="dashboard-status-chip">{{ $employee->department?->name ?? 'Unassigned' }}</span>
                     </div>
@@ -64,7 +64,7 @@
         @endif
     </section>
 
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Latest Announcements</h3>
         </div>
@@ -76,7 +76,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $announcement->title }}</strong>
-                            <p>{{ $announcement->audienceLabel() }} · {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
+                            <p>{{ $announcement->audienceLabel() }} &middot; {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
                         </div>
                         <span class="dashboard-status-chip">{{ \App\Models\Announcement::types()[$announcement->announcement_type] ?? 'Announcement' }}</span>
                     </div>

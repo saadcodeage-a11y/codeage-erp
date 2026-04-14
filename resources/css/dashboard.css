@@ -1041,6 +1041,12 @@ a.btn-action:hover {
     gap: 16px;
 }
 
+.role-dashboard-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
 .dashboard-role-pill {
     display: inline-flex;
     align-items: center;
@@ -1068,7 +1074,7 @@ a.btn-action:hover {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
-    margin-bottom: 24px;
+    align-items: start;
 }
 
 .dashboard-section-grid-wide {
@@ -1091,6 +1097,34 @@ a.btn-action:hover {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     background: #ffffff;
+}
+
+.role-dashboard-shell .dashboard-panel {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.role-dashboard-shell .dashboard-panel .card-header {
+    margin-bottom: 0;
+    padding: 22px 24px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf7 100%);
+}
+
+.role-dashboard-shell .dashboard-panel .card-header h3 {
+    font-size: 18px;
+    line-height: 1.3;
+}
+
+.role-dashboard-shell .dashboard-panel > .dashboard-list,
+.role-dashboard-shell .dashboard-panel > .dashboard-empty-state,
+.role-dashboard-shell .dashboard-panel > .dashboard-metric-grid,
+.role-dashboard-shell .dashboard-panel > .department-list,
+.role-dashboard-shell .dashboard-panel > .dashboard-chip-grid,
+.role-dashboard-shell .dashboard-panel > .dashboard-note-text {
+    padding: 20px 24px 24px;
 }
 
 .dashboard-link-row {
@@ -1123,10 +1157,16 @@ a.btn-action:hover {
     color: #6b7280;
 }
 
+.dashboard-list-item > div,
+.dashboard-link-row > div {
+    min-width: 0;
+    flex: 1;
+}
+
 .dashboard-status-chip {
     display: inline-flex;
     align-items: center;
-    align-self: center;
+    align-self: flex-start;
     padding: 6px 10px;
     border-radius: 999px;
     background: #ecfdf3;
@@ -1173,7 +1213,11 @@ a.btn-action:hover {
 }
 
 .dashboard-empty-state {
-    padding: 20px;
+    min-height: 132px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     border: 1px dashed #d1d5db;
     border-radius: 12px;
     background: #f9fafb;

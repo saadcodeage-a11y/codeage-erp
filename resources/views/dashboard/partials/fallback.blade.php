@@ -1,5 +1,5 @@
 <div class="dashboard-section-grid">
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Accessible Modules</h3>
         </div>
@@ -15,7 +15,7 @@
     </section>
 
     @if($dashboard['announcements']->isNotEmpty())
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Latest Announcements</h3>
             </div>
@@ -24,7 +24,7 @@
                     <div class="dashboard-list-item">
                         <div>
                             <strong>{{ $announcement->title }}</strong>
-                            <p>{{ $announcement->audienceLabel() }} · {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
+                            <p>{{ $announcement->audienceLabel() }} &middot; {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
                         </div>
                         <span class="dashboard-status-chip">{{ \App\Models\Announcement::types()[$announcement->announcement_type] ?? 'Announcement' }}</span>
                     </div>
@@ -35,7 +35,7 @@
 </div>
 
 @if($dashboard['recent_activity']->isNotEmpty())
-    <section class="card">
+    <section class="card dashboard-panel">
         <div class="card-header">
             <h3>Recent Activity</h3>
         </div>

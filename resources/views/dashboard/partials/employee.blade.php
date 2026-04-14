@@ -1,5 +1,5 @@
 @if($dashboard['linked_employee_missing'])
-    <section class="card dashboard-notice-card">
+    <section class="card dashboard-panel dashboard-notice-card">
         <div class="card-header">
             <h3>No Linked Employee Profile</h3>
         </div>
@@ -7,7 +7,7 @@
     </section>
 @else
     <div class="dashboard-section-grid">
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Latest Announcements</h3>
             </div>
@@ -19,7 +19,7 @@
                         <div class="dashboard-list-item">
                             <div>
                                 <strong>{{ $announcement->title }}</strong>
-                                <p>{{ $announcement->audienceLabel() }} · {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
+                                <p>{{ $announcement->audienceLabel() }} &middot; {{ $announcement->published_at?->format('d M Y') ?? 'N/A' }}</p>
                             </div>
                             <span class="dashboard-status-chip">{{ \App\Models\Announcement::types()[$announcement->announcement_type] ?? 'Announcement' }}</span>
                         </div>
@@ -28,7 +28,7 @@
             @endif
         </section>
 
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Current Month Attendance</h3>
             </div>
@@ -40,10 +40,7 @@
                         <div class="dashboard-list-item">
                             <div>
                                 <strong>{{ $attendance->attendance_date?->format('d M Y') }}</strong>
-                                <p>
-                                    {{ $attendance->clock_in ?: '--:--' }} to {{ $attendance->clock_out ?: '--:--' }}
-                                    · Work {{ $attendance->work_duration ?: '--:--' }}
-                                </p>
+                                <p>{{ $attendance->clock_in ?: '--:--' }} to {{ $attendance->clock_out ?: '--:--' }} &middot; Work {{ $attendance->work_duration ?: '--:--' }}</p>
                             </div>
                             <span class="dashboard-status-chip {{ $attendance->status === \App\Models\AttendanceRecord::STATUS_PRESENT ? '' : 'muted' }}">{{ ucfirst(str_replace('_', ' ', $attendance->status)) }}</span>
                         </div>
@@ -54,7 +51,7 @@
     </div>
 
     <div class="dashboard-section-grid">
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Recent Leave Status</h3>
             </div>
@@ -66,7 +63,7 @@
                         <div class="dashboard-list-item">
                             <div>
                                 <strong>{{ $leave->leaveType?->name ?? 'Leave' }}</strong>
-                                <p>{{ $leave->start_date?->format('d M') }} to {{ $leave->end_date?->format('d M') }} · {{ $leave->days_count }} day{{ $leave->days_count === 1 ? '' : 's' }}</p>
+                                <p>{{ $leave->start_date?->format('d M') }} to {{ $leave->end_date?->format('d M') }} &middot; {{ $leave->days_count }} day{{ $leave->days_count === 1 ? '' : 's' }}</p>
                             </div>
                             <span class="dashboard-status-chip {{ $leave->status === 'approved' ? '' : 'muted' }}">{{ ucfirst($leave->status) }}</span>
                         </div>
@@ -75,7 +72,7 @@
             @endif
         </section>
 
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Latest Finalized Review</h3>
             </div>
@@ -104,7 +101,7 @@
     </div>
 
     <div class="dashboard-section-grid">
-        <section class="card">
+        <section class="card dashboard-panel">
             <div class="card-header">
                 <h3>Payroll, Tax, and Security Highlights</h3>
             </div>
