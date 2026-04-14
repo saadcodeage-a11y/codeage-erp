@@ -1,10 +1,15 @@
 <div class="dashboard-section-grid dashboard-section-grid-wide">
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Recent Activity</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--feature">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Operational Overview',
+            'subtitle' => 'Latest org-wide activity and system movement.'
+        ])
         @if($dashboard['recent_activity']->isEmpty())
-            <div class="dashboard-empty-state">No recent activity yet.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'activity',
+                'title' => 'No recent activity',
+                'message' => 'New employee, payroll, and workflow activity will appear here.'
+            ])
         @else
             <div class="dashboard-list">
                 @foreach($dashboard['recent_activity'] as $activity)
@@ -20,10 +25,11 @@
         @endif
     </section>
 
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Pending Operational Items</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Pending Items',
+            'subtitle' => 'Operational queues that still need follow-up.'
+        ])
         <div class="dashboard-metric-grid">
             @foreach($dashboard['pending_items'] as $item)
                 <div class="dashboard-metric-card">
@@ -37,12 +43,17 @@
 </div>
 
 <div class="dashboard-section-grid">
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Department Overview</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Department Overview',
+            'subtitle' => 'Relative headcount distribution across departments.'
+        ])
         @if($dashboard['departments']->isEmpty())
-            <div class="dashboard-empty-state">No departments available.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'building-2',
+                'title' => 'No departments available',
+                'message' => 'Department distribution will appear once departments and employees exist.'
+            ])
         @else
             <div class="department-list">
                 @php($maxDeptEmployees = $dashboard['departments']->max('employees_count') ?: 1)
@@ -61,12 +72,17 @@
         @endif
     </section>
 
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Latest Announcements</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Latest Announcements',
+            'subtitle' => 'Most recent office notices visible to this role.'
+        ])
         @if($dashboard['announcements']->isEmpty())
-            <div class="dashboard-empty-state">No announcements available.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'megaphone',
+                'title' => 'No announcements available',
+                'message' => 'Published office notices will appear here.'
+            ])
         @else
             <div class="dashboard-list">
                 @foreach($dashboard['announcements'] as $announcement)

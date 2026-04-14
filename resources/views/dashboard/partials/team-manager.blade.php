@@ -1,10 +1,15 @@
-<div class="dashboard-section-grid">
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Team Roster Snapshot</h3>
-        </div>
+<div class="dashboard-section-grid dashboard-section-grid-wide">
+    <section class="card dashboard-panel dashboard-panel--feature">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Team Snapshot',
+            'subtitle' => 'Assigned employees and current team composition at a glance.'
+        ])
         @if($dashboard['team_roster']->isEmpty())
-            <div class="dashboard-empty-state">No employees are assigned to your team yet.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'users-round',
+                'title' => 'No assigned employees yet',
+                'message' => 'Assigned team members will appear here once HR maps employees to your account.'
+            ])
         @else
             <div class="dashboard-list">
                 @foreach($dashboard['team_roster'] as $employee)
@@ -20,12 +25,17 @@
         @endif
     </section>
 
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Recent Evaluations</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Pending / Recent Evaluations',
+            'subtitle' => 'Most recent evaluation activity for your assigned team.'
+        ])
         @if($dashboard['recent_evaluations']->isEmpty())
-            <div class="dashboard-empty-state">No team evaluations available.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'chart-column-big',
+                'title' => 'No team evaluations available',
+                'message' => 'New manager drafts and finalized reviews will appear here.'
+            ])
         @else
             <div class="dashboard-list">
                 @foreach($dashboard['recent_evaluations'] as $evaluation)
@@ -46,10 +56,11 @@
 
 <div class="dashboard-section-grid">
     @if($dashboard['team_leaves']->isNotEmpty())
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Team Leave Activity</h3>
-            </div>
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Team Leave Activity',
+                'subtitle' => 'Recent leave movement across employees assigned to you.'
+            ])
             <div class="dashboard-list">
                 @foreach($dashboard['team_leaves'] as $leave)
                     <div class="dashboard-list-item">
@@ -65,10 +76,11 @@
     @endif
 
     @if($dashboard['announcements']->isNotEmpty())
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Latest Announcements</h3>
-            </div>
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Latest Announcements',
+                'subtitle' => 'Latest office notices visible to your team role.'
+            ])
             <div class="dashboard-list">
                 @foreach($dashboard['announcements'] as $announcement)
                     <div class="dashboard-list-item">

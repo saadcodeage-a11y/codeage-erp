@@ -1,18 +1,80 @@
 @if($dashboard['linked_employee_missing'])
     <section class="card dashboard-panel dashboard-notice-card">
-        <div class="card-header">
-            <h3>No Linked Employee Profile</h3>
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'No Linked Employee Profile',
+            'subtitle' => 'This account is active, but it is not mapped to an employee record yet.'
+        ])
+        <div class="dashboard-panel-body">
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'user-x',
+                'title' => 'Employee mapping is still pending',
+                'message' => 'Contact HR to complete the employee linkage before attendance, payroll, leave, and performance data can appear here.'
+            ])
         </div>
-        <p class="dashboard-note-text">Your login is active, but it is not linked to an employee record yet. Contact HR to complete the employee mapping before attendance, payroll, leave, and performance data can appear here.</p>
     </section>
 @else
-    <div class="dashboard-section-grid">
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Latest Announcements</h3>
+    <div class="dashboard-section-grid dashboard-section-grid-wide">
+        <section class="card dashboard-panel dashboard-panel--feature">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'This Month at a Glance',
+                'subtitle' => 'Your current attendance picture for this month.'
+            ])
+
+            <div class="dashboard-metric-grid dashboard-metric-grid--compact">
+                <div class="dashboard-metric-card">
+                    <span class="dashboard-metric-label">Present</span>
+                    <strong>{{ $dashboard['attendance_summary']['present'] }}</strong>
+                    <p>Marked present this month.</p>
+                </div>
+                <div class="dashboard-metric-card">
+                    <span class="dashboard-metric-label">Late</span>
+                    <strong>{{ $dashboard['attendance_summary']['late'] }}</strong>
+                    <p>Days marked late this month.</p>
+                </div>
+                <div class="dashboard-metric-card">
+                    <span class="dashboard-metric-label">Absent</span>
+                    <strong>{{ $dashboard['attendance_summary']['absent'] }}</strong>
+                    <p>Absence rows in the current month.</p>
+                </div>
+                <div class="dashboard-metric-card">
+                    <span class="dashboard-metric-label">Incomplete / Issues</span>
+                    <strong>{{ $dashboard['attendance_summary']['incomplete'] + $dashboard['attendance_summary']['early_leave'] }}</strong>
+                    <p>Incomplete and early-leave records combined.</p>
+                </div>
             </div>
+
+            @if($dashboard['attendance_rows']->isEmpty())
+                @include('dashboard.partials.shared.empty-state', [
+                    'icon' => 'fingerprint',
+                    'title' => 'No attendance rows found',
+                    'message' => 'Current month attendance will appear here after attendance is imported.'
+                ])
+            @else
+                <div class="dashboard-list dashboard-list--compact">
+                    @foreach($dashboard['attendance_rows'] as $attendance)
+                        <div class="dashboard-list-item">
+                            <div>
+                                <strong>{{ $attendance->attendance_date?->format('d M Y') }}</strong>
+                                <p>{{ $attendance->clock_in ?: '--:--' }} to {{ $attendance->clock_out ?: '--:--' }} &middot; Work {{ $attendance->work_duration ?: '--:--' }}</p>
+                            </div>
+                            <span class="dashboard-status-chip {{ $attendance->status === \App\Models\AttendanceRecord::STATUS_PRESENT ? '' : 'muted' }}">{{ ucfirst(str_replace('_', ' ', $attendance->status)) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Latest Announcements',
+                'subtitle' => 'Notices and office updates currently visible to you.'
+            ])
             @if($dashboard['announcements']->isEmpty())
-                <div class="dashboard-empty-state">No announcements available right now.</div>
+                @include('dashboard.partials.shared.empty-state', [
+                    'icon' => 'megaphone',
+                    'title' => 'No announcements available',
+                    'message' => 'New office notices will appear here when they are published.'
+                ])
             @else
                 <div class="dashboard-list">
                     @foreach($dashboard['announcements'] as $announcement)
@@ -27,36 +89,20 @@
                 </div>
             @endif
         </section>
-
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Current Month Attendance</h3>
-            </div>
-            @if($dashboard['attendance_rows']->isEmpty())
-                <div class="dashboard-empty-state">No attendance rows found for this month.</div>
-            @else
-                <div class="dashboard-list">
-                    @foreach($dashboard['attendance_rows'] as $attendance)
-                        <div class="dashboard-list-item">
-                            <div>
-                                <strong>{{ $attendance->attendance_date?->format('d M Y') }}</strong>
-                                <p>{{ $attendance->clock_in ?: '--:--' }} to {{ $attendance->clock_out ?: '--:--' }} &middot; Work {{ $attendance->work_duration ?: '--:--' }}</p>
-                            </div>
-                            <span class="dashboard-status-chip {{ $attendance->status === \App\Models\AttendanceRecord::STATUS_PRESENT ? '' : 'muted' }}">{{ ucfirst(str_replace('_', ' ', $attendance->status)) }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </section>
     </div>
 
     <div class="dashboard-section-grid">
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Recent Leave Status</h3>
-            </div>
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Recent Leave Status',
+                'subtitle' => 'Your latest leave requests and their current status.'
+            ])
             @if($dashboard['recent_leaves']->isEmpty())
-                <div class="dashboard-empty-state">No leave requests submitted yet.</div>
+                @include('dashboard.partials.shared.empty-state', [
+                    'icon' => 'calendar-range',
+                    'title' => 'No leave requests submitted',
+                    'message' => 'Your latest leave requests and approval status will appear here.'
+                ])
             @else
                 <div class="dashboard-list">
                     @foreach($dashboard['recent_leaves'] as $leave)
@@ -72,14 +118,19 @@
             @endif
         </section>
 
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Latest Finalized Review</h3>
-            </div>
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Latest Finalized Review',
+                'subtitle' => 'Your most recent HR-finalized performance review.'
+            ])
             @if(! $dashboard['latest_review'])
-                <div class="dashboard-empty-state">No finalized performance reviews available.</div>
+                @include('dashboard.partials.shared.empty-state', [
+                    'icon' => 'chart-column-big',
+                    'title' => 'No finalized performance reviews',
+                    'message' => 'HR-finalized reviews will appear here once they are completed.'
+                ])
             @else
-                <div class="dashboard-metric-grid">
+                <div class="dashboard-metric-grid dashboard-metric-grid--compact">
                     <div class="dashboard-metric-card">
                         <span class="dashboard-metric-label">Period</span>
                         <strong>{{ $dashboard['latest_review']->periodLabel() }}</strong>
@@ -101,10 +152,11 @@
     </div>
 
     <div class="dashboard-section-grid">
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Payroll, Tax, and Security Highlights</h3>
-            </div>
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Payroll / Tax / Security Highlights',
+                'subtitle' => 'Your latest saved salary, tax, and security snapshot.'
+            ])
             <div class="dashboard-metric-grid">
                 <div class="dashboard-metric-card">
                     <span class="dashboard-metric-label">Latest Net Salary</span>

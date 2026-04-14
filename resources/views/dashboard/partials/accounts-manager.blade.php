@@ -1,31 +1,15 @@
-<div class="dashboard-section-grid">
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Recent Payroll Runs</h3>
-        </div>
-        @if($dashboard['recent_runs']->isEmpty())
-            <div class="dashboard-empty-state">No payroll runs generated yet.</div>
-        @else
-            <div class="dashboard-list">
-                @foreach($dashboard['recent_runs'] as $run)
-                    <div class="dashboard-list-item">
-                        <div>
-                            <strong>{{ $run->pay_period_month?->format('F Y') ?? 'Unknown month' }}</strong>
-                            <p>{{ $run->records_count }} employee records &middot; Payment {{ $run->payment_date?->format('d M Y') ?? 'not scheduled' }}</p>
-                        </div>
-                        <span class="dashboard-status-chip {{ $run->status === 'finalized' ? '' : 'muted' }}">{{ ucfirst($run->status) }}</span>
-                    </div>
-                @endforeach
-            </div>
-        @endif
-    </section>
-
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Latest Payout Totals</h3>
-        </div>
+<div class="dashboard-section-grid dashboard-section-grid-wide">
+    <section class="card dashboard-panel dashboard-panel--feature">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Latest Payout Summary',
+            'subtitle' => 'Most recent saved payout month and its financial totals.'
+        ])
         @if(! $dashboard['latest_run'])
-            <div class="dashboard-empty-state">No payout month available.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'wallet-cards',
+                'title' => 'No payout month available',
+                'message' => 'Generate a payout month to start building payroll summaries here.'
+            ])
         @else
             <div class="dashboard-metric-grid">
                 <div class="dashboard-metric-card">
@@ -51,15 +35,18 @@
             </div>
         @endif
     </section>
-</div>
 
-<div class="dashboard-section-grid">
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Payroll Exceptions</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Payroll Exceptions',
+            'subtitle' => 'Latest payout records with leave, security, or short-hour impact.'
+        ])
         @if($dashboard['payroll_exceptions']->isEmpty())
-            <div class="dashboard-empty-state">No payroll exceptions found in the latest payout.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'triangle-alert',
+                'title' => 'No payroll exceptions',
+                'message' => 'The latest payout month does not contain flagged deductions or short-hour cases.'
+            ])
         @else
             <div class="dashboard-list">
                 @foreach($dashboard['payroll_exceptions'] as $record)
@@ -74,11 +61,40 @@
             </div>
         @endif
     </section>
+</div>
 
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Reporting Shortcuts</h3>
-        </div>
+<div class="dashboard-section-grid">
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Recent Payroll Runs',
+            'subtitle' => 'Latest payout months and their current run status.'
+        ])
+        @if($dashboard['recent_runs']->isEmpty())
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'calendar-days',
+                'title' => 'No payroll runs generated',
+                'message' => 'Saved payout months will appear here once payroll is generated.'
+            ])
+        @else
+            <div class="dashboard-list">
+                @foreach($dashboard['recent_runs'] as $run)
+                    <div class="dashboard-list-item">
+                        <div>
+                            <strong>{{ $run->pay_period_month?->format('F Y') ?? 'Unknown month' }}</strong>
+                            <p>{{ $run->records_count }} employee records &middot; Payment {{ $run->payment_date?->format('d M Y') ?? 'not scheduled' }}</p>
+                        </div>
+                        <span class="dashboard-status-chip {{ $run->status === 'finalized' ? '' : 'muted' }}">{{ ucfirst($run->status) }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </section>
+
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Reporting Shortcuts',
+            'subtitle' => 'Jump directly into payroll and tax reporting views.'
+        ])
         <div class="dashboard-list">
             @foreach($dashboard['report_shortcuts'] as $shortcut)
                 <a href="{{ $shortcut['href'] }}" class="dashboard-link-row">
@@ -94,10 +110,11 @@
 </div>
 
 @if($dashboard['announcements']->isNotEmpty())
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Latest Announcements</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Latest Announcements',
+            'subtitle' => 'Recent notices relevant to payroll and finance operations.'
+        ])
         <div class="dashboard-list">
             @foreach($dashboard['announcements'] as $announcement)
                 <div class="dashboard-list-item">

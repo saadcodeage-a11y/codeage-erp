@@ -96,6 +96,17 @@ class DashboardService
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
+        $pendingLeaveRequests = LeaveRequest::query()->where('status', 'pending')->count();
+        $pendingHrFinalizations = PerformanceEvaluation::query()->where('status', PerformanceEvaluation::STATUS_PENDING_HR)->count();
+        $attendanceExceptions = AttendanceRecord::query()
+            ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->whereIn('status', [
+                AttendanceRecord::STATUS_LATE,
+                AttendanceRecord::STATUS_ABSENT,
+                AttendanceRecord::STATUS_INCOMPLETE,
+                AttendanceRecord::STATUS_EARLY_LEAVE,
+            ])
+            ->count();
 
         return [
             'view' => 'hr-manager',
@@ -104,17 +115,9 @@ class DashboardService
             'role_label' => 'HR Manager',
             'stats' => [
                 $this->stat('Active Employees', (string) Employee::query()->where('status', 'active')->count(), 'users', 'orange'),
-                $this->stat('Pending Leave Requests', (string) LeaveRequest::query()->where('status', 'pending')->count(), 'calendar-range', 'yellow'),
-                $this->stat('Pending HR Finalizations', (string) PerformanceEvaluation::query()->where('status', PerformanceEvaluation::STATUS_PENDING_HR)->count(), 'chart-column-big', 'blue'),
-                $this->stat('Attendance Exceptions', (string) AttendanceRecord::query()
-                    ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-                    ->whereIn('status', [
-                        AttendanceRecord::STATUS_LATE,
-                        AttendanceRecord::STATUS_ABSENT,
-                        AttendanceRecord::STATUS_INCOMPLETE,
-                        AttendanceRecord::STATUS_EARLY_LEAVE,
-                    ])
-                    ->count(), 'fingerprint', 'green'),
+                $this->stat('Pending Leave Requests', (string) $pendingLeaveRequests, 'calendar-range', 'yellow'),
+                $this->stat('Pending HR Finalizations', (string) $pendingHrFinalizations, 'chart-column-big', 'blue'),
+                $this->stat('Attendance Exceptions', (string) $attendanceExceptions, 'fingerprint', 'green'),
             ],
             'quick_actions' => $this->filterQuickActions($user, [
                 $this->action('Employees', 'Employee records and status changes', 'users', route('employees.index'), 'orange-light', 'employees'),
@@ -142,6 +145,9 @@ class DashboardService
                 ->orderByDesc('updated_at')
                 ->take(6)
                 ->get(),
+            'pending_leave_requests' => $pendingLeaveRequests,
+            'pending_hr_finalizations' => $pendingHrFinalizations,
+            'attendance_exceptions' => $attendanceExceptions,
             'announcements' => $this->latestAnnouncementsFor($user),
         ];
     }
@@ -325,6 +331,28 @@ class DashboardService
             ->latest('attendance_date')
             ->take(6)
             ->get();
+        $attendanceSummary = [
+            'present' => (int) $employee->attendanceRecords()
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->where('status', AttendanceRecord::STATUS_PRESENT)
+                ->count(),
+            'late' => (int) $employee->attendanceRecords()
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->where('status', AttendanceRecord::STATUS_LATE)
+                ->count(),
+            'absent' => (int) $employee->attendanceRecords()
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->where('status', AttendanceRecord::STATUS_ABSENT)
+                ->count(),
+            'incomplete' => (int) $employee->attendanceRecords()
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->where('status', AttendanceRecord::STATUS_INCOMPLETE)
+                ->count(),
+            'early_leave' => (int) $employee->attendanceRecords()
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->where('status', AttendanceRecord::STATUS_EARLY_LEAVE)
+                ->count(),
+        ];
 
         $latestPayroll = EmployeePayrollRecord::query()
             ->with('payrollRun')
@@ -364,6 +392,7 @@ class DashboardService
             'announcements' => $user->canAccessModule('announcements')
                 ? $this->latestAnnouncementsFor($user)
                 : collect(),
+            'attendance_summary' => $attendanceSummary,
             'attendance_rows' => $attendanceRows,
             'recent_leaves' => $employee->leaveRequests()
                 ->with('leaveType')

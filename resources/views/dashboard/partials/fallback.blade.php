@@ -1,10 +1,15 @@
 <div class="dashboard-section-grid">
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Accessible Modules</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--feature">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Accessible Modules',
+            'subtitle' => 'Modules this role can currently open from the sidebar.'
+        ])
         @if($dashboard['accessible_modules']->isEmpty())
-            <div class="dashboard-empty-state">No additional modules are available for this role.</div>
+            @include('dashboard.partials.shared.empty-state', [
+                'icon' => 'layout-grid',
+                'title' => 'No additional modules available',
+                'message' => 'This role currently has no extra modules enabled beyond the dashboard.'
+            ])
         @else
             <div class="dashboard-chip-grid">
                 @foreach($dashboard['accessible_modules'] as $module)
@@ -15,10 +20,11 @@
     </section>
 
     @if($dashboard['announcements']->isNotEmpty())
-        <section class="card dashboard-panel">
-            <div class="card-header">
-                <h3>Latest Announcements</h3>
-            </div>
+        <section class="card dashboard-panel dashboard-panel--support">
+            @include('dashboard.partials.shared.panel-header', [
+                'title' => 'Latest Announcements',
+                'subtitle' => 'Published notices currently visible to this role.'
+            ])
             <div class="dashboard-list">
                 @foreach($dashboard['announcements'] as $announcement)
                     <div class="dashboard-list-item">
@@ -35,10 +41,11 @@
 </div>
 
 @if($dashboard['recent_activity']->isNotEmpty())
-    <section class="card dashboard-panel">
-        <div class="card-header">
-            <h3>Recent Activity</h3>
-        </div>
+    <section class="card dashboard-panel dashboard-panel--support">
+        @include('dashboard.partials.shared.panel-header', [
+            'title' => 'Recent Activity',
+            'subtitle' => 'Latest activity available to this role.'
+        ])
         <div class="dashboard-list">
             @foreach($dashboard['recent_activity'] as $activity)
                 <div class="dashboard-list-item">
