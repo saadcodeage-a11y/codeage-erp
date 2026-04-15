@@ -193,19 +193,44 @@
                 @csrf
                 <div class="form-group">
                     <label>Assign to Employee</label>
-                    <select name="employee_id" id="add_user_employee_id">
-                        <option value="">None</option>
-                        @foreach($employees as $employee)
-                            <option
-                                value="{{ $employee['id'] }}"
-                                data-assigned-user-id="{{ $employee['assigned_user_id'] ?? '' }}"
-                                data-assigned-user-name="{{ $employee['assigned_user_name'] ?? '' }}"
-                                @disabled(!empty($employee['assigned_user_id']))
+                    <div class="employee-picker" data-picker="add">
+                        <input type="hidden" name="employee_id" id="add_user_employee_id">
+                        <div class="employee-picker-input">
+                            <i data-lucide="search"></i>
+                            <input
+                                type="text"
+                                id="add_user_employee_search"
+                                placeholder="Search employee by name, ID, or email"
+                                autocomplete="off"
+                                onfocus="openEmployeePicker('add')"
+                                oninput="filterEmployeePicker('add')"
                             >
-                                {{ $employee['full_name'] }} ({{ $employee['employee_id'] ?: $employee['email'] }}){{ !empty($employee['assigned_user_id']) ? ' - Assigned to ' . $employee['assigned_user_name'] : '' }}
-                            </option>
-                        @endforeach
-                    </select>
+                            <button type="button" class="employee-picker-clear" id="add_user_employee_clear" onclick="clearEmployeePicker('add')" aria-label="Clear employee selection" style="display:none;">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                        <div class="employee-picker-dropdown" id="add_user_employee_dropdown" style="display:none;">
+                            <button type="button" class="employee-picker-option employee-picker-option--empty" onclick="selectEmployeePicker('add', null)">
+                                <strong>No employee assignment</strong>
+                                <span>Leave this user account unlinked.</span>
+                            </button>
+                            @foreach($employees as $employee)
+                                <button
+                                    type="button"
+                                    class="employee-picker-option"
+                                    data-id="{{ $employee['id'] }}"
+                                    data-label="{{ $employee['full_name'] }} ({{ $employee['employee_id'] ?: $employee['email'] }})"
+                                    data-search="{{ strtolower($employee['full_name'] . ' ' . ($employee['employee_id'] ?: '') . ' ' . ($employee['email'] ?: '')) }}"
+                                    data-assigned-user-id="{{ $employee['assigned_user_id'] ?? '' }}"
+                                    data-assigned-user-name="{{ $employee['assigned_user_name'] ?? '' }}"
+                                    onclick="selectEmployeePicker('add', this)"
+                                >
+                                    <strong>{{ $employee['full_name'] }}</strong>
+                                    <span>{{ $employee['employee_id'] ?: $employee['email'] }}{{ !empty($employee['assigned_user_id']) ? ' · Assigned to ' . $employee['assigned_user_name'] : '' }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group"><label>Name</label><input type="text" name="name" required></div>
                 <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
@@ -238,19 +263,44 @@
                 <input type="hidden" name="id" id="edit_user_id">
                 <div class="form-group">
                     <label>Assign to Employee</label>
-                    <select name="employee_id" id="edit_user_employee_id">
-                        <option value="">None</option>
-                        @foreach($employees as $employee)
-                            <option
-                                value="{{ $employee['id'] }}"
-                                data-assigned-user-id="{{ $employee['assigned_user_id'] ?? '' }}"
-                                data-assigned-user-name="{{ $employee['assigned_user_name'] ?? '' }}"
-                                @disabled(!empty($employee['assigned_user_id']))
+                    <div class="employee-picker" data-picker="edit">
+                        <input type="hidden" name="employee_id" id="edit_user_employee_id">
+                        <div class="employee-picker-input">
+                            <i data-lucide="search"></i>
+                            <input
+                                type="text"
+                                id="edit_user_employee_search"
+                                placeholder="Search employee by name, ID, or email"
+                                autocomplete="off"
+                                onfocus="openEmployeePicker('edit')"
+                                oninput="filterEmployeePicker('edit')"
                             >
-                                {{ $employee['full_name'] }} ({{ $employee['employee_id'] ?: $employee['email'] }}){{ !empty($employee['assigned_user_id']) ? ' - Assigned to ' . $employee['assigned_user_name'] : '' }}
-                            </option>
-                        @endforeach
-                    </select>
+                            <button type="button" class="employee-picker-clear" id="edit_user_employee_clear" onclick="clearEmployeePicker('edit')" aria-label="Clear employee selection" style="display:none;">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                        <div class="employee-picker-dropdown" id="edit_user_employee_dropdown" style="display:none;">
+                            <button type="button" class="employee-picker-option employee-picker-option--empty" onclick="selectEmployeePicker('edit', null)">
+                                <strong>No employee assignment</strong>
+                                <span>Unlink this user account from an employee.</span>
+                            </button>
+                            @foreach($employees as $employee)
+                                <button
+                                    type="button"
+                                    class="employee-picker-option"
+                                    data-id="{{ $employee['id'] }}"
+                                    data-label="{{ $employee['full_name'] }} ({{ $employee['employee_id'] ?: $employee['email'] }})"
+                                    data-search="{{ strtolower($employee['full_name'] . ' ' . ($employee['employee_id'] ?: '') . ' ' . ($employee['email'] ?: '')) }}"
+                                    data-assigned-user-id="{{ $employee['assigned_user_id'] ?? '' }}"
+                                    data-assigned-user-name="{{ $employee['assigned_user_name'] ?? '' }}"
+                                    onclick="selectEmployeePicker('edit', this)"
+                                >
+                                    <strong>{{ $employee['full_name'] }}</strong>
+                                    <span>{{ $employee['employee_id'] ?: $employee['email'] }}{{ !empty($employee['assigned_user_id']) ? ' · Assigned to ' . $employee['assigned_user_name'] : '' }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group"><label>Name</label><input type="text" name="name" id="edit_user_name" required></div>
                 <div class="form-group"><label>Email</label><input type="email" name="email" id="edit_user_email" required></div>
@@ -526,6 +576,120 @@
     }
     .modal-form { display: flex; flex-direction: column; gap: 16px; }
     .modal-form input, .modal-form select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; }
+    .employee-picker {
+        position: relative;
+    }
+    .employee-picker-input {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 46px;
+        padding: 0 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #f9fafb;
+        transition: all .2s ease;
+    }
+    .employee-picker-input:focus-within {
+        border-color: #fdba74;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(255, 122, 24, 0.12);
+    }
+    .employee-picker-input i {
+        width: 18px;
+        height: 18px;
+        color: #6b7280;
+        flex-shrink: 0;
+    }
+    .employee-picker-input input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        background: transparent;
+        padding: 0;
+        outline: none;
+        box-shadow: none;
+    }
+    .employee-picker-clear {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 999px;
+        background: #fff;
+        color: #6b7280;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .employee-picker-clear:hover {
+        background: #f3f4f6;
+        color: #111827;
+    }
+    .employee-picker-clear i {
+        width: 16px;
+        height: 16px;
+    }
+    .employee-picker-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 30;
+        max-height: 280px;
+        overflow: auto;
+        padding: 8px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    }
+    .employee-picker-option {
+        width: 100%;
+        border: none;
+        background: #fff;
+        border-radius: 10px;
+        padding: 12px 14px;
+        text-align: left;
+        cursor: pointer;
+        transition: all .2s ease;
+    }
+    .employee-picker-option:hover,
+    .employee-picker-option.active {
+        background: #fff7ed;
+    }
+    .employee-picker-option strong {
+        display: block;
+        font-size: 13px;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+    .employee-picker-option span {
+        display: block;
+        font-size: 12px;
+        color: #6b7280;
+        line-height: 1.45;
+    }
+    .employee-picker-option--empty {
+        border-bottom: 1px solid #f3f4f6;
+        margin-bottom: 6px;
+        padding-bottom: 14px;
+    }
+    .employee-picker-option.is-disabled {
+        opacity: .58;
+        cursor: not-allowed;
+        background: #f9fafb;
+    }
+    .employee-picker-option.is-disabled:hover {
+        background: #f9fafb;
+    }
+    .employee-picker-empty {
+        padding: 14px;
+        text-align: center;
+        color: #6b7280;
+        font-size: 13px;
+    }
     .two-factor-card {
         display: flex;
         align-items: center;
@@ -636,6 +800,10 @@
         .permission-matrix { grid-template-columns: 1fr; }
         .module-permission-header { flex-direction: column; align-items: flex-start; }
         .two-factor-card { align-items: flex-start; }
+        .employee-picker-dropdown {
+            position: static;
+            margin-top: 8px;
+        }
     }
 </style>
 
@@ -643,19 +811,127 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; if (window.lucide) window.lucide.createIcons(); }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    function syncEmployeeAssignmentOptions(select, currentUserId = null, selectedEmployeeId = '') {
-        Array.from(select.options).forEach(option => {
-            const assignedUserId = option.dataset.assignedUserId || '';
-            if (!option.value) {
-                option.disabled = false;
-                return;
-            }
+    function getEmployeePicker(mode) {
+        return {
+            root: document.querySelector(`.employee-picker[data-picker="${mode}"]`),
+            hidden: document.getElementById(`${mode}_user_employee_id`),
+            search: document.getElementById(`${mode}_user_employee_search`),
+            clear: document.getElementById(`${mode}_user_employee_clear`),
+            dropdown: document.getElementById(`${mode}_user_employee_dropdown`),
+        };
+    }
 
-            const isAssignedElsewhere = assignedUserId && String(assignedUserId) !== String(currentUserId);
-            option.disabled = Boolean(isAssignedElsewhere);
+    function configureEmployeePicker(mode, currentUserId = null, selectedEmployeeId = '') {
+        const picker = getEmployeePicker(mode);
+        picker.root.dataset.currentUserId = currentUserId ? String(currentUserId) : '';
+
+        picker.dropdown.querySelectorAll('.employee-picker-option[data-id]').forEach(option => {
+            const assignedUserId = option.dataset.assignedUserId || '';
+            const isAssignedElsewhere = assignedUserId && String(assignedUserId) !== String(currentUserId || '');
+            option.classList.toggle('is-disabled', Boolean(isAssignedElsewhere));
         });
 
-        select.value = selectedEmployeeId || '';
+        if (selectedEmployeeId) {
+            const selectedOption = picker.dropdown.querySelector(`.employee-picker-option[data-id="${selectedEmployeeId}"]`);
+            if (selectedOption) {
+                selectEmployeePicker(mode, selectedOption, false);
+                return;
+            }
+        }
+
+        clearEmployeePicker(mode, false);
+    }
+
+    function filterEmployeePicker(mode) {
+        const picker = getEmployeePicker(mode);
+        const query = (picker.search.value || '').trim().toLowerCase();
+        const selectedLabel = picker.root.dataset.selectedLabel || '';
+
+        if ((picker.search.value || '') !== selectedLabel) {
+            picker.hidden.value = '';
+            picker.root.dataset.selectedLabel = '';
+            picker.dropdown.querySelectorAll('.employee-picker-option').forEach(item => item.classList.remove('active'));
+            picker.clear.style.display = picker.search.value ? 'inline-flex' : 'none';
+        }
+
+        let visibleCount = 0;
+
+        picker.dropdown.querySelectorAll('.employee-picker-option[data-id]').forEach(option => {
+            const matches = !query || (option.dataset.search || '').includes(query);
+            option.style.display = matches ? 'block' : 'none';
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        let emptyState = picker.dropdown.querySelector('.employee-picker-empty');
+        if (!visibleCount) {
+            if (!emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.className = 'employee-picker-empty';
+                emptyState.textContent = 'No employees match this search.';
+                picker.dropdown.appendChild(emptyState);
+            }
+        } else if (emptyState) {
+            emptyState.remove();
+        }
+
+        openEmployeePicker(mode);
+    }
+
+    function openEmployeePicker(mode) {
+        const picker = getEmployeePicker(mode);
+        picker.dropdown.style.display = 'block';
+    }
+
+    function closeEmployeePicker(mode) {
+        const picker = getEmployeePicker(mode);
+        picker.dropdown.style.display = 'none';
+    }
+
+    function selectEmployeePicker(mode, option, closeAfterSelect = true) {
+        const picker = getEmployeePicker(mode);
+
+        if (!option) {
+            clearEmployeePicker(mode, closeAfterSelect);
+            return;
+        }
+
+        if (option.classList.contains('is-disabled')) {
+            return;
+        }
+
+        picker.hidden.value = option.dataset.id;
+        picker.search.value = option.dataset.label;
+        picker.root.dataset.selectedLabel = option.dataset.label;
+        picker.clear.style.display = 'inline-flex';
+        picker.dropdown.querySelectorAll('.employee-picker-option').forEach(item => item.classList.remove('active'));
+        option.classList.add('active');
+
+        if (closeAfterSelect) {
+            closeEmployeePicker(mode);
+        }
+    }
+
+    function clearEmployeePicker(mode, closeAfterClear = true) {
+        const picker = getEmployeePicker(mode);
+        picker.hidden.value = '';
+        picker.search.value = '';
+        picker.root.dataset.selectedLabel = '';
+        picker.clear.style.display = 'none';
+        picker.dropdown.querySelectorAll('.employee-picker-option').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.id) {
+                item.style.display = 'block';
+            }
+        });
+        const emptyState = picker.dropdown.querySelector('.employee-picker-empty');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        if (closeAfterClear) {
+            closeEmployeePicker(mode);
+        }
     }
 
     function switchTab(tab, button) {
@@ -672,7 +948,7 @@
         document.getElementById('edit_user_name').value = user.name;
         document.getElementById('edit_user_email').value = user.email;
         document.getElementById('edit_user_role').value = user.role;
-        syncEmployeeAssignmentOptions(document.getElementById('edit_user_employee_id'), user.id, user.employee_id || '');
+        configureEmployeePicker('edit', user.id, user.employee_id || '');
         document.getElementById('edit_user_2fa').checked = user.two_factor_enabled;
         openModal('editUserModal');
     }
@@ -686,7 +962,7 @@
     function openAddUserModal() {
         const form = document.getElementById('addUserForm');
         form.reset();
-        syncEmployeeAssignmentOptions(document.getElementById('add_user_employee_id'));
+        configureEmployeePicker('add');
         openModal('addUserModal');
     }
 
@@ -779,10 +1055,15 @@
         if (event.target.classList.contains('modal-overlay')) {
             document.querySelectorAll('.modal-overlay').forEach(modal => modal.style.display = 'none');
         }
+
+        if (!event.target.closest('.employee-picker')) {
+            closeEmployeePicker('add');
+            closeEmployeePicker('edit');
+        }
     });
 
-    syncEmployeeAssignmentOptions(document.getElementById('add_user_employee_id'));
-    syncEmployeeAssignmentOptions(document.getElementById('edit_user_employee_id'));
+    configureEmployeePicker('add');
+    configureEmployeePicker('edit');
     resetPermissionEditor(document.getElementById('addRoleForm'));
     if (window.lucide) window.lucide.createIcons();
 </script>
