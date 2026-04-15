@@ -324,6 +324,14 @@
     .info-card strong{color:#111827;font-size:1rem;line-height:1.5}
     .inner-empty{margin-top:1rem}
     .employee-tab-shell{display:flex;flex-direction:column;gap:1.25rem}
+    .employee-tab-shell>.table-card{padding:1.5rem;overflow:hidden}
+    .employee-tab-shell>.table-card .table-scroll{margin-top:1rem;border:1px solid #eef2f7;border-radius:16px;background:#fff}
+    .employee-tab-shell>.table-card .section-head+.table-scroll{margin-top:1rem}
+    .employee-tab-shell>.table-card .data-table{margin:0}
+    .employee-tab-shell>.table-card .data-table thead th:first-child,
+    .employee-tab-shell>.table-card .data-table tbody td:first-child{padding-left:1.5rem}
+    .employee-tab-shell>.table-card .data-table thead th:last-child,
+    .employee-tab-shell>.table-card .data-table tbody td:last-child{padding-right:1.5rem}
     .employee-summary-card{display:flex;align-items:center;justify-content:space-between;gap:1rem}
     .employee-summary-card h2{margin:.35rem 0;color:#111827}
     .employee-summary-card p{margin:0;color:#6b7280}
@@ -376,6 +384,6 @@
     .status-pill.rejected,.status-pill.cancelled,.status-pill.absent,.status-pill.inactive,.status-pill.terminated,.status-pill.resigned{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
     .status-pill.holiday,.status-pill.weekend,.status-pill.incomplete{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
     @media (max-width:1200px){.profile-hero,.profile-account-grid,.self-service-two-col{grid-template-columns:1fr}.employee-summary-card{flex-direction:column;align-items:flex-start}.summary-shift{text-align:left}.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.attendance-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media (max-width:768px){.profile-account-section{padding:1rem}.profile-identity{flex-direction:column;align-items:flex-start}.info-grid,.info-grid.two-col,.attendance-summary-grid,.leave-summary-grid,.metric-grid,.portal-form .form-row{grid-template-columns:1fr}}
+    @media (max-width:768px){.profile-account-section,.employee-tab-shell>.table-card{padding:1rem}.employee-tab-shell>.table-card .data-table thead th:first-child,.employee-tab-shell>.table-card .data-table tbody td:first-child{padding-left:1rem}.employee-tab-shell>.table-card .data-table thead th:last-child,.employee-tab-shell>.table-card .data-table tbody td:last-child{padding-right:1rem}.profile-identity{flex-direction:column;align-items:flex-start}.info-grid,.info-grid.two-col,.attendance-summary-grid,.leave-summary-grid,.metric-grid,.portal-form .form-row{grid-template-columns:1fr}}
 </style>
 @endsection
