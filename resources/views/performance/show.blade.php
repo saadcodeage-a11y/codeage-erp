@@ -139,6 +139,22 @@
 </div>
 
 <style>
+    .section-header {
+        margin-bottom: 18px;
+    }
+    .section-header h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        line-height: 1.35;
+        font-weight: 700;
+        color: #111827;
+    }
+    .section-header p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #6b7280;
+    }
     .two-column-layout {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
