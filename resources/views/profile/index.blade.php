@@ -99,7 +99,7 @@
     @endif
 </div>
 
-<section class="table-card {{ $activeTab === 'account' ? '' : 'hidden-tab' }}">
+<section class="table-card profile-account-section {{ $activeTab === 'account' ? '' : 'hidden-tab' }}">
     <div class="section-head">
         <h2>Account Settings</h2>
         <p>Profile, security, and role information for this login account.</p>
@@ -294,6 +294,7 @@
 
 <style>
     .profile-hero,.employee-summary-card,.portal-alert{margin-bottom:1.25rem}
+    .profile-account-section{padding:1.5rem}
     .profile-hero{padding:1.5rem;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr);gap:1rem}
     .profile-identity{display:flex;align-items:center;gap:1rem}
     .avatar-lg{width:100px;height:100px;border-radius:28px;background:linear-gradient(135deg,#ff4d00 0%,#ff8c00 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;position:relative;overflow:hidden;flex-shrink:0}
@@ -312,6 +313,8 @@
     .self-service-stats,.profile-tabs{margin-bottom:1.25rem}
     .profile-account-grid,.self-service-two-col,.info-grid,.attendance-summary-grid,.metric-grid{display:grid;gap:1rem}
     .profile-account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .profile-account-grid .sub-card{padding:1.35rem}
+    .profile-account-grid .info-card{padding:1.2rem 1.35rem}
     .security-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa}
     .security-row strong{display:block;margin-bottom:.25rem;color:#111827}
     .security-row p{margin:0;color:#6b7280}
@@ -373,6 +376,6 @@
     .status-pill.rejected,.status-pill.cancelled,.status-pill.absent,.status-pill.inactive,.status-pill.terminated,.status-pill.resigned{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
     .status-pill.holiday,.status-pill.weekend,.status-pill.incomplete{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
     @media (max-width:1200px){.profile-hero,.profile-account-grid,.self-service-two-col{grid-template-columns:1fr}.employee-summary-card{flex-direction:column;align-items:flex-start}.summary-shift{text-align:left}.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.attendance-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media (max-width:768px){.profile-identity{flex-direction:column;align-items:flex-start}.info-grid,.info-grid.two-col,.attendance-summary-grid,.leave-summary-grid,.metric-grid,.portal-form .form-row{grid-template-columns:1fr}}
+    @media (max-width:768px){.profile-account-section{padding:1rem}.profile-identity{flex-direction:column;align-items:flex-start}.info-grid,.info-grid.two-col,.attendance-summary-grid,.leave-summary-grid,.metric-grid,.portal-form .form-row{grid-template-columns:1fr}}
 </style>
 @endsection

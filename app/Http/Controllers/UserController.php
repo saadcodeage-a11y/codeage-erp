@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -31,13 +32,30 @@ class UserController extends Controller
         }
 
         $users = $query->with('employee')->latest()->paginate(10)->withQueryString();
-        
-        // Get employees who are active and not already assigned to a user
-        $assignedEmployeeIds = User::whereNotNull('employee_id')->pluck('employee_id');
+
+        $assignedEmployees = User::query()
+            ->whereNotNull('employee_id')
+            ->with('employee:id,full_name,employee_id,email')
+            ->get(['id', 'name', 'employee_id'])
+            ->filter(fn ($user) => $user->employee)
+            ->keyBy('employee_id');
+
         $employees = Employee::where('status', 'active')
-            ->whereNotIn('id', $assignedEmployeeIds)
             ->orderBy('full_name')
-            ->get(['id', 'full_name', 'email', 'employee_id']);
+            ->get(['id', 'full_name', 'email', 'employee_id'])
+            ->map(function (Employee $employee) use ($assignedEmployees) {
+                $assignedUser = $assignedEmployees->get($employee->id);
+
+                return [
+                    'id' => $employee->id,
+                    'full_name' => $employee->full_name,
+                    'email' => $employee->email,
+                    'employee_id' => $employee->employee_id,
+                    'assigned_user_id' => $assignedUser?->id,
+                    'assigned_user_name' => $assignedUser?->name,
+                ];
+            })
+            ->values();
 
         $roles = Role::with('permissions')
             ->withCount('users')
@@ -58,7 +76,11 @@ class UserController extends Controller
             'role' => 'required|exists:roles,name',
             'password' => 'required|string|min:8',
             'two_factor_enabled' => 'nullable|boolean',
-            'employee_id' => 'nullable|exists:employees,id',
+            'employee_id' => [
+                'nullable',
+                'exists:employees,id',
+                Rule::unique('users', 'employee_id'),
+            ],
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -90,7 +112,11 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|exists:roles,name',
             'two_factor_enabled' => 'nullable|boolean',
-            'employee_id' => 'nullable|exists:employees,id',
+            'employee_id' => [
+                'nullable',
+                'exists:employees,id',
+                Rule::unique('users', 'employee_id')->ignore($user->id),
+            ],
         ]);
 
         $validated['two_factor_enabled'] = $request->boolean('two_factor_enabled');

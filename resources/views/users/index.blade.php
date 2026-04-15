@@ -12,7 +12,7 @@
         <p>Manage users, roles, and module permissions</p>
     </div>
     <div class="header-right">
-        <button id="addUserAction" class="btn btn-primary" onclick="openModal('addUserModal')">
+        <button id="addUserAction" class="btn btn-primary" onclick="openAddUserModal()">
             <i data-lucide="plus"></i> Add User
         </button>
         <button id="addRoleAction" class="btn btn-primary" style="display: none;" onclick="openModal('addRoleModal')">
@@ -191,12 +191,37 @@
         <div class="modal-body" style="padding:24px;">
             <form id="addUserForm" class="modal-form">
                 @csrf
-                <div class="form-group"><label>Assign to Employee</label><select name="employee_id"><option value="">None</option>@foreach($employees as $employee)<option value="{{ $employee->id }}">{{ $employee->full_name }} ({{ $employee->employee_id ?: $employee->email }})</option>@endforeach</select></div>
+                <div class="form-group">
+                    <label>Assign to Employee</label>
+                    <select name="employee_id" id="add_user_employee_id">
+                        <option value="">None</option>
+                        @foreach($employees as $employee)
+                            <option
+                                value="{{ $employee['id'] }}"
+                                data-assigned-user-id="{{ $employee['assigned_user_id'] ?? '' }}"
+                                data-assigned-user-name="{{ $employee['assigned_user_name'] ?? '' }}"
+                                @disabled(!empty($employee['assigned_user_id']))
+                            >
+                                {{ $employee['full_name'] }} ({{ $employee['employee_id'] ?: $employee['email'] }}){{ !empty($employee['assigned_user_id']) ? ' - Assigned to ' . $employee['assigned_user_name'] : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="form-group"><label>Name</label><input type="text" name="name" required></div>
                 <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
                 <div class="form-group"><label>Role</label><select name="role" required>@foreach($roleOptions as $roleName)<option value="{{ $roleName }}">{{ $roleName }}</option>@endforeach</select></div>
                 <div class="form-group"><label>Initial Password</label><input type="password" name="password" required></div>
-                <label class="checkbox-row"><input type="checkbox" name="two_factor_enabled" value="1"> Enable two-factor authentication</label>
+                <label class="two-factor-card">
+                    <span class="two-factor-card__icon" aria-hidden="true"><i data-lucide="shield-check"></i></span>
+                    <span class="two-factor-card__copy">
+                        <strong>Enable Two-Factor Authentication</strong>
+                        <small>Require an additional verification step after password login.</small>
+                    </span>
+                    <span class="switch-toggle compact">
+                        <input type="checkbox" name="two_factor_enabled" value="1">
+                        <span class="slider"></span>
+                    </span>
+                </label>
             </form>
         </div>
         <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('addUserModal')">Cancel</button><button class="btn btn-primary" form="addUserForm" type="submit">Create User</button></div>
@@ -211,11 +236,36 @@
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="id" id="edit_user_id">
-                <div class="form-group"><label>Assign to Employee</label><select name="employee_id" id="edit_user_employee_id"><option value="">None</option>@foreach($employees as $employee)<option value="{{ $employee->id }}">{{ $employee->full_name }} ({{ $employee->employee_id ?: $employee->email }})</option>@endforeach</select></div>
+                <div class="form-group">
+                    <label>Assign to Employee</label>
+                    <select name="employee_id" id="edit_user_employee_id">
+                        <option value="">None</option>
+                        @foreach($employees as $employee)
+                            <option
+                                value="{{ $employee['id'] }}"
+                                data-assigned-user-id="{{ $employee['assigned_user_id'] ?? '' }}"
+                                data-assigned-user-name="{{ $employee['assigned_user_name'] ?? '' }}"
+                                @disabled(!empty($employee['assigned_user_id']))
+                            >
+                                {{ $employee['full_name'] }} ({{ $employee['employee_id'] ?: $employee['email'] }}){{ !empty($employee['assigned_user_id']) ? ' - Assigned to ' . $employee['assigned_user_name'] : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="form-group"><label>Name</label><input type="text" name="name" id="edit_user_name" required></div>
                 <div class="form-group"><label>Email</label><input type="email" name="email" id="edit_user_email" required></div>
                 <div class="form-group"><label>Role</label><select name="role" id="edit_user_role" required>@foreach($roleOptions as $roleName)<option value="{{ $roleName }}">{{ $roleName }}</option>@endforeach</select></div>
-                <label class="checkbox-row"><input type="checkbox" name="two_factor_enabled" id="edit_user_2fa" value="1"> Enable two-factor authentication</label>
+                <label class="two-factor-card">
+                    <span class="two-factor-card__icon" aria-hidden="true"><i data-lucide="shield-check"></i></span>
+                    <span class="two-factor-card__copy">
+                        <strong>Enable Two-Factor Authentication</strong>
+                        <small>Require an additional verification step after password login.</small>
+                    </span>
+                    <span class="switch-toggle compact">
+                        <input type="checkbox" name="two_factor_enabled" id="edit_user_2fa" value="1">
+                        <span class="slider"></span>
+                    </span>
+                </label>
             </form>
         </div>
         <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editUserModal')">Cancel</button><button class="btn btn-primary" form="editUserForm" type="submit">Save Changes</button></div>
@@ -476,7 +526,104 @@
     }
     .modal-form { display: flex; flex-direction: column; gap: 16px; }
     .modal-form input, .modal-form select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; }
-    .checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; }
+    .two-factor-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+        cursor: pointer;
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .two-factor-card:hover {
+        border-color: #fed7aa;
+        background: linear-gradient(180deg, #fffaf5 0%, #ffffff 100%);
+    }
+    .two-factor-card:focus-within {
+        border-color: #fb923c;
+        box-shadow: 0 0 0 4px rgba(255, 122, 24, 0.12);
+    }
+    .two-factor-card__icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: #fff7ed;
+        color: #ea580c;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .two-factor-card__copy {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+    }
+    .two-factor-card__copy strong {
+        font-size: 14px;
+        color: #111827;
+    }
+    .two-factor-card__copy small {
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.5;
+    }
+    .switch-toggle {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 30px;
+        flex-shrink: 0;
+    }
+    .switch-toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
+    }
+    .switch-toggle .slider {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: #d1d5db;
+        transition: .2s ease;
+    }
+    .switch-toggle .slider::before {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+        transition: .2s ease;
+    }
+    .switch-toggle input:checked + .slider {
+        background: linear-gradient(90deg, #ff7a18 0%, #ff4a00 100%);
+    }
+    .switch-toggle input:checked + .slider::before {
+        transform: translateX(22px);
+    }
+    .switch-toggle input:focus-visible + .slider {
+        box-shadow: 0 0 0 4px rgba(255, 74, 0, 0.15);
+    }
+    .switch-toggle.compact {
+        width: 48px;
+        height: 28px;
+    }
+    .switch-toggle.compact .slider::before {
+        width: 22px;
+        height: 22px;
+    }
+    .switch-toggle.compact input:checked + .slider::before {
+        transform: translateX(20px);
+    }
     .permission-editor { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
     .permission-row { display: grid; grid-template-columns: minmax(180px, 1fr) 120px 120px 120px; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f3f4f6; }
     .permission-row:last-child { border-bottom: none; }
@@ -488,12 +635,28 @@
         .role-card-summary,
         .permission-matrix { grid-template-columns: 1fr; }
         .module-permission-header { flex-direction: column; align-items: flex-start; }
+        .two-factor-card { align-items: flex-start; }
     }
 </style>
 
 <script>
     function openModal(id) { document.getElementById(id).style.display = 'flex'; if (window.lucide) window.lucide.createIcons(); }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function syncEmployeeAssignmentOptions(select, currentUserId = null, selectedEmployeeId = '') {
+        Array.from(select.options).forEach(option => {
+            const assignedUserId = option.dataset.assignedUserId || '';
+            if (!option.value) {
+                option.disabled = false;
+                return;
+            }
+
+            const isAssignedElsewhere = assignedUserId && String(assignedUserId) !== String(currentUserId);
+            option.disabled = Boolean(isAssignedElsewhere);
+        });
+
+        select.value = selectedEmployeeId || '';
+    }
 
     function switchTab(tab, button) {
         document.getElementById('usersTab').style.display = tab === 'users' ? 'block' : 'none';
@@ -509,7 +672,7 @@
         document.getElementById('edit_user_name').value = user.name;
         document.getElementById('edit_user_email').value = user.email;
         document.getElementById('edit_user_role').value = user.role;
-        document.getElementById('edit_user_employee_id').value = user.employee_id || '';
+        syncEmployeeAssignmentOptions(document.getElementById('edit_user_employee_id'), user.id, user.employee_id || '');
         document.getElementById('edit_user_2fa').checked = user.two_factor_enabled;
         openModal('editUserModal');
     }
@@ -518,6 +681,13 @@
         document.getElementById('reset_user_id').value = user.id;
         document.getElementById('reset_user_display_name').textContent = user.name;
         openModal('resetPasswordModal');
+    }
+
+    function openAddUserModal() {
+        const form = document.getElementById('addUserForm');
+        form.reset();
+        syncEmployeeAssignmentOptions(document.getElementById('add_user_employee_id'));
+        openModal('addUserModal');
     }
 
     function resetPermissionEditor(form, permissions = {}) {
@@ -611,6 +781,8 @@
         }
     });
 
+    syncEmployeeAssignmentOptions(document.getElementById('add_user_employee_id'));
+    syncEmployeeAssignmentOptions(document.getElementById('edit_user_employee_id'));
     resetPermissionEditor(document.getElementById('addRoleForm'));
     if (window.lucide) window.lucide.createIcons();
 </script>
