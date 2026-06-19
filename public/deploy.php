@@ -5,6 +5,10 @@
  */
 
 // 1. Setup Environment
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 header('Content-Type: text/html; charset=utf-8');
 header('X-Accel-Buffering: no');
 ini_set('output_buffering', 'off');
@@ -15,6 +19,21 @@ ob_implicit_flush(true);
 // Set directory to Project Root
 $rootDir = realpath(__DIR__ . '/../');
 chdir($rootDir);
+
+if (PHP_VERSION_ID < 80200) {
+    header('HTTP/1.1 500 Internal Server Error');
+    die('<h1>PHP 8.2+ required</h1><p>This Laravel app requires PHP 8.2 or newer. Current PHP version: ' . htmlspecialchars(PHP_VERSION) . '</p><p>In Hostinger, set this domain/subdomain to PHP 8.2 or PHP 8.3, then reload this deploy URL.</p>');
+}
+
+function string_starts_with($value, $prefix) {
+    return substr($value, 0, strlen($prefix)) === $prefix;
+}
+
+function string_ends_with($value, $suffix) {
+    if ($suffix === '') return true;
+
+    return substr($value, -strlen($suffix)) === $suffix;
+}
 
 // --- DEBUG UTILITY ---
 if (isset($_GET['debug'])) {
@@ -57,7 +76,7 @@ foreach (array_unique($searchDirs) as $sshDir) {
         foreach ($files as $file) {
             // Priority 1: User uploaded "deploy_key"
             // Priority 2: SiteGround style .priv files
-            if ($file === 'deploy_key' || str_ends_with($file, '.priv') || $file === 'id_rsa' || $file === 'id_ed25519') {
+            if ($file === 'deploy_key' || string_ends_with($file, '.priv') || $file === 'id_rsa' || $file === 'id_ed25519') {
                 $sshKeyPath = $sshDir . '/' . $file;
                 // Important: Key files in project root MUST have 600 permissions
                 if ($sshDir === $rootDir) @chmod($sshKeyPath, 0600);
@@ -83,7 +102,7 @@ function read_env_value($file, $key) {
     $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
+        if ($line === '' || string_starts_with($line, '#')) continue;
 
         if (strpos($line, $key . '=') === 0) {
             return trim(trim(explode('=', $line, 2)[1]), '"\'');
