@@ -35,17 +35,69 @@ function string_ends_with($value, $suffix) {
     return substr($value, -strlen($suffix)) === $suffix;
 }
 
+function infer_home_directory($rootDir) {
+    $home = getenv('HOME') ?: ($_SERVER['HOME'] ?? '');
+
+    if (is_string($home) && $home !== '' && $home !== '$HOME') {
+        return rtrim($home, '/');
+    }
+
+    if (preg_match('#^(/home/[^/]+)#', $rootDir, $matches)) {
+        return $matches[1];
+    }
+
+    return $rootDir;
+}
+
+function current_user_name() {
+    if (function_exists('get_current_user')) {
+        $user = get_current_user();
+
+        if ($user !== '') {
+            return $user;
+        }
+    }
+
+    return 'unknown';
+}
+
+function directory_listing($path) {
+    if (!is_dir($path)) {
+        return "Directory not found: {$path}\n";
+    }
+
+    $files = scandir($path);
+
+    if ($files === false) {
+        return "Unable to read directory: {$path}\n";
+    }
+
+    $lines = ["Directory: {$path}"];
+    foreach ($files as $file) {
+        $fullPath = rtrim($path, '/') . '/' . $file;
+        $type = is_dir($fullPath) ? 'dir ' : 'file';
+        $size = is_file($fullPath) ? filesize($fullPath) : '-';
+        $lines[] = sprintf('%s %8s %s', $type, $size, $file);
+    }
+
+    return implode("\n", $lines) . "\n";
+}
+
+$homeDir = infer_home_directory($rootDir);
+$currentUser = current_user_name();
+
 // --- DEBUG UTILITY ---
 if (isset($_GET['debug'])) {
     echo "<h2>🛠️ Debug Information</h2>";
     echo "<pre>";
-    echo "Current User: " . shell_exec('whoami') . "\n";
+    echo "Current User: " . htmlspecialchars($currentUser) . "\n";
     echo "Current Directory: " . getcwd() . "\n";
     echo "PHP Version: " . PHP_VERSION . "\n";
+    echo "Disabled Functions: " . htmlspecialchars((string) ini_get('disable_functions')) . "\n";
     echo "\nListing SSH Directory (~/.ssh):\n";
-    echo shell_exec('ls -la ~/.ssh 2>&1');
+    echo htmlspecialchars(directory_listing($homeDir . '/.ssh'));
     echo "\nListing Project Root:\n";
-    echo shell_exec('ls -la . 2>&1');
+    echo htmlspecialchars(directory_listing($rootDir));
     echo "</pre>";
     if (!isset($_GET['run'])) die("<hr><p>Debug finished. Add <b>&run=1</b> to the URL to proceed with deployment.</p>");
 }
@@ -56,17 +108,12 @@ putenv('COMPOSER_HOME=' . $rootDir . '/.composer');
 
 // --- SSH KEY DETECTION ---
 $sshKeyPath = '';
-// Use shell to resolve the real home path (more reliable than PHP)
-$homeDir = trim(shell_exec('echo $HOME'));
-if (empty($homeDir) || $homeDir == '$HOME') {
-    $homeDir = '/home/customer'; // Common SiteGround default
-}
 
 // Search for the key in multiple possible locations
 $searchDirs = [
     $rootDir, // Search project root first for easier user upload
     $homeDir . '/.ssh', 
-    '/home/' . trim(shell_exec('whoami')) . '/.ssh', 
+    '/home/' . $currentUser . '/.ssh', 
     '/home/customer/.ssh'
 ];
 foreach (array_unique($searchDirs) as $sshDir) {
@@ -155,8 +202,32 @@ function run_command($label, $command, $envPrefix = '', $stopOnFail = true) {
     echo "<div class='step'>";
     echo "<div class='step-header'><span>$label</span> <span style='opacity: 0.7; font-size: 0.8em;'>$ $fullCommand</span></div>";
     echo "<div class='step-output'>";
+
+    if (!function_exists('popen')) {
+        echo "The PHP function popen() is disabled on this server.\n";
+        echo "This browser-based deploy script cannot run git/composer/artisan commands without popen(), proc_open(), exec(), system(), or passthru().\n";
+        echo "Use Hostinger SSH/Terminal to run the deployment commands manually, or enable one of those PHP functions for this domain.\n";
+        echo "</div></div>";
+
+        if ($stopOnFail) {
+            die();
+        }
+
+        return false;
+    }
     
     $handle = popen("$fullCommand 2>&1", 'r');
+    if ($handle === false) {
+        echo "Unable to start command.\n";
+        echo "</div></div>";
+
+        if ($stopOnFail) {
+            die();
+        }
+
+        return false;
+    }
+
     $output = '';
     while (!feof($handle)) {
         $line = fgets($handle);
