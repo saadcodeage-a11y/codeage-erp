@@ -77,23 +77,44 @@ $sshCommand = $sshKeyPath
     ? "ssh -v -i $sshKeyPath -o StrictHostKeyChecking=no -o BatchMode=yes" 
     : "ssh -v -o StrictHostKeyChecking=no";
 
-// 2. Security Check
-$envFile = '.env';
-$deployToken = '';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+function read_env_value($file, $key) {
+    if (!file_exists($file)) return '';
+
+    $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), 'DEPLOY_TOKEN=') === 0) {
-            $deployToken = trim(trim(explode('=', $line, 2)[1]), '"\'');
-            break;
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+
+        if (strpos($line, $key . '=') === 0) {
+            return trim(trim(explode('=', $line, 2)[1]), '"\'');
         }
     }
-} else {
-    die_error('.env file not found', 'Expected path: ' . $rootDir . '/.env');
+
+    return '';
 }
 
-if (empty($deployToken)) die_error('DEPLOY_TOKEN missing', 'Add DEPLOY_TOKEN="codeage_deploy_secret_2026" to your .env file');
+function apply_env_template($rootDir) {
+    $template = $rootDir . '/always_replace/env';
+    $target = $rootDir . '/.env';
+
+    if (!file_exists($template)) return;
+
+    if (!copy($template, $target)) {
+        die_error('Unable to prepare .env', 'Could not copy always_replace/env to .env');
+    }
+
+    @chmod($target, 0600);
+}
+
+// 2. Security Check
+$envFile = '.env';
+$envTemplateFile = 'always_replace/env';
+$deployToken = read_env_value($envFile, 'DEPLOY_TOKEN') ?: read_env_value($envTemplateFile, 'DEPLOY_TOKEN');
+
+if (empty($deployToken)) die_error('DEPLOY_TOKEN missing', 'Add DEPLOY_TOKEN="codeage_deploy_secret_2026" to your .env file or always_replace/env');
 if (($_GET['token'] ?? '') !== $deployToken) die_error('403 Forbidden', 'Invalid deployment token.');
+
+apply_env_template($rootDir);
 
 // 3. Configuration
 $repoUrl = 'git@github.com:saadcodeage-a11y/codeage-erp.git'; // SSH URL is required for Deploy Keys
@@ -180,6 +201,7 @@ function run_command($label, $command, $envPrefix = '', $stopOnFail = true) {
     echo "<h3 style='color: #fbbf24'>⚠️ Syncing files with GitHub...</h3>";
     run_command('Fetch from GitHub', 'git fetch origin main', $gitEnv);
     run_command('Force Sync', 'git reset --hard origin/main');
+    apply_env_template($rootDir);
 
     // 2. Composer with override
     run_command('Composer Install', 'composer install --no-dev --optimize-autoloader --ignore-platform-reqs');
