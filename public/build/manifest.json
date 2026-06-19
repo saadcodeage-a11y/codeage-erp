@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-Qu7P_hM0.css",
+    "file": "assets/app-BaHtle72.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -9,7 +9,7 @@
     ]
   },
   "resources/css/dashboard.css": {
-    "file": "assets/dashboard-ZbaUoCIf.css",
+    "file": "assets/dashboard-CjFD0HDk.css",
     "src": "resources/css/dashboard.css",
     "isEntry": true,
     "name": "dashboard",
@@ -18,7 +18,7 @@
     ]
   },
   "resources/css/login.css": {
-    "file": "assets/login-BEPdJi4r.css",
+    "file": "assets/login-DVkh9Oqy.css",
     "src": "resources/css/login.css",
     "isEntry": true,
     "name": "login",

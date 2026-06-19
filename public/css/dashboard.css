@@ -2257,3 +2257,418 @@ a.btn-action:hover {
         display: none;
     }
 }
+
+/* Mobile shell: hidden by default so desktop pixels remain unchanged. */
+.mobile-topbar,
+.mobile-sidebar-backdrop {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body.mobile-nav-open {
+        overflow: hidden;
+    }
+
+    .app-container {
+        display: block;
+        min-height: 100vh;
+    }
+
+    .mobile-topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1100;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        background: rgba(255, 255, 255, 0.96);
+        border-bottom: 1px solid #e5e7eb;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(10px);
+    }
+
+    .mobile-menu-toggle {
+        width: 42px;
+        height: 42px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+        color: #111827;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .mobile-menu-toggle i {
+        width: 20px;
+        height: 20px;
+    }
+
+    .mobile-topbar-logo {
+        height: 38px;
+        width: auto;
+        flex-shrink: 0;
+    }
+
+    .mobile-topbar-title {
+        min-width: 0;
+        color: #111827;
+        font-size: 15px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1090;
+        display: block;
+        background: rgba(15, 23, 42, 0.46);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    body.mobile-nav-open .mobile-sidebar-backdrop {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .sidebar {
+        top: 0;
+        left: 0;
+        z-index: 1101;
+        width: min(82vw, 280px);
+        max-width: 280px;
+        padding: 20px;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.24s ease;
+        box-shadow: 20px 0 50px rgba(15, 23, 42, 0.18);
+    }
+
+    body.mobile-nav-open .sidebar {
+        transform: translateX(0);
+    }
+
+    .sidebar-header {
+        margin-bottom: 20px;
+    }
+
+    .sidebar-logo {
+        height: 42px;
+    }
+
+    .sidebar-nav {
+        gap: 6px;
+        padding-bottom: 14px;
+    }
+
+    .sidebar-footer {
+        margin-top: 14px;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 84px 16px 24px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .page-header,
+    .dashboard-header,
+    .dashboard-section-heading,
+    .dashboard-panel-header,
+    .dashboard-panel-heading,
+    .role-dashboard-header,
+    .card-header,
+    .section-header,
+    .reports-header,
+    .reports-section-header,
+    .payroll-page-header,
+    .rb-panel__head,
+    .employee-import-summary-header,
+    .profile-identity,
+    .employee-summary-card,
+    .stack-item-head,
+    .performance-card-head,
+    .performance-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .header-right,
+    .reports-header-actions,
+    .section-badge-row,
+    .employee-import-metrics,
+    .attendance-empty-meta,
+    .action-buttons-group {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .header-right {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-right .btn,
+    .page-header .btn,
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .stats-grid,
+    .stats-grid.second-row,
+    .content-grid,
+    .quick-actions-grid,
+    .dashboard-section-grid,
+    .dashboard-section-grid-wide,
+    .dashboard-metric-grid,
+    .dashboard-inline-metrics,
+    .dashboard-split-content,
+    .rb-hero,
+    .rb-grid,
+    .rb-grid--hero,
+    .rb-spotlight,
+    .rb-ring-grid,
+    .rb-card-list,
+    .rb-actions,
+    .rb-inline-stats,
+    .rb-financial-grid,
+    .rb-review-grid,
+    .rb-review-grid__details,
+    .profile-hero,
+    .profile-account-grid,
+    .self-service-hero,
+    .self-service-two-col,
+    .info-grid,
+    .info-grid.two-col,
+    .attendance-summary-grid,
+    .leave-summary-grid,
+    .metric-grid,
+    .form-grid,
+    .portal-form .form-row,
+    .two-column-layout,
+    .payroll-summary-grid,
+    .payroll-layout,
+    .payroll-detail-grid,
+    .payroll-history-grid,
+    .reports-hero,
+    .reports-filter-grid,
+    .reports-metric-grid,
+    .permission-matrix {
+        grid-template-columns: 1fr !important;
+    }
+
+    .main-content [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    .stat-card,
+    .action-card,
+    .dashboard-list-item,
+    .dashboard-link-row,
+    .rb-list-card,
+    .rb-empty,
+    .import-card,
+    .error-card-header,
+    .error-meta,
+    .portal-alert,
+    .security-row {
+        align-items: flex-start;
+    }
+
+    .action-card,
+    .rb-list-card,
+    .import-card,
+    .security-row {
+        flex-direction: column;
+    }
+
+    .tabs-container {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tabs-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-item {
+        flex: 0 0 auto;
+    }
+
+    .table-card,
+    .table-scroll,
+    .payout-records-table-wrap,
+    .payout-preview-table-wrap,
+    .permission-table-wrap,
+    .reports-table-wrap {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-card > .data-table,
+    .table-scroll > .data-table {
+        min-width: 720px;
+    }
+
+    .attendance-records-card .data-table,
+    .reports-table,
+    .payout-records-table,
+    .payout-preview-table,
+    .salary-table,
+    .tax-table {
+        min-width: 980px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 12px 16px;
+    }
+
+    .pagination-wrapper {
+        padding: 14px 16px;
+    }
+
+    .modal-overlay {
+        align-items: flex-start;
+        padding: 12px;
+    }
+
+    .modal-container {
+        width: 100% !important;
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100dvh - 24px);
+        border-radius: 10px;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 16px;
+    }
+
+    .modal-header {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .form-row,
+    .form-grid {
+        gap: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea,
+    .portal-form input,
+    .portal-form select,
+    .portal-form textarea {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .card,
+    .table-card,
+    .rb-panel,
+    .dashboard-overview-card,
+    .dashboard-summary-card,
+    .profile-account-section,
+    .employee-tab-shell > .table-card,
+    .sub-card,
+    .performance-card,
+    .feedback-card {
+        border-radius: 12px;
+    }
+
+    .card,
+    .rb-panel,
+    .dashboard-overview-card,
+    .dashboard-summary-card,
+    .profile-account-section,
+    .employee-tab-shell > .table-card {
+        padding: 18px;
+    }
+
+    .rb-hero,
+    .profile-hero,
+    .self-service-hero,
+    .attendance-empty-shell {
+        padding: 18px;
+    }
+
+    .dashboard-header h1,
+    .header-left h1,
+    .rb-hero h1,
+    .attendance-empty-state h3 {
+        font-size: 24px;
+        line-height: 1.2;
+    }
+
+    .rb-stat__value,
+    .stat-value {
+        font-size: 24px;
+    }
+
+    .hero-title-row h2 {
+        font-size: 24px;
+    }
+
+    .avatar-lg {
+        width: 76px;
+        height: 76px;
+        border-radius: 22px;
+    }
+
+    .action-buttons {
+        flex-wrap: nowrap;
+        min-width: max-content;
+    }
+
+    .dropdown-menu {
+        right: auto !important;
+        left: 0 !important;
+    }
+
+    #toast-container {
+        left: 16px !important;
+        right: 16px !important;
+        bottom: 16px !important;
+        width: auto !important;
+    }
+
+    #toast-container .toast {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+}

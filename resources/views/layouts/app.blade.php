@@ -31,8 +31,17 @@
         $profileTab = request()->routeIs('profile.index') ? request()->query('tab', 'account') : null;
     @endphp
     <div class="app-container">
+        <header class="mobile-topbar">
+            <button type="button" class="mobile-menu-toggle" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false">
+                <i data-lucide="menu"></i>
+            </button>
+            <img src="{{ asset('images/logo.png') }}" alt="CodeAge" class="mobile-topbar-logo">
+            <span class="mobile-topbar-title">@yield('title', 'Dashboard')</span>
+        </header>
+        <div class="mobile-sidebar-backdrop" data-mobile-close aria-hidden="true"></div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="app-sidebar">
             <div class="sidebar-header">
                 <img src="{{ asset('images/logo.png') }}" alt="CodeAge" class="sidebar-logo">
             </div>
@@ -252,6 +261,52 @@
 
         // Check for session flash messages
         document.addEventListener('DOMContentLoaded', () => {
+            const menuToggle = document.querySelector('.mobile-menu-toggle');
+            const sidebarBackdrop = document.querySelector('.mobile-sidebar-backdrop');
+            const sidebarLinks = document.querySelectorAll('.sidebar .nav-item');
+
+            function closeMobileNav() {
+                document.body.classList.remove('mobile-nav-open');
+                if (menuToggle) {
+                    menuToggle.setAttribute('aria-expanded', 'false');
+                }
+            }
+
+            function openMobileNav() {
+                document.body.classList.add('mobile-nav-open');
+                if (menuToggle) {
+                    menuToggle.setAttribute('aria-expanded', 'true');
+                }
+            }
+
+            if (menuToggle) {
+                menuToggle.addEventListener('click', () => {
+                    if (document.body.classList.contains('mobile-nav-open')) {
+                        closeMobileNav();
+                    } else {
+                        openMobileNav();
+                    }
+                });
+            }
+
+            if (sidebarBackdrop) {
+                sidebarBackdrop.addEventListener('click', closeMobileNav);
+            }
+
+            sidebarLinks.forEach((link) => {
+                link.addEventListener('click', () => {
+                    if (window.matchMedia('(max-width: 768px)').matches) {
+                        closeMobileNav();
+                    }
+                });
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeMobileNav();
+                }
+            });
+
             const flashMessage = sessionStorage.getItem('flash_message');
             const flashType = sessionStorage.getItem('flash_type');
             

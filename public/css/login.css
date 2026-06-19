@@ -252,3 +252,94 @@ body {
     font-size: 12px;
     color: #9ca3af;
 }
+
+@media (max-width: 768px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        align-items: flex-start;
+        min-height: 100dvh;
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 450px;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 100%;
+        padding: 32px 28px;
+        border-radius: 10px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .form-group input {
+        max-width: 100%;
+    }
+
+    .welcome-title,
+    .welcome-subtitle {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        min-height: 100dvh;
+        padding: 16px 12px;
+    }
+
+    .login-card {
+        padding: 28px 22px;
+    }
+
+    .logo-container {
+        margin-bottom: 18px;
+    }
+
+    .logo {
+        height: 62px;
+    }
+
+    .welcome-title {
+        font-size: 22px;
+    }
+
+    .welcome-subtitle {
+        margin-bottom: 24px;
+    }
+
+    .footer {
+        margin-top: 24px;
+    }
+}
+
+@media (max-height: 680px) and (max-width: 480px) {
+    .login-card {
+        padding-top: 22px;
+        padding-bottom: 22px;
+    }
+
+    .logo {
+        height: 54px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .footer {
+        margin-top: 18px;
+    }
+}
